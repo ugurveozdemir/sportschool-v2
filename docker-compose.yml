@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sportschool-v2-postgres
+    environment:
+      POSTGRES_DB: sportschool
+      POSTGRES_USER: sportschool
+      POSTGRES_PASSWORD: sportschool
+    ports:
+      - "5432:5432"
+    volumes:
+      - sportschool-v2-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  sportschool-v2-postgres-data:
