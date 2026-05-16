@@ -42,6 +42,16 @@ public sealed class AuthorizationTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
+    public async Task SchoolRosterEndpoints_RequireAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/school/athletes");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GroupEndpoints_RequireAuthentication()
     {
         using var client = _factory.CreateClient();

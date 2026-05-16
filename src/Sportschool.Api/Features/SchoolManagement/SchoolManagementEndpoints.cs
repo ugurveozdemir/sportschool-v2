@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -10,12 +11,85 @@ public static class SchoolManagementEndpoints
 {
     public static RouteGroupBuilder MapSchoolManagementEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/school")
+        var adminGroup = app.MapGroup("/api/school")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
 
-        group.MapPost("/coaches", UpsertCoachAsync);
+        adminGroup.MapGet("/users", ListUsersAsync);
+        adminGroup.MapGet("/coaches", ListCoachesAsync);
+        adminGroup.MapPost("/coaches", UpsertCoachAsync);
 
-        return group;
+        var staffGroup = app.MapGroup("/api/school")
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
+
+        staffGroup.MapGet("/athletes", ListAthletesAsync);
+
+        return adminGroup;
+    }
+
+    private static async Task<IResult> ListUsersAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var users = await db.Users
+            .AsNoTracking()
+            .Include(x => x.Roles)
+            .Where(x => x.SchoolId == schoolId.Value && x.IsActive)
+            .OrderBy(x => x.FullName)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(users.Select(SchoolUserResponse.From));
+    }
+
+    private static async Task<IResult> ListCoachesAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var coaches = await db.Users
+            .AsNoTracking()
+            .Include(x => x.Roles)
+            .Where(x => x.SchoolId == schoolId.Value
+                && x.IsActive
+                && x.Roles.Any(role => role.Role == UserRole.Coach))
+            .OrderBy(x => x.FullName)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(coaches.Select(SchoolUserResponse.From));
+    }
+
+    private static async Task<IResult> ListAthletesAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var athletes = await db.AthleteProfiles
+            .AsNoTracking()
+            .Include(x => x.User)
+            .Where(x => x.SchoolId == schoolId.Value && x.IsActive && x.User.IsActive)
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(athletes.Select(AthleteRosterResponse.From));
     }
 
     private static async Task<IResult> UpsertCoachAsync(
@@ -99,6 +173,43 @@ public static class SchoolManagementEndpoints
 }
 
 public sealed record CreateCoachRequest(string Email, string FullName);
+
+public sealed record SchoolUserResponse(Guid Id, Guid SchoolId, string Email, string FullName, UserRole[] Roles)
+{
+    public static SchoolUserResponse From(AppUser user)
+    {
+        return new SchoolUserResponse(
+            user.Id,
+            user.SchoolId!.Value,
+            user.Email,
+            user.FullName,
+            user.Roles.Select(x => x.Role).Order().ToArray());
+    }
+}
+
+public sealed record AthleteRosterResponse(
+    Guid Id,
+    Guid SchoolId,
+    Guid UserId,
+    string FirstName,
+    string LastName,
+    DateOnly BirthDate,
+    string ParentFullName,
+    string ParentPhone)
+{
+    public static AthleteRosterResponse From(AthleteProfile athlete)
+    {
+        return new AthleteRosterResponse(
+            athlete.Id,
+            athlete.SchoolId,
+            athlete.UserId,
+            athlete.FirstName,
+            athlete.LastName,
+            athlete.BirthDate,
+            athlete.ParentFullName,
+            athlete.ParentPhone);
+    }
+}
 
 public sealed record CoachResponse(Guid Id, Guid SchoolId, string Email, string FullName, string? TemporaryPassword)
 {

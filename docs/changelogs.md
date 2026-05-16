@@ -4,6 +4,8 @@
 
 - Added authenticated password-change endpoint with current-password verification and active refresh-token revocation.
 - Added password-change authorization and behavior tests.
+- Added school roster endpoints for SchoolAdmin user/coach lists and Coach/SchoolAdmin athlete lists.
+- Added roster tests proving school-scoped user/coach/athlete lists stay inside the current tenant.
 - Added local development documentation for PostgreSQL, migrations, API run, PlatformOwner bootstrap, login, and platform setup.
 - Added end-to-end bootstrap/login/platform-management integration coverage.
 - Verified the first PlatformOwner can bootstrap, log in, create a school, and create a SchoolAdmin through HTTP endpoints.
@@ -46,7 +48,6 @@
 
 # Todo
 
-- Add school roster/list endpoints for operational screens.
 - Add PlatformOwner list endpoints for school/admin overview.
 
 # Notes
