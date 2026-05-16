@@ -2,6 +2,10 @@
 
 ## 2026-05-16
 
+- Added public athlete application endpoint with school-code lookup and duplicate pending-application protection.
+- Added SchoolAdmin approval/rejection endpoints for athlete applications.
+- Added AthleteProfile creation on approval; approved athlete users receive both Athlete and Parent roles with the same credential.
+- Added PostgreSQL migration and model tests for athlete applications and athlete profiles.
 - Added SchoolAdmin-protected coach management endpoint for creating Coach users inside the current tenant.
 - Added support for assigning Coach role to an existing active school user without generating a second credential.
 - Added current-user school claim helper and tests for school management authorization.
@@ -21,7 +25,7 @@
 # Todo
 
 - Add tenant isolation tests before building feature endpoints.
-- Add public athlete application flow with SchoolAdmin approval/rejection.
+- Add group management and athlete group memberships.
 - Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
 # Notes
@@ -30,3 +34,4 @@
 - User email uniqueness is tenant-scoped through `SchoolId + NormalizedEmail`; platform-owner emails are globally unique where `SchoolId` is null.
 - Refresh tokens are stored as hashes and rotate per device session; refreshing one device does not revoke other devices.
 - The first PlatformOwner is created through `/api/bootstrap/platform-owner` only in Development.
+- Athlete approval creates one AppUser with both Athlete and Parent roles; parent details live on AthleteProfile for now.

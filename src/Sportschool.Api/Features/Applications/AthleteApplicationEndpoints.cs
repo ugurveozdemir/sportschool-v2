@@ -1,0 +1,259 @@
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Data;
+using Sportschool.Api.Features.Athletes;
+using Sportschool.Api.Features.Users;
+using Sportschool.Api.Security;
+
+namespace Sportschool.Api.Features.Applications;
+
+public static class AthleteApplicationEndpoints
+{
+    public static RouteGroupBuilder MapAthleteApplicationEndpoints(this IEndpointRouteBuilder app)
+    {
+        var publicGroup = app.MapGroup("/api/applications");
+        publicGroup.MapPost("/athletes", CreateApplicationAsync);
+
+        var schoolGroup = app.MapGroup("/api/school/athlete-applications")
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+
+        schoolGroup.MapGet("/", ListApplicationsAsync);
+        schoolGroup.MapPost("/{applicationId:guid}/approve", ApproveApplicationAsync);
+        schoolGroup.MapPost("/{applicationId:guid}/reject", RejectApplicationAsync);
+
+        return publicGroup;
+    }
+
+    private static async Task<IResult> CreateApplicationAsync(
+        CreateAthleteApplicationRequest request,
+        SportschoolDbContext db,
+        PasswordHasher passwordHasher,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.SchoolCode)
+            || string.IsNullOrWhiteSpace(request.AthleteFirstName)
+            || string.IsNullOrWhiteSpace(request.AthleteLastName)
+            || string.IsNullOrWhiteSpace(request.AthleteEmail)
+            || string.IsNullOrWhiteSpace(request.Password)
+            || string.IsNullOrWhiteSpace(request.ParentFullName)
+            || string.IsNullOrWhiteSpace(request.ParentPhone))
+        {
+            return Results.BadRequest();
+        }
+
+        var normalizedSchoolCode = TextNormalizer.NormalizeSchoolCode(request.SchoolCode);
+        var school = await db.Schools.FirstOrDefaultAsync(
+            x => x.NormalizedCode == normalizedSchoolCode && x.IsActive,
+            cancellationToken);
+
+        if (school is null)
+        {
+            return Results.NotFound();
+        }
+
+        var normalizedEmail = TextNormalizer.NormalizeEmail(request.AthleteEmail);
+        var userExists = await db.Users.AnyAsync(
+            x => x.SchoolId == school.Id && x.NormalizedEmail == normalizedEmail,
+            cancellationToken);
+
+        if (userExists)
+        {
+            return Results.Conflict();
+        }
+
+        var activeApplicationExists = await db.AthleteApplications.AnyAsync(
+            x => x.SchoolId == school.Id
+                && x.NormalizedAthleteEmail == normalizedEmail
+                && x.Status == AthleteApplicationStatus.Pending,
+            cancellationToken);
+
+        if (activeApplicationExists)
+        {
+            return Results.Conflict();
+        }
+
+        var application = new AthleteApplication
+        {
+            SchoolId = school.Id,
+            AthleteFirstName = request.AthleteFirstName.Trim(),
+            AthleteLastName = request.AthleteLastName.Trim(),
+            AthleteBirthDate = request.AthleteBirthDate,
+            AthleteEmail = request.AthleteEmail.Trim(),
+            NormalizedAthleteEmail = normalizedEmail,
+            PasswordHash = passwordHasher.Hash(request.Password),
+            ParentFullName = request.ParentFullName.Trim(),
+            ParentPhone = request.ParentPhone.Trim()
+        };
+
+        db.AthleteApplications.Add(application);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Created($"/api/applications/athletes/{application.Id}", AthleteApplicationResponse.From(application));
+    }
+
+    private static async Task<IResult> ListApplicationsAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var applications = await db.AthleteApplications
+            .Where(x => x.SchoolId == schoolId.Value)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => AthleteApplicationResponse.From(x))
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(applications);
+    }
+
+    private static async Task<IResult> ApproveApplicationAsync(
+        Guid applicationId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var application = await db.AthleteApplications.FirstOrDefaultAsync(
+            x => x.Id == applicationId && x.SchoolId == schoolId.Value,
+            cancellationToken);
+
+        if (application is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (application.Status != AthleteApplicationStatus.Pending)
+        {
+            return Results.Conflict();
+        }
+
+        var userExists = await db.Users.AnyAsync(
+            x => x.SchoolId == schoolId.Value && x.NormalizedEmail == application.NormalizedAthleteEmail,
+            cancellationToken);
+
+        if (userExists)
+        {
+            return Results.Conflict();
+        }
+
+        var athlete = new AppUser
+        {
+            SchoolId = schoolId.Value,
+            Email = application.AthleteEmail,
+            NormalizedEmail = application.NormalizedAthleteEmail,
+            FullName = $"{application.AthleteFirstName} {application.AthleteLastName}",
+            PasswordHash = application.PasswordHash
+        };
+
+        athlete.Roles.Add(new UserRoleAssignment { User = athlete, Role = UserRole.Athlete });
+        athlete.Roles.Add(new UserRoleAssignment { User = athlete, Role = UserRole.Parent });
+
+        var profile = new AthleteProfile
+        {
+            SchoolId = schoolId.Value,
+            User = athlete,
+            FirstName = application.AthleteFirstName,
+            LastName = application.AthleteLastName,
+            BirthDate = application.AthleteBirthDate,
+            ParentFullName = application.ParentFullName,
+            ParentPhone = application.ParentPhone
+        };
+
+        application.Status = AthleteApplicationStatus.Approved;
+        application.DecidedAt = DateTimeOffset.UtcNow;
+        application.ApprovedUser = athlete;
+
+        db.Users.Add(athlete);
+        db.AthleteProfiles.Add(profile);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(AthleteApplicationDecisionResponse.From(application, athlete.Id));
+    }
+
+    private static async Task<IResult> RejectApplicationAsync(
+        Guid applicationId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var application = await db.AthleteApplications.FirstOrDefaultAsync(
+            x => x.Id == applicationId && x.SchoolId == schoolId.Value,
+            cancellationToken);
+
+        if (application is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (application.Status != AthleteApplicationStatus.Pending)
+        {
+            return Results.Conflict();
+        }
+
+        application.Status = AthleteApplicationStatus.Rejected;
+        application.DecidedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(AthleteApplicationDecisionResponse.From(application, approvedUserId: null));
+    }
+}
+
+public sealed record CreateAthleteApplicationRequest(
+    string SchoolCode,
+    string AthleteFirstName,
+    string AthleteLastName,
+    DateOnly AthleteBirthDate,
+    string AthleteEmail,
+    string Password,
+    string ParentFullName,
+    string ParentPhone);
+
+public sealed record AthleteApplicationResponse(
+    Guid Id,
+    Guid SchoolId,
+    string AthleteFirstName,
+    string AthleteLastName,
+    DateOnly AthleteBirthDate,
+    string AthleteEmail,
+    string ParentFullName,
+    string ParentPhone,
+    AthleteApplicationStatus Status)
+{
+    public static AthleteApplicationResponse From(AthleteApplication application)
+    {
+        return new AthleteApplicationResponse(
+            application.Id,
+            application.SchoolId,
+            application.AthleteFirstName,
+            application.AthleteLastName,
+            application.AthleteBirthDate,
+            application.AthleteEmail,
+            application.ParentFullName,
+            application.ParentPhone,
+            application.Status);
+    }
+}
+
+public sealed record AthleteApplicationDecisionResponse(Guid Id, AthleteApplicationStatus Status, Guid? ApprovedUserId)
+{
+    public static AthleteApplicationDecisionResponse From(AthleteApplication application, Guid? approvedUserId)
+    {
+        return new AthleteApplicationDecisionResponse(application.Id, application.Status, approvedUserId);
+    }
+}

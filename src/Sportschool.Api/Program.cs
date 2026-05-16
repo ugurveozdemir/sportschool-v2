@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Bootstrap;
 using Sportschool.Api.Features.Platform;
@@ -67,6 +68,7 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
     .WithName("GetHealth");
 app.MapAuthEndpoints();
+app.MapAthleteApplicationEndpoints();
 app.MapPlatformEndpoints();
 app.MapSchoolManagementEndpoints();
 

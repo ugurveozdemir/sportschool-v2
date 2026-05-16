@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Applications;
+using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Users;
 
@@ -53,6 +55,35 @@ public sealed class DataModelTests
             x.Properties.Select(p => p.Name).SequenceEqual([nameof(RefreshToken.TokenHash)]));
 
         Assert.True(index.IsUnique);
+    }
+
+    [Fact]
+    public void AthleteProfile_IsUniquePerUserWithinSchool()
+    {
+        using var db = CreateDbContext();
+
+        var athleteProfile = db.Model.FindEntityType(typeof(AthleteProfile));
+        var index = Assert.Single(athleteProfile!.GetIndexes(), x =>
+            x.Properties.Select(p => p.Name).SequenceEqual([nameof(AthleteProfile.SchoolId), nameof(AthleteProfile.UserId)]));
+
+        Assert.True(index.IsUnique);
+    }
+
+    [Fact]
+    public void AthleteApplication_TracksPendingDuplicatesBySchoolEmailAndStatus()
+    {
+        using var db = CreateDbContext();
+
+        var application = db.Model.FindEntityType(typeof(AthleteApplication));
+        var index = Assert.Single(application!.GetIndexes(), x =>
+            x.Properties.Select(p => p.Name).SequenceEqual(
+            [
+                nameof(AthleteApplication.SchoolId),
+                nameof(AthleteApplication.NormalizedAthleteEmail),
+                nameof(AthleteApplication.Status)
+            ]));
+
+        Assert.False(index.IsUnique);
     }
 
     private static SportschoolDbContext CreateDbContext()

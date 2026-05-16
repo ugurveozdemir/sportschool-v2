@@ -1,0 +1,31 @@
+using Sportschool.Api.Features.Schools;
+using Sportschool.Api.Features.Users;
+
+namespace Sportschool.Api.Features.Athletes;
+
+public sealed class AthleteProfile
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid SchoolId { get; set; }
+
+    public School School { get; set; } = null!;
+
+    public Guid UserId { get; set; }
+
+    public AppUser User { get; set; } = null!;
+
+    public required string FirstName { get; set; }
+
+    public required string LastName { get; set; }
+
+    public DateOnly BirthDate { get; set; }
+
+    public required string ParentFullName { get; set; }
+
+    public required string ParentPhone { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}

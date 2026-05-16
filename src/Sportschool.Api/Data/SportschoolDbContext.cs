@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Auth;
+using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
 
@@ -15,6 +17,10 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
     public DbSet<UserRoleAssignment> UserRoles => Set<UserRoleAssignment>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<AthleteApplication> AthleteApplications => Set<AthleteApplication>();
+
+    public DbSet<AthleteProfile> AthleteProfiles => Set<AthleteProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +76,50 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
                 .WithMany(x => x.RefreshTokens)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AthleteApplication>(application =>
+        {
+            application.HasKey(x => x.Id);
+            application.Property(x => x.Status).HasConversion<string>().HasMaxLength(40);
+            application.Property(x => x.AthleteFirstName).HasMaxLength(80).IsRequired();
+            application.Property(x => x.AthleteLastName).HasMaxLength(80).IsRequired();
+            application.Property(x => x.AthleteEmail).HasMaxLength(320).IsRequired();
+            application.Property(x => x.NormalizedAthleteEmail).HasMaxLength(320).IsRequired();
+            application.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
+            application.Property(x => x.ParentFullName).HasMaxLength(160).IsRequired();
+            application.Property(x => x.ParentPhone).HasMaxLength(40).IsRequired();
+            application.HasIndex(x => new { x.SchoolId, x.NormalizedAthleteEmail, x.Status });
+
+            application.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            application.HasOne(x => x.ApprovedUser)
+                .WithMany()
+                .HasForeignKey(x => x.ApprovedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AthleteProfile>(athlete =>
+        {
+            athlete.HasKey(x => x.Id);
+            athlete.Property(x => x.FirstName).HasMaxLength(80).IsRequired();
+            athlete.Property(x => x.LastName).HasMaxLength(80).IsRequired();
+            athlete.Property(x => x.ParentFullName).HasMaxLength(160).IsRequired();
+            athlete.Property(x => x.ParentPhone).HasMaxLength(40).IsRequired();
+            athlete.HasIndex(x => new { x.SchoolId, x.UserId }).IsUnique();
+
+            athlete.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            athlete.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
