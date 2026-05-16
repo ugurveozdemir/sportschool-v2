@@ -2,6 +2,9 @@
 
 ## 2026-05-16
 
+- Added SchoolAdmin-protected coach management endpoint for creating Coach users inside the current tenant.
+- Added support for assigning Coach role to an existing active school user without generating a second credential.
+- Added current-user school claim helper and tests for school management authorization.
 - Added Development-only PlatformOwner bootstrap endpoint for the first local/admin user.
 - Added PlatformOwner-protected school management endpoints for creating/deactivating schools and creating SchoolAdmin users.
 - Added temporary SchoolAdmin password generation and authorization tests for platform endpoints.
@@ -18,7 +21,7 @@
 # Todo
 
 - Add tenant isolation tests before building feature endpoints.
-- Add SchoolAdmin endpoints for creating Coach users.
+- Add public athlete application flow with SchoolAdmin approval/rejection.
 - Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
 # Notes

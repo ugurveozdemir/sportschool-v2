@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -41,6 +42,18 @@ public sealed class SecurityTests
         Assert.Equal(12, firstPassword.Length);
         Assert.Equal(12, secondPassword.Length);
         Assert.NotEqual(firstPassword, secondPassword);
+    }
+
+    [Fact]
+    public void CurrentUser_ReadsSchoolIdClaim()
+    {
+        var schoolId = Guid.NewGuid();
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim("school_id", schoolId.ToString())
+        ]));
+
+        Assert.Equal(schoolId, CurrentUser.GetSchoolId(user));
     }
 
     private static RefreshTokenService CreateRefreshTokenService()
