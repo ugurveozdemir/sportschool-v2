@@ -2,6 +2,7 @@
 
 ## 2026-05-16
 
+- Added local development documentation for PostgreSQL, migrations, API run, PlatformOwner bootstrap, login, and platform setup.
 - Added end-to-end bootstrap/login/platform-management integration coverage.
 - Verified the first PlatformOwner can bootstrap, log in, create a school, and create a SchoolAdmin through HTTP endpoints.
 - Added endpoint-level tenant isolation test infrastructure using a SQLite-backed `WebApplicationFactory`.
@@ -43,6 +44,7 @@
 
 # Todo
 
+- Add password-change flow before treating temporary SchoolAdmin passwords as production-ready.
 
 # Notes
 
