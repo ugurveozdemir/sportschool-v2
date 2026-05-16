@@ -1,3 +1,4 @@
+using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Schools;
 
 namespace Sportschool.Api.Features.Users;
@@ -23,4 +24,6 @@ public sealed class AppUser
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public List<UserRoleAssignment> Roles { get; } = [];
+
+    public List<RefreshToken> RefreshTokens { get; } = [];
 }

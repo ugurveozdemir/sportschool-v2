@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Users;
 
 namespace Sportschool.Api.Tests;
@@ -40,6 +41,18 @@ public sealed class DataModelTests
 
         Assert.True(index.IsUnique);
         Assert.Equal("\"SchoolId\" IS NULL", index.GetFilter());
+    }
+
+    [Fact]
+    public void RefreshTokenHash_IsUnique()
+    {
+        using var db = CreateDbContext();
+
+        var refreshToken = db.Model.FindEntityType(typeof(RefreshToken));
+        var index = Assert.Single(refreshToken!.GetIndexes(), x =>
+            x.Properties.Select(p => p.Name).SequenceEqual([nameof(RefreshToken.TokenHash)]));
+
+        Assert.True(index.IsUnique);
     }
 
     private static SportschoolDbContext CreateDbContext()

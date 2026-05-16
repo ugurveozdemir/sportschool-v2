@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
 
@@ -12,6 +13,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
     public DbSet<AppUser> Users => Set<AppUser>();
 
     public DbSet<UserRoleAssignment> UserRoles => Set<UserRoleAssignment>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,6 +52,22 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
 
             role.HasOne(x => x.User)
                 .WithMany(x => x.Roles)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RefreshToken>(refreshToken =>
+        {
+            refreshToken.HasKey(x => x.Id);
+            refreshToken.Property(x => x.TokenHash).HasMaxLength(100).IsRequired();
+            refreshToken.Property(x => x.Role).HasConversion<string>().HasMaxLength(40);
+            refreshToken.Property(x => x.DeviceName).HasMaxLength(120);
+            refreshToken.Property(x => x.ReplacedByTokenHash).HasMaxLength(100);
+            refreshToken.HasIndex(x => x.TokenHash).IsUnique();
+            refreshToken.HasIndex(x => new { x.UserId, x.ExpiresAt });
+
+            refreshToken.HasOne(x => x.User)
+                .WithMany(x => x.RefreshTokens)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

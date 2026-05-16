@@ -2,6 +2,9 @@
 
 ## 2026-05-16
 
+- Added JWT login/refresh/logout foundation with multi-device refresh token storage and token rotation.
+- Added password hashing, token hashing, auth DTOs, and refresh token tests.
+- Updated `README.md` to describe the product, moved local agent notes to ignored `AGENTS.md`, and added `AGENTS.md` to `.gitignore`.
 - Added the first tenant/auth data model: schools, users, role assignments, and EF Core mappings.
 - Added the initial identity schema migration for PostgreSQL.
 - Added metadata tests for tenant-scoped user uniqueness, platform-owner email uniqueness, and role assignment keys.
@@ -11,11 +14,12 @@
 
 # Todo
 
-- Add JWT and refresh token authentication.
 - Add tenant isolation tests before building feature endpoints.
-- Add password hashing and login-mode validation for `schoolCode + email + password + mode`.
+- Add initial PlatformOwner and SchoolAdmin management endpoints.
+- Add seeded/local bootstrap path for the first PlatformOwner.
 
 # Notes
 
 - Keep `README.md` product-facing only; ongoing implementation notes belong here.
 - User email uniqueness is tenant-scoped through `SchoolId + NormalizedEmail`; platform-owner emails are globally unique where `SchoolId` is null.
+- Refresh tokens are stored as hashes and rotate per device session; refreshing one device does not revoke other devices.
