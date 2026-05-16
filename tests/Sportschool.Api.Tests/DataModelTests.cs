@@ -5,6 +5,7 @@ using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Groups;
+using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
@@ -141,6 +142,24 @@ public sealed class DataModelTests
             [
                 nameof(AttendanceRecord.TrainingSessionId),
                 nameof(AttendanceRecord.AthleteProfileId)
+            ]));
+
+        Assert.True(index.IsUnique);
+    }
+
+    [Fact]
+    public void StudentPayment_IsUniquePerAthleteMonth()
+    {
+        using var db = CreateDbContext();
+
+        var payment = db.Model.FindEntityType(typeof(StudentPayment));
+        var index = Assert.Single(payment!.GetIndexes(), x =>
+            x.Properties.Select(p => p.Name).SequenceEqual(
+            [
+                nameof(StudentPayment.SchoolId),
+                nameof(StudentPayment.AthleteProfileId),
+                nameof(StudentPayment.Year),
+                nameof(StudentPayment.Month)
             ]));
 
         Assert.True(index.IsUnique);

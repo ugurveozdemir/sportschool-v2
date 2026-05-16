@@ -9,6 +9,7 @@ using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Bootstrap;
 using Sportschool.Api.Features.Groups;
+using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Platform;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.SchoolManagement;
@@ -74,6 +75,7 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
 app.MapAuthEndpoints();
 app.MapAthleteApplicationEndpoints();
 app.MapGroupEndpoints();
+app.MapPaymentEndpoints();
 app.MapPlatformEndpoints();
 app.MapTrainingEndpoints();
 app.MapAthleteReportEndpoints();

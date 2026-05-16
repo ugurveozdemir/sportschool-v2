@@ -3,6 +3,7 @@ using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Groups;
+using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Attendance;
@@ -35,6 +36,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
     public DbSet<AthleteReport> AthleteReports => Set<AthleteReport>();
 
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+
+    public DbSet<StudentPayment> StudentPayments => Set<StudentPayment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -245,6 +248,29 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
                 .OnDelete(DeleteBehavior.Restrict);
 
             attendance.HasOne(x => x.UpdatedBy)
+                .WithMany()
+                .HasForeignKey(x => x.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<StudentPayment>(payment =>
+        {
+            payment.HasKey(x => x.Id);
+            payment.Property(x => x.Status).HasConversion<string>().HasMaxLength(40);
+            payment.Property(x => x.Amount).HasPrecision(12, 2);
+            payment.HasIndex(x => new { x.SchoolId, x.AthleteProfileId, x.Year, x.Month }).IsUnique();
+
+            payment.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            payment.HasOne(x => x.AthleteProfile)
+                .WithMany()
+                .HasForeignKey(x => x.AthleteProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            payment.HasOne(x => x.UpdatedBy)
                 .WithMany()
                 .HasForeignKey(x => x.UpdatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);

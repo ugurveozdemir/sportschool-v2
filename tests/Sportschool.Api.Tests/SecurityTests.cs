@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
@@ -73,6 +74,38 @@ public sealed class SecurityTests
     public void ReportScoreValidator_RejectsOutOfRangeOrQuarterPointScores(decimal score)
     {
         Assert.False(ReportScoreValidator.IsValid(score));
+    }
+
+    [Fact]
+    public void PaymentStatusCalculator_MarksCurrentUnpaidMonthAsUnpaid()
+    {
+        var payment = new StudentPayment
+        {
+            SchoolId = Guid.NewGuid(),
+            AthleteProfileId = Guid.NewGuid(),
+            Year = 2026,
+            Month = 5,
+            Amount = 1000,
+            Status = PaymentStatus.Pending
+        };
+
+        Assert.Equal(PaymentStatus.Unpaid, PaymentStatusCalculator.GetEffectiveStatus(payment, new DateOnly(2026, 5, 16)));
+    }
+
+    [Fact]
+    public void PaymentStatusCalculator_KeepsFutureMonthPending()
+    {
+        var payment = new StudentPayment
+        {
+            SchoolId = Guid.NewGuid(),
+            AthleteProfileId = Guid.NewGuid(),
+            Year = 2026,
+            Month = 6,
+            Amount = 1000,
+            Status = PaymentStatus.Pending
+        };
+
+        Assert.Equal(PaymentStatus.Pending, PaymentStatusCalculator.GetEffectiveStatus(payment, new DateOnly(2026, 5, 16)));
     }
 
     private static RefreshTokenService CreateRefreshTokenService()

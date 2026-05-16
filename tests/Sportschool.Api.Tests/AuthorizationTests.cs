@@ -104,4 +104,18 @@ public sealed class AuthorizationTests : IClassFixture<WebApplicationFactory<Pro
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task PaymentEndpoints_RequireAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PutAsJsonAsync($"/api/school/athletes/{Guid.NewGuid()}/payments/2026/5", new
+        {
+            amount = 1200m,
+            status = "Paid"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

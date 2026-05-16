@@ -2,6 +2,9 @@
 
 ## 2026-05-16
 
+- Added student payment tracking for Coach/SchoolAdmin users.
+- Added monthly student payment uniqueness and effective status calculation where current/past Pending payments read as Unpaid.
+- Added payment update/list endpoints, PostgreSQL migration, and payment tests.
 - Added attendance/yoklama flow for training sessions.
 - Added attendance uniqueness per training and athlete, with group-membership validation before recording.
 - Added SchoolAdmin-only attendance correction endpoint.
@@ -36,7 +39,7 @@
 # Todo
 
 - Add tenant isolation tests before building feature endpoints.
-- Add payment tracking flow.
+- Add Parent/Athlete read-only mobile summary endpoints.
 - Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
 # Notes
