@@ -128,4 +128,18 @@ public sealed class AuthorizationTests : IClassFixture<WebApplicationFactory<Pro
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task ChangePassword_RequiresAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/auth/change-password", new
+        {
+            currentPassword = "old-password",
+            newPassword = "new-password"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

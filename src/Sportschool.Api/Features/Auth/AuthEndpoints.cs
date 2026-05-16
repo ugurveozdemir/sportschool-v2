@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
@@ -15,6 +16,7 @@ public static class AuthEndpoints
         group.MapPost("/login", LoginAsync);
         group.MapPost("/refresh", RefreshAsync);
         group.MapPost("/logout", LogoutAsync);
+        group.MapPost("/change-password", ChangePasswordAsync).RequireAuthorization();
 
         return group;
     }
@@ -110,6 +112,47 @@ public static class AuthEndpoints
             storedToken.RevokedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
         }
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ChangePasswordAsync(
+        ChangePasswordRequest request,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        PasswordHasher passwordHasher,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword)
+            || string.IsNullOrWhiteSpace(request.NewPassword)
+            || request.NewPassword.Length < 8)
+        {
+            return Results.BadRequest();
+        }
+
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var user = await db.Users
+            .Include(x => x.RefreshTokens)
+            .FirstOrDefaultAsync(x => x.Id == userId.Value && x.IsActive, cancellationToken);
+
+        if (user is null || !passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+        {
+            return Results.Unauthorized();
+        }
+
+        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        var revokedAt = DateTimeOffset.UtcNow;
+        foreach (var refreshToken in user.RefreshTokens.Where(x => x.IsActive))
+        {
+            refreshToken.RevokedAt = revokedAt;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.NoContent();
     }
