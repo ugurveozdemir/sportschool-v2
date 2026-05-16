@@ -13,11 +13,25 @@ public static class PlatformEndpoints
         var group = app.MapGroup("/api/platform")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.PlatformOwner.ToString()));
 
+        group.MapGet("/schools", ListSchoolsAsync);
         group.MapPost("/schools", CreateSchoolAsync);
         group.MapDelete("/schools/{schoolId:guid}", DeactivateSchoolAsync);
+        group.MapGet("/schools/{schoolId:guid}/admins", ListSchoolAdminsAsync);
         group.MapPost("/schools/{schoolId:guid}/admins", CreateSchoolAdminAsync);
 
         return group;
+    }
+
+    private static async Task<IResult> ListSchoolsAsync(
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schools = await db.Schools
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(schools.Select(SchoolResponse.From));
     }
 
     private static async Task<IResult> CreateSchoolAsync(
@@ -119,6 +133,29 @@ public static class PlatformEndpoints
             $"/api/platform/schools/{schoolId}/admins/{user.Id}",
             SchoolAdminResponse.From(user, temporaryPassword));
     }
+
+    private static async Task<IResult> ListSchoolAdminsAsync(
+        Guid schoolId,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolExists = await db.Schools.AnyAsync(x => x.Id == schoolId, cancellationToken);
+        if (!schoolExists)
+        {
+            return Results.NotFound();
+        }
+
+        var admins = await db.Users
+            .AsNoTracking()
+            .Include(x => x.Roles)
+            .Where(x => x.SchoolId == schoolId
+                && x.IsActive
+                && x.Roles.Any(role => role.Role == UserRole.SchoolAdmin))
+            .OrderBy(x => x.FullName)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(admins.Select(PlatformSchoolAdminResponse.From));
+    }
 }
 
 public sealed record CreateSchoolRequest(string Name, string Code);
@@ -138,5 +175,13 @@ public sealed record SchoolAdminResponse(Guid Id, Guid SchoolId, string Email, s
     public static SchoolAdminResponse From(AppUser user, string temporaryPassword)
     {
         return new SchoolAdminResponse(user.Id, user.SchoolId!.Value, user.Email, user.FullName, temporaryPassword);
+    }
+}
+
+public sealed record PlatformSchoolAdminResponse(Guid Id, Guid SchoolId, string Email, string FullName)
+{
+    public static PlatformSchoolAdminResponse From(AppUser user)
+    {
+        return new PlatformSchoolAdminResponse(user.Id, user.SchoolId!.Value, user.Email, user.FullName);
     }
 }

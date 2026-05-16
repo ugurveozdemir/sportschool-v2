@@ -6,6 +6,8 @@
 - Added password-change authorization and behavior tests.
 - Added school roster endpoints for SchoolAdmin user/coach lists and Coach/SchoolAdmin athlete lists.
 - Added roster tests proving school-scoped user/coach/athlete lists stay inside the current tenant.
+- Added PlatformOwner list endpoints for schools and school admins.
+- Added platform list tests covering inactive-school visibility, admin filtering, and missing-school 404 behavior.
 - Added local development documentation for PostgreSQL, migrations, API run, PlatformOwner bootstrap, login, and platform setup.
 - Added end-to-end bootstrap/login/platform-management integration coverage.
 - Verified the first PlatformOwner can bootstrap, log in, create a school, and create a SchoolAdmin through HTTP endpoints.
@@ -48,7 +50,8 @@
 
 # Todo
 
-- Add PlatformOwner list endpoints for school/admin overview.
+- Add API usage examples for the current MVP flows.
+- Decide whether weekly training recurrence should remain a stored template or expand into dated occurrences before calendar UI work.
 
 # Notes
 

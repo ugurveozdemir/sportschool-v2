@@ -28,6 +28,16 @@ public sealed class AuthorizationTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
+    public async Task PlatformListEndpoints_RequireAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/platform/schools");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task SchoolManagementEndpoints_RequireAuthentication()
     {
         using var client = _factory.CreateClient();
