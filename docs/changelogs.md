@@ -2,6 +2,8 @@
 
 ## 2026-05-16
 
+- Added endpoint-level tenant isolation test infrastructure using a SQLite-backed `WebApplicationFactory`.
+- Added tenant isolation tests proving school-scoped group lists and payment reads do not expose other tenants.
 - Added Parent/Athlete read-only mobile endpoints for profile, groups, trainings, attendance, and payments.
 - Added student payment tracking for Coach/SchoolAdmin users.
 - Added monthly student payment uniqueness and effective status calculation where current/past Pending payments read as Unpaid.
@@ -39,7 +41,6 @@
 
 # Todo
 
-- Add tenant isolation tests before building feature endpoints.
 - Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
 # Notes

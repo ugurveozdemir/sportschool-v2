@@ -29,11 +29,14 @@ builder.Services.AddOptions<JwtOptions>()
     .Validate(x => x.SigningKey.Length >= 32, "JWT signing key must be at least 32 characters.")
     .ValidateOnStart();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 
-builder.Services.AddDbContext<SportschoolDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    builder.Services.AddDbContext<SportschoolDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
@@ -62,7 +65,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.MapOpenApi();
     app.MapBootstrapEndpoints();
