@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Auth;
+using Sportschool.Api.Features.Bootstrap;
+using Sportschool.Api.Features.Platform;
 using Sportschool.Api.Security;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +29,7 @@ builder.Services.AddDbContext<SportschoolDbContext>(options =>
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
+builder.Services.AddSingleton<TemporaryPasswordGenerator>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? throw new InvalidOperationException("JWT options are not configured.");
@@ -54,6 +57,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapBootstrapEndpoints();
 }
 
 app.UseAuthentication();
@@ -62,6 +66,7 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
     .WithName("GetHealth");
 app.MapAuthEndpoints();
+app.MapPlatformEndpoints();
 
 app.Run();
 

@@ -30,6 +30,19 @@ public sealed class SecurityTests
         Assert.Equal("iPhone", issuedToken.Entity.DeviceName);
     }
 
+    [Fact]
+    public void TemporaryPasswordGenerator_CreatesShortRandomPassword()
+    {
+        var generator = new TemporaryPasswordGenerator();
+
+        var firstPassword = generator.Create();
+        var secondPassword = generator.Create();
+
+        Assert.Equal(12, firstPassword.Length);
+        Assert.Equal(12, secondPassword.Length);
+        Assert.NotEqual(firstPassword, secondPassword);
+    }
+
     private static RefreshTokenService CreateRefreshTokenService()
     {
         return new RefreshTokenService(Options.Create(new JwtOptions
