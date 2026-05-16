@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
+using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -54,6 +55,24 @@ public sealed class SecurityTests
         ]));
 
         Assert.Equal(schoolId, CurrentUser.GetSchoolId(user));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(7.5)]
+    [InlineData(10)]
+    public void ReportScoreValidator_AcceptsHalfPointScores(decimal score)
+    {
+        Assert.True(ReportScoreValidator.IsValid(score));
+    }
+
+    [Theory]
+    [InlineData(-0.5)]
+    [InlineData(7.25)]
+    [InlineData(10.5)]
+    public void ReportScoreValidator_RejectsOutOfRangeOrQuarterPointScores(decimal score)
+    {
+        Assert.False(ReportScoreValidator.IsValid(score));
     }
 
     private static RefreshTokenService CreateRefreshTokenService()

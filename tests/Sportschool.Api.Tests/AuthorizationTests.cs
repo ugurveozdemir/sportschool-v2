@@ -40,4 +40,54 @@ public sealed class AuthorizationTests : IClassFixture<WebApplicationFactory<Pro
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GroupEndpoints_RequireAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/school/groups", new
+        {
+            name = "U12",
+            description = "Under 12"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TrainingEndpoints_RequireAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/school/trainings", new
+        {
+            groupId = Guid.NewGuid(),
+            title = "Training",
+            startsAt = DateTimeOffset.UtcNow,
+            endsAt = DateTimeOffset.UtcNow.AddHours(1),
+            recurrence = "None"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReportEndpoints_RequireAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/school/athlete-reports", new
+        {
+            athleteProfileId = Guid.NewGuid(),
+            summary = "Good progress",
+            improvementAreas = "Finishing",
+            speedScore = 7.5m,
+            strengthScore = 7m,
+            dribblingScore = 8m,
+            shootingScore = 6.5m
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

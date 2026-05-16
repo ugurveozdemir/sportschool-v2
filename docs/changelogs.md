@@ -2,6 +2,13 @@
 
 ## 2026-05-16
 
+- Added group management for Coach/SchoolAdmin users: create, update, deactivate, list, and athlete add/remove.
+- Added group-athlete membership model; one athlete can belong to multiple groups.
+- Added training management for Coach/SchoolAdmin users with single and weekly recurring training sessions.
+- Added group-scoped training listing.
+- Added athlete report creation/update for Coach/SchoolAdmin users, with read-only Parent/Athlete report listing.
+- Added report score validation for `0-10` values in `0.5` increments.
+- Added PostgreSQL migration and model/authorization tests for groups, trainings, and athlete reports.
 - Added public athlete application endpoint with school-code lookup and duplicate pending-application protection.
 - Added SchoolAdmin approval/rejection endpoints for athlete applications.
 - Added AthleteProfile creation on approval; approved athlete users receive both Athlete and Parent roles with the same credential.
@@ -25,7 +32,8 @@
 # Todo
 
 - Add tenant isolation tests before building feature endpoints.
-- Add group management and athlete group memberships.
+- Add attendance/yoklama flow for training sessions.
+- Add payment tracking flow.
 - Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
 # Notes
@@ -35,3 +43,4 @@
 - Refresh tokens are stored as hashes and rotate per device session; refreshing one device does not revoke other devices.
 - The first PlatformOwner is created through `/api/bootstrap/platform-owner` only in Development.
 - Athlete approval creates one AppUser with both Athlete and Parent roles; parent details live on AthleteProfile for now.
+- Training recurrence is currently stored as `None` or `Weekly`; recurrence expansion into concrete calendar occurrences is not implemented yet.

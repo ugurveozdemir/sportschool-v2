@@ -3,6 +3,9 @@ using Sportschool.Api.Data;
 using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Auth;
+using Sportschool.Api.Features.Groups;
+using Sportschool.Api.Features.Reports;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 
 namespace Sportschool.Api.Tests;
@@ -84,6 +87,46 @@ public sealed class DataModelTests
             ]));
 
         Assert.False(index.IsUnique);
+    }
+
+    [Fact]
+    public void GroupMembership_IsUniquePerGroupAndAthlete()
+    {
+        using var db = CreateDbContext();
+
+        var membership = db.Model.FindEntityType(typeof(GroupAthlete));
+        var keyProperties = membership!.FindPrimaryKey()!.Properties.Select(x => x.Name);
+
+        Assert.Equal([nameof(GroupAthlete.GroupId), nameof(GroupAthlete.AthleteProfileId)], keyProperties);
+    }
+
+    [Fact]
+    public void TrainingSessions_AreIndexedBySchoolGroupAndStartTime()
+    {
+        using var db = CreateDbContext();
+
+        var training = db.Model.FindEntityType(typeof(TrainingSession));
+        var index = Assert.Single(training!.GetIndexes(), x =>
+            x.Properties.Select(p => p.Name).SequenceEqual(
+            [
+                nameof(TrainingSession.SchoolId),
+                nameof(TrainingSession.GroupId),
+                nameof(TrainingSession.StartsAt)
+            ]));
+
+        Assert.False(index.IsUnique);
+    }
+
+    [Fact]
+    public void AthleteReportScores_UseSingleDecimalPrecision()
+    {
+        using var db = CreateDbContext();
+
+        var report = db.Model.FindEntityType(typeof(AthleteReport));
+        var speedScore = report!.FindProperty(nameof(AthleteReport.SpeedScore))!;
+
+        Assert.Equal(3, speedScore.GetPrecision());
+        Assert.Equal(1, speedScore.GetScale());
     }
 
     private static SportschoolDbContext CreateDbContext()

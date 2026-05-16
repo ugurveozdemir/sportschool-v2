@@ -7,8 +7,11 @@ using Sportschool.Api.Data;
 using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Bootstrap;
+using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Platform;
+using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.SchoolManagement;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Security;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -69,7 +72,10 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
     .WithName("GetHealth");
 app.MapAuthEndpoints();
 app.MapAthleteApplicationEndpoints();
+app.MapGroupEndpoints();
 app.MapPlatformEndpoints();
+app.MapTrainingEndpoints();
+app.MapAthleteReportEndpoints();
 app.MapSchoolManagementEndpoints();
 
 app.Run();
