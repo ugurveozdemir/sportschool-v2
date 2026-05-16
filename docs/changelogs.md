@@ -2,6 +2,8 @@
 
 ## 2026-05-16
 
+- Added end-to-end bootstrap/login/platform-management integration coverage.
+- Verified the first PlatformOwner can bootstrap, log in, create a school, and create a SchoolAdmin through HTTP endpoints.
 - Added endpoint-level tenant isolation test infrastructure using a SQLite-backed `WebApplicationFactory`.
 - Added tenant isolation tests proving school-scoped group lists and payment reads do not expose other tenants.
 - Added Parent/Athlete read-only mobile endpoints for profile, groups, trainings, attendance, and payments.
@@ -41,7 +43,6 @@
 
 # Todo
 
-- Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
 # Notes
 
