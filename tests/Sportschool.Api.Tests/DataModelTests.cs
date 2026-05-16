@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Applications;
+using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Groups;
@@ -127,6 +128,22 @@ public sealed class DataModelTests
 
         Assert.Equal(3, speedScore.GetPrecision());
         Assert.Equal(1, speedScore.GetScale());
+    }
+
+    [Fact]
+    public void Attendance_IsUniquePerTrainingAndAthlete()
+    {
+        using var db = CreateDbContext();
+
+        var attendance = db.Model.FindEntityType(typeof(AttendanceRecord));
+        var index = Assert.Single(attendance!.GetIndexes(), x =>
+            x.Properties.Select(p => p.Name).SequenceEqual(
+            [
+                nameof(AttendanceRecord.TrainingSessionId),
+                nameof(AttendanceRecord.AthleteProfileId)
+            ]));
+
+        Assert.True(index.IsUnique);
     }
 
     private static SportschoolDbContext CreateDbContext()

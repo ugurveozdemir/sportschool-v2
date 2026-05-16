@@ -5,6 +5,7 @@ using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Schools;
+using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 
@@ -32,6 +33,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
     public DbSet<TrainingSession> TrainingSessions => Set<TrainingSession>();
 
     public DbSet<AthleteReport> AthleteReports => Set<AthleteReport>();
+
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -211,6 +214,39 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             report.HasOne(x => x.Coach)
                 .WithMany()
                 .HasForeignKey(x => x.CoachId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AttendanceRecord>(attendance =>
+        {
+            attendance.HasKey(x => x.Id);
+            attendance.Property(x => x.Status).HasConversion<string>().HasMaxLength(40);
+            attendance.HasIndex(x => new { x.TrainingSessionId, x.AthleteProfileId }).IsUnique();
+            attendance.HasIndex(x => new { x.SchoolId, x.TrainingSessionId });
+
+            attendance.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            attendance.HasOne(x => x.TrainingSession)
+                .WithMany()
+                .HasForeignKey(x => x.TrainingSessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            attendance.HasOne(x => x.AthleteProfile)
+                .WithMany()
+                .HasForeignKey(x => x.AthleteProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            attendance.HasOne(x => x.RecordedBy)
+                .WithMany()
+                .HasForeignKey(x => x.RecordedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            attendance.HasOne(x => x.UpdatedBy)
+                .WithMany()
+                .HasForeignKey(x => x.UpdatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

@@ -2,6 +2,10 @@
 
 ## 2026-05-16
 
+- Added attendance/yoklama flow for training sessions.
+- Added attendance uniqueness per training and athlete, with group-membership validation before recording.
+- Added SchoolAdmin-only attendance correction endpoint.
+- Added PostgreSQL migration and tests for attendance authorization and uniqueness.
 - Added group management for Coach/SchoolAdmin users: create, update, deactivate, list, and athlete add/remove.
 - Added group-athlete membership model; one athlete can belong to multiple groups.
 - Added training management for Coach/SchoolAdmin users with single and weekly recurring training sessions.
@@ -32,7 +36,6 @@
 # Todo
 
 - Add tenant isolation tests before building feature endpoints.
-- Add attendance/yoklama flow for training sessions.
 - Add payment tracking flow.
 - Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
