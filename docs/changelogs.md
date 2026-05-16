@@ -2,6 +2,7 @@
 
 ## 2026-05-16
 
+- Added Parent/Athlete read-only mobile endpoints for profile, groups, trainings, attendance, and payments.
 - Added student payment tracking for Coach/SchoolAdmin users.
 - Added monthly student payment uniqueness and effective status calculation where current/past Pending payments read as Unpaid.
 - Added payment update/list endpoints, PostgreSQL migration, and payment tests.
@@ -39,7 +40,6 @@
 # Todo
 
 - Add tenant isolation tests before building feature endpoints.
-- Add Parent/Athlete read-only mobile summary endpoints.
 - Add integration coverage for successful bootstrap/login/platform-management flow against PostgreSQL.
 
 # Notes
