@@ -9,6 +9,9 @@
 # Local agent instructions
 AGENTS.md
 
+# Local API usage examples
+docs/api-usage-examples.local.md
+
 # User-specific files
 *.rsuser
 *.suo

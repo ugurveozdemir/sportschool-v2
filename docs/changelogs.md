@@ -2,6 +2,7 @@
 
 ## 2026-05-16
 
+- Added ignored local API usage examples covering the current MVP flows from PlatformOwner bootstrap through athlete/parent mobile reads.
 - Added authenticated password-change endpoint with current-password verification and active refresh-token revocation.
 - Added password-change authorization and behavior tests.
 - Added school roster endpoints for SchoolAdmin user/coach lists and Coach/SchoolAdmin athlete lists.
