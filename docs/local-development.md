@@ -9,6 +9,7 @@ docker compose up -d postgres
 ```
 
 The default local connection string is already in `src/Sportschool.Api/appsettings.json`.
+The local PostgreSQL host port is `5433` so this repo can run next to older local PostgreSQL containers using `5432`.
 
 ## Apply Migrations
 
@@ -83,7 +84,7 @@ curl -X POST http://localhost:5000/api/platform/schools/<schoolId>/admins \
   }'
 ```
 
-The response includes a temporary password. There is no password-change flow yet, so treat this as a development bootstrap path for now.
+The response includes a temporary password. Use `/api/auth/change-password` after the first login to replace it.
 
 ## Verification
 

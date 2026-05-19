@@ -2,6 +2,7 @@
 
 ## 2026-05-16
 
+- Moved local PostgreSQL host port to `5433` for the `sportschool-v2` container so older local containers can keep using `5432`.
 - Added ignored local API usage examples covering the current MVP flows from PlatformOwner bootstrap through athlete/parent mobile reads.
 - Added authenticated password-change endpoint with current-password verification and active refresh-token revocation.
 - Added password-change authorization and behavior tests.
@@ -51,7 +52,6 @@
 
 # Todo
 
-- Add API usage examples for the current MVP flows.
 - Decide whether weekly training recurrence should remain a stored template or expand into dated occurrences before calendar UI work.
 
 # Notes

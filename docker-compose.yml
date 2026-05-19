@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: sportschool
       POSTGRES_PASSWORD: sportschool
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - sportschool-v2-postgres-data:/var/lib/postgresql/data
 
