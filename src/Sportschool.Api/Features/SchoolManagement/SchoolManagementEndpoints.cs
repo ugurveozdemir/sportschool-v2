@@ -17,11 +17,13 @@ public static class SchoolManagementEndpoints
         adminGroup.MapGet("/users", ListUsersAsync);
         adminGroup.MapGet("/coaches", ListCoachesAsync);
         adminGroup.MapPost("/coaches", UpsertCoachAsync);
+        adminGroup.MapDelete("/users/{userId:guid}", DeactivateUserAsync);
 
         var staffGroup = app.MapGroup("/api/school")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
         staffGroup.MapGet("/athletes", ListAthletesAsync);
+        staffGroup.MapDelete("/athletes/{athleteProfileId:guid}", DeactivateAthleteAsync);
 
         return adminGroup;
     }
@@ -169,6 +171,81 @@ public static class SchoolManagementEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/school/coaches/{coach.Id}", CoachResponse.From(coach, temporaryPassword));
+    }
+
+    private static async Task<IResult> DeactivateUserAsync(
+        Guid userId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        var currentUserId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || currentUserId is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (userId == currentUserId.Value)
+        {
+            return Results.BadRequest();
+        }
+
+        var user = await db.Users
+            .Include(x => x.RefreshTokens)
+            .FirstOrDefaultAsync(x => x.Id == userId && x.SchoolId == schoolId.Value && x.IsActive, cancellationToken);
+
+        if (user is null)
+        {
+            return Results.NotFound();
+        }
+
+        user.IsActive = false;
+        var revokedAt = DateTimeOffset.UtcNow;
+        foreach (var token in user.RefreshTokens.Where(t => t.IsActive))
+        {
+            token.RevokedAt = revokedAt;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> DeactivateAthleteAsync(
+        Guid athleteProfileId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var profile = await db.AthleteProfiles
+            .Include(x => x.User)
+            .ThenInclude(u => u.RefreshTokens)
+            .FirstOrDefaultAsync(x => x.Id == athleteProfileId && x.SchoolId == schoolId.Value && x.IsActive, cancellationToken);
+
+        if (profile is null)
+        {
+            return Results.NotFound();
+        }
+
+        profile.IsActive = false;
+        profile.User.IsActive = false;
+
+        var revokedAt = DateTimeOffset.UtcNow;
+        foreach (var token in profile.User.RefreshTokens.Where(t => t.IsActive))
+        {
+            token.RevokedAt = revokedAt;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
     }
 }
 

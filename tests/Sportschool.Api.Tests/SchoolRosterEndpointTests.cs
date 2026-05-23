@@ -1,7 +1,9 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Features.Athletes;
+using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
@@ -74,6 +76,129 @@ public sealed class SchoolRosterEndpointTests
         var athlete = Assert.Single(athletes!);
         Assert.Equal(schoolAId, athlete.SchoolId);
         Assert.Equal(athleteA.Id, athlete.UserId);
+    }
+
+    [Fact]
+    public async Task DeactivateUser_WorksCorrectly_AndRevokesTokens()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-deact@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var coach = TestUsers.Create(schoolId, "coach-deact@example.com", "Coach", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "deact-1"));
+            db.Users.AddRange(admin, coach);
+
+            // Add active refresh token
+            db.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = coach.Id,
+                Role = UserRole.Coach,
+                TokenHash = "test-hash",
+                DeviceName = "Test Device",
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
+            });
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        using var response = await client.DeleteAsync($"/api/school/users/{coach.Id}");
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
+
+        // Verify deactivated in DB
+        var updatedCoach = await factory.QueryAsync(db => db.Users.Include(x => x.RefreshTokens).SingleAsync(x => x.Id == coach.Id));
+        Assert.False(updatedCoach.IsActive);
+        var token = Assert.Single(updatedCoach.RefreshTokens);
+        Assert.NotNull(token.RevokedAt);
+    }
+
+    [Fact]
+    public async Task DeactivateUser_SelfDeactivation_Prevented()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-self@example.com", "Admin", "password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "deact-2"));
+            db.Users.Add(admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        using var response = await client.DeleteAsync($"/api/school/users/{admin.Id}");
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeactivateAthlete_WorksCorrectly_AndRevokesTokens()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-deact-ath@example.com", "Coach", "password", UserRole.Coach);
+        var athleteUser = TestUsers.Create(schoolId, "ath-deact@example.com", "Ath", "password", UserRole.Athlete);
+        var profileId = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "deact-3"));
+            db.Users.AddRange(coach, athleteUser);
+
+            var profile = CreateAthleteProfile(schoolId, athleteUser, "Ath", "L");
+            profile.Id = profileId;
+            db.AthleteProfiles.Add(profile);
+
+            db.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = athleteUser.Id,
+                Role = UserRole.Athlete,
+                TokenHash = "ath-hash",
+                DeviceName = "Test Mobile",
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
+            });
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+
+        using var response = await client.DeleteAsync($"/api/school/athletes/{profileId}");
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
+
+        // Verify profile and user deactivated
+        var updatedProfile = await factory.QueryAsync(db => db.AthleteProfiles.Include(p => p.User).ThenInclude(u => u.RefreshTokens).SingleAsync(x => x.Id == profileId));
+        Assert.False(updatedProfile.IsActive);
+        Assert.False(updatedProfile.User.IsActive);
+        var token = Assert.Single(updatedProfile.User.RefreshTokens);
+        Assert.NotNull(token.RevokedAt);
+    }
+
+    [Fact]
+    public async Task DeactivateUser_TenantIsolation_Enforced()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolAId = Guid.NewGuid();
+        var schoolBId = Guid.NewGuid();
+        var adminA = TestUsers.Create(schoolAId, "admin-iso-a@example.com", "Admin A", "password", UserRole.SchoolAdmin);
+        var coachB = TestUsers.Create(schoolBId, "coach-iso-b@example.com", "Coach B", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.AddRange(CreateSchool(schoolAId, "School A", "deact-iso-a"), CreateSchool(schoolBId, "School B", "deact-iso-b"));
+            db.Users.AddRange(adminA, coachB);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(adminA, UserRole.SchoolAdmin);
+
+        using var response = await client.DeleteAsync($"/api/school/users/{coachB.Id}");
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
     private static School CreateSchool(Guid id, string name, string code)
