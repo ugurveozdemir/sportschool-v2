@@ -39,11 +39,18 @@ public static class TrainingEndpoints
             return Results.BadRequest();
         }
 
-        if (request.Recurrence == TrainingRecurrence.Weekly
-            && request.RecurrenceEndsOn is not null
-            && request.RecurrenceEndsOn < DateOnly.FromDateTime(request.StartsAt.UtcDateTime))
+        if (request.Recurrence == TrainingRecurrence.Weekly)
         {
-            return Results.BadRequest();
+            if (request.RecurrenceEndsOn is null)
+            {
+                return Results.BadRequest();
+            }
+
+            var limitDate = DateOnly.FromDateTime(request.StartsAt.UtcDateTime).AddYears(1);
+            if (request.RecurrenceEndsOn.Value > limitDate)
+            {
+                return Results.BadRequest();
+            }
         }
 
         var groupExists = await db.TrainingGroups.AnyAsync(
@@ -55,24 +62,61 @@ public static class TrainingEndpoints
             return Results.NotFound();
         }
 
-        var training = new TrainingSession
+        var sessions = new List<TrainingSession>();
+        if (request.Recurrence == TrainingRecurrence.Weekly)
         {
-            SchoolId = schoolId.Value,
-            GroupId = request.GroupId,
-            CoachId = userId.Value,
-            Title = request.Title.Trim(),
-            StartsAt = request.StartsAt,
-            EndsAt = request.EndsAt,
-            Recurrence = request.Recurrence,
-            RecurrenceEndsOn = request.Recurrence == TrainingRecurrence.Weekly ? request.RecurrenceEndsOn : null,
-            Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
-            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
-        };
+            var currentStartsAt = request.StartsAt;
+            var currentEndsAt = request.EndsAt;
+            var occurrenceDate = DateOnly.FromDateTime(currentStartsAt.UtcDateTime);
 
-        db.TrainingSessions.Add(training);
+            while (occurrenceDate <= request.RecurrenceEndsOn!.Value)
+            {
+                sessions.Add(new TrainingSession
+                {
+                    SchoolId = schoolId.Value,
+                    GroupId = request.GroupId,
+                    CoachId = userId.Value,
+                    Title = request.Title.Trim(),
+                    StartsAt = currentStartsAt,
+                    EndsAt = currentEndsAt,
+                    Recurrence = request.Recurrence,
+                    RecurrenceEndsOn = request.RecurrenceEndsOn,
+                    Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
+                    Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
+                });
+
+                currentStartsAt = currentStartsAt.AddDays(7);
+                currentEndsAt = currentEndsAt.AddDays(7);
+                occurrenceDate = DateOnly.FromDateTime(currentStartsAt.UtcDateTime);
+            }
+
+            if (sessions.Count == 0)
+            {
+                return Results.BadRequest();
+            }
+        }
+        else
+        {
+            sessions.Add(new TrainingSession
+            {
+                SchoolId = schoolId.Value,
+                GroupId = request.GroupId,
+                CoachId = userId.Value,
+                Title = request.Title.Trim(),
+                StartsAt = request.StartsAt,
+                EndsAt = request.EndsAt,
+                Recurrence = request.Recurrence,
+                RecurrenceEndsOn = null,
+                Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
+                Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
+            });
+        }
+
+        db.TrainingSessions.AddRange(sessions);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Created($"/api/school/trainings/{training.Id}", TrainingResponse.From(training));
+        var firstSession = sessions[0];
+        return Results.Created($"/api/school/trainings/{firstSession.Id}", TrainingResponse.From(firstSession));
     }
 
     private static async Task<IResult> ListGroupTrainingsAsync(
