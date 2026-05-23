@@ -1,0 +1,242 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f8f9fa;
+  color: #191c1d;
+  --background: #f8f9fa;
+  --surface: #ffffff;
+  --surface-muted: #f3f4f5;
+  --surface-raised: #edeeef;
+  --surface-high: #e7e8e9;
+  --border: #c3c6d7;
+  --border-soft: #e1e3e4;
+  --text: #191c1d;
+  --text-muted: #434655;
+  --primary: #004ac6;
+  --primary-strong: #2563eb;
+  --primary-soft: #dbe1ff;
+  --danger: #ba1a1a;
+  --danger-soft: #ffdad6;
+  --success: #047857;
+  --success-soft: #d1fae5;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --code-bg: #111827;
+  --code-panel: #1e293b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 1180px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--background);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+code,
+pre,
+.font-code {
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--background);
+}
+
+.topbar {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar {
+  position: fixed;
+  z-index: 40;
+  top: 64px;
+  bottom: 0;
+  left: 0;
+  width: 240px;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--background);
+  border-right: 1px solid var(--border);
+}
+
+.main-content {
+  min-height: 100vh;
+  padding: 96px 24px 32px 264px;
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 20px;
+  align-items: start;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-body {
+  padding: 20px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  color: #1f2937;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.nav-link:hover {
+  background: var(--surface-high);
+}
+
+.nav-link.active {
+  color: #1d4ed8;
+  background: #dbeafe;
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+}
+
+.textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--primary-strong);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 18%);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.button-primary {
+  color: #fff;
+  background: var(--primary);
+}
+
+.button-primary:hover {
+  background: #003ea8;
+}
+
+.button-secondary {
+  color: var(--text);
+  background: #fff;
+  border-color: var(--border);
+}
+
+.button-danger {
+  color: var(--danger);
+  background: #fff;
+  border-color: var(--danger);
+}
+
+.method-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 4px;
+  letter-spacing: 0;
+}
+
+.method-post {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.method-get {
+  color: #0369a1;
+  background: #e0f2fe;
+}
+
+.method-put {
+  color: #7c2d12;
+  background: #ffedd5;
+}
+
+.method-delete {
+  color: #b91c1c;
+  background: #fee2e2;
+}

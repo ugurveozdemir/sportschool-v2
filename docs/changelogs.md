@@ -2,6 +2,11 @@
 
 ## 2026-05-16
 
+- Added the initial React/Vite Sportschool dashboard app under `src/Sportschool.Dashboard`.
+- Added the dashboard foundation: Turkish layout, sidebar/topbar navigation, shared API client, session storage, response inspector, and Auth operations screen.
+- Added Auth UI for PlatformOwner bootstrap, login, token refresh/logout summary, and password change against the existing API endpoints.
+- Added ASP.NET Core static file/fallback hosting for `/dashboard` so the React build can be served by the API in production.
+- Kept generated dashboard build assets and frontend dependencies out of git through `.gitignore`.
 - Moved local PostgreSQL host port to `5433` for the `sportschool-v2` container so older local containers can keep using `5432`.
 - Added ignored local API usage examples covering the current MVP flows from PlatformOwner bootstrap through athlete/parent mobile reads.
 - Added authenticated password-change endpoint with current-password verification and active refresh-token revocation.
@@ -62,3 +67,4 @@
 - The first PlatformOwner is created through `/api/bootstrap/platform-owner` only in Development.
 - Athlete approval creates one AppUser with both Athlete and Parent roles; parent details live on AthleteProfile for now.
 - Training recurrence is currently stored as `None` or `Weekly`; recurrence expansion into concrete calendar occurrences is not implemented yet.
+- Dashboard source lives in `src/Sportschool.Dashboard`; local development uses Vite, production serving uses the API `/dashboard` fallback after `npm run build`.

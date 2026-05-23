@@ -6,6 +6,10 @@
 # dotenv files
 .env
 
+# Frontend dependencies and generated dashboard assets
+node_modules/
+src/Sportschool.Api/wwwroot/dashboard/
+
 # Local agent instructions
 AGENTS.md
 

@@ -71,11 +71,13 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
     app.MapBootstrapEndpoints();
 }
 
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
     .WithName("GetHealth");
+app.MapMethods("/favicon.ico", [HttpMethods.Get, HttpMethods.Head], () => Results.Redirect("/dashboard/favicon.svg"));
 app.MapAuthEndpoints();
 app.MapAthleteApplicationEndpoints();
 app.MapGroupEndpoints();
@@ -86,6 +88,7 @@ app.MapTrainingEndpoints();
 app.MapAthleteReportEndpoints();
 app.MapAttendanceEndpoints();
 app.MapSchoolManagementEndpoints();
+app.MapFallbackToFile("/dashboard/{*path:nonfile}", "dashboard/index.html");
 
 app.Run();
 
