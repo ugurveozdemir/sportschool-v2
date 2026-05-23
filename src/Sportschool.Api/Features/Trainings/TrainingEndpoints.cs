@@ -14,6 +14,8 @@ public static class TrainingEndpoints
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
         group.MapPost("/trainings", CreateTrainingAsync);
+        group.MapPut("/trainings/{id:guid}", UpdateTrainingAsync);
+        group.MapDelete("/trainings/{id:guid}", DeactivateTrainingAsync);
         group.MapGet("/groups/{groupId:guid}/trainings", ListGroupTrainingsAsync);
 
         return group;
@@ -148,6 +150,72 @@ public static class TrainingEndpoints
 
         return Results.Ok(trainings);
     }
+
+    private static async Task<IResult> UpdateTrainingAsync(
+        Guid id,
+        UpdateTrainingRequest request,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title)
+            || request.EndsAt <= request.StartsAt)
+        {
+            return Results.BadRequest();
+        }
+
+        var training = await db.TrainingSessions.FirstOrDefaultAsync(
+            x => x.Id == id && x.SchoolId == schoolId.Value && x.IsActive,
+            cancellationToken);
+
+        if (training is null)
+        {
+            return Results.NotFound();
+        }
+
+        training.Title = request.Title.Trim();
+        training.StartsAt = request.StartsAt;
+        training.EndsAt = request.EndsAt;
+        training.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
+        training.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> DeactivateTrainingAsync(
+        Guid id,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var training = await db.TrainingSessions.FirstOrDefaultAsync(
+            x => x.Id == id && x.SchoolId == schoolId.Value && x.IsActive,
+            cancellationToken);
+
+        if (training is null)
+        {
+            return Results.NotFound();
+        }
+
+        training.IsActive = false;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
+    }
 }
 
 public sealed record CreateTrainingRequest(
@@ -187,3 +255,10 @@ public sealed record TrainingResponse(
             training.Notes);
     }
 }
+
+public sealed record UpdateTrainingRequest(
+    string Title,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    string? Location,
+    string? Notes);

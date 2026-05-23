@@ -184,6 +184,136 @@ public sealed class TrainingEndpointTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task UpdateTrainingSession_WorksCorrectly()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var trainingId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-upd@example.com", "Coach A", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "train-upd"));
+            var group = new TrainingGroup { Id = groupId, SchoolId = schoolId, Name = "Group A" };
+            db.TrainingGroups.Add(group);
+            db.Users.Add(coach);
+            db.TrainingSessions.Add(new TrainingSession
+            {
+                Id = trainingId,
+                SchoolId = schoolId,
+                GroupId = groupId,
+                CoachId = coach.Id,
+                Title = "Old Title",
+                StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                Location = "Old Loc"
+            });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+
+        var request = new UpdateTrainingRequest(
+            Title: "New Title",
+            StartsAt: DateTimeOffset.UtcNow.AddDays(2),
+            EndsAt: DateTimeOffset.UtcNow.AddDays(2).AddHours(2),
+            Location: "New Loc",
+            Notes: "Updated notes");
+
+        using var response = await client.PutAsJsonAsync($"/api/school/trainings/{trainingId}", request, JsonOptions);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var session = await factory.QueryAsync(db => db.TrainingSessions.SingleAsync(x => x.Id == trainingId));
+        Assert.Equal("New Title", session.Title);
+        Assert.Equal("New Loc", session.Location);
+        Assert.Equal("Updated notes", session.Notes);
+        Assert.Equal(request.StartsAt, session.StartsAt);
+    }
+
+    [Fact]
+    public async Task DeactivateTrainingSession_WorksCorrectly()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var trainingId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-del@example.com", "Coach A", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "train-del"));
+            db.TrainingGroups.Add(new TrainingGroup { Id = groupId, SchoolId = schoolId, Name = "Group A" });
+            db.Users.Add(coach);
+            db.TrainingSessions.Add(new TrainingSession
+            {
+                Id = trainingId,
+                SchoolId = schoolId,
+                GroupId = groupId,
+                CoachId = coach.Id,
+                Title = "Session to Delete",
+                StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1)
+            });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+
+        using var response = await client.DeleteAsync($"/api/school/trainings/{trainingId}");
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var session = await factory.QueryAsync(db => db.TrainingSessions.SingleAsync(x => x.Id == trainingId));
+        Assert.False(session.IsActive);
+    }
+
+    [Fact]
+    public async Task ModifyTrainingSession_TenantIsolation_Enforced()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolAId = Guid.NewGuid();
+        var schoolBId = Guid.NewGuid();
+        var groupAId = Guid.NewGuid();
+        var trainingAId = Guid.NewGuid();
+        var coachA = TestUsers.Create(schoolAId, "coach-iso-a@example.com", "Coach A", "password", UserRole.Coach);
+        var coachB = TestUsers.Create(schoolBId, "coach-iso-b@example.com", "Coach B", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.AddRange(CreateSchool(schoolAId, "School A", "iso-a"), CreateSchool(schoolBId, "School B", "iso-b"));
+            db.TrainingGroups.Add(new TrainingGroup { Id = groupAId, SchoolId = schoolAId, Name = "Group A" });
+            db.Users.AddRange(coachA, coachB);
+            db.TrainingSessions.Add(new TrainingSession
+            {
+                Id = trainingAId,
+                SchoolId = schoolAId,
+                GroupId = groupAId,
+                CoachId = coachA.Id,
+                Title = "School A Session",
+                StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1)
+            });
+            return Task.CompletedTask;
+        });
+
+        // Coach B (School B) tries to edit/delete School A's session
+        using var client = factory.CreateAuthenticatedClient(coachB, UserRole.Coach);
+
+        var editRequest = new UpdateTrainingRequest(
+            Title: "Hacked",
+            StartsAt: DateTimeOffset.UtcNow.AddDays(1),
+            EndsAt: DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            Location: null,
+            Notes: null);
+
+        using var editResponse = await client.PutAsJsonAsync($"/api/school/trainings/{trainingAId}", editRequest, JsonOptions);
+        Assert.Equal(HttpStatusCode.NotFound, editResponse.StatusCode);
+
+        using var deleteResponse = await client.DeleteAsync($"/api/school/trainings/{trainingAId}");
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+    }
+
     private static School CreateSchool(Guid id, string name, string code)
     {
         return new School
