@@ -2,6 +2,8 @@
 
 ## 2026-05-16
 
+- Completed the remaining dashboard MVP sections for Health, Platform, School, Applications, Athletes, Groups, Trainings, Attendance, Payments, Reports, and Me.
+- Added shared dashboard domain types, endpoint constants, data table, and status badge components so feature pages do not duplicate endpoint strings or table markup.
 - Fixed dashboard session snapshot caching so React `useSyncExternalStore` does not enter a maximum update depth loop on Auth routes.
 - Added Development-only auth seed for a default PlatformOwner user so the dashboard Auth screen can be tested immediately after migrations.
 - Documented the local seeded PlatformOwner credentials in `docs/local-development.md`.

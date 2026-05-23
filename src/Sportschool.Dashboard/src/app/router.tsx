@@ -1,8 +1,18 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { routes } from "../config/routes";
+import { ApplicationsPage } from "../features/applications/pages/ApplicationsPage";
+import { AttendancePage } from "../features/attendance/pages/AttendancePage";
 import { AuthPage } from "../features/auth/pages/AuthPage";
+import { GroupsPage } from "../features/groups/pages/GroupsPage";
+import { HealthPage } from "../features/health/pages/HealthPage";
+import { MePage } from "../features/me/pages/MePage";
+import { PaymentsPage } from "../features/payments/pages/PaymentsPage";
+import { PlatformPage } from "../features/platform/pages/PlatformPage";
+import { ReportsPage } from "../features/reports/pages/ReportsPage";
+import { AthletesPage } from "../features/school/pages/AthletesPage";
+import { SchoolPage } from "../features/school/pages/SchoolPage";
+import { TrainingsPage } from "../features/trainings/pages/TrainingsPage";
 import { AppLayout } from "../shared/components/AppLayout";
-import { PlaceholderPage } from "../shared/components/PlaceholderPage";
 
 export const router = createBrowserRouter([
   {
@@ -11,7 +21,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <PlaceholderPage title="Sağlık" description="API sağlık kontrolü ve genel bağlantı durumu." />
+        element: <HealthPage />
       },
       {
         path: "auth",
@@ -19,43 +29,43 @@ export const router = createBrowserRouter([
       },
       {
         path: "platform",
-        element: <PlaceholderPage title="Platform" description="Okullar ve okul yöneticileri için PlatformOwner işlemleri." />
+        element: <PlatformPage />
       },
       {
         path: "school",
-        element: <PlaceholderPage title="Okul" description="Okul kullanıcıları, koçlar ve sporcular için yönetim ekranı." />
+        element: <SchoolPage />
       },
       {
         path: "applications",
-        element: <PlaceholderPage title="Başvurular" description="Sporcu başvurularını oluşturma, listeleme ve karara bağlama." />
+        element: <ApplicationsPage />
       },
       {
         path: "athletes",
-        element: <PlaceholderPage title="Sporcular" description="Okula bağlı sporcu listesini inceleme." />
+        element: <AthletesPage />
       },
       {
         path: "groups",
-        element: <PlaceholderPage title="Gruplar" description="Antrenman grupları ve grup-sporcu üyelikleri." />
+        element: <GroupsPage />
       },
       {
         path: "trainings",
-        element: <PlaceholderPage title="Antrenmanlar" description="Tekil ve haftalık antrenman seansları." />
+        element: <TrainingsPage />
       },
       {
         path: "attendance",
-        element: <PlaceholderPage title="Yoklama" description="Antrenman seansı bazında sporcu katılım kayıtları." />
+        element: <AttendancePage />
       },
       {
         path: "payments",
-        element: <PlaceholderPage title="Ödemeler" description="Sporcu aylık ödeme durumları." />
+        element: <PaymentsPage />
       },
       {
         path: "reports",
-        element: <PlaceholderPage title="Raporlar" description="Sporcu gelişim raporları ve skorları." />
+        element: <ReportsPage />
       },
       {
         path: "me",
-        element: <PlaceholderPage title="Ben" description="Veli/sporcu mobil okuma endpointleri." />
+        element: <MePage />
       }
     ]
   },
