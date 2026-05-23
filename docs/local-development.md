@@ -25,15 +25,24 @@ dotnet ef database update \
 dotnet run --project src/Sportschool.Api/Sportschool.Api.csproj
 ```
 
+Development ortamında API açılırken ilk PlatformOwner yoksa otomatik oluşturulur.
+
+```text
+email: owner@example.com
+password: change-me
+mode: PlatformOwner
+```
+
 OpenAPI is available in Development at:
 
 ```text
 /openapi/v1.json
 ```
 
-## Create the First PlatformOwner
+## Create the First PlatformOwner Manually
 
 The bootstrap endpoint is only mapped in Development and Testing environments.
+Normal local development için buna gerek yoktur; Development seed aynı kullanıcıyı otomatik oluşturur.
 
 ```bash
 curl -X POST http://localhost:5000/api/bootstrap/platform-owner \

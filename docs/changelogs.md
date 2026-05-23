@@ -2,6 +2,8 @@
 
 ## 2026-05-16
 
+- Added Development-only auth seed for a default PlatformOwner user so the dashboard Auth screen can be tested immediately after migrations.
+- Documented the local seeded PlatformOwner credentials in `docs/local-development.md`.
 - Added the initial React/Vite Sportschool dashboard app under `src/Sportschool.Dashboard`.
 - Added the dashboard foundation: Turkish layout, sidebar/topbar navigation, shared API client, session storage, response inspector, and Auth operations screen.
 - Added Auth UI for PlatformOwner bootstrap, login, token refresh/logout summary, and password change against the existing API endpoints.
@@ -68,3 +70,4 @@
 - Athlete approval creates one AppUser with both Athlete and Parent roles; parent details live on AthleteProfile for now.
 - Training recurrence is currently stored as `None` or `Weekly`; recurrence expansion into concrete calendar occurrences is not implemented yet.
 - Dashboard source lives in `src/Sportschool.Dashboard`; local development uses Vite, production serving uses the API `/dashboard` fallback after `npm run build`.
+- Local Development seeds `owner@example.com` / `change-me` as PlatformOwner only when no PlatformOwner exists and `DevSeed:Enabled` is true.

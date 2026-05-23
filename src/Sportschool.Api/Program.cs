@@ -22,6 +22,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
     .Validate(x => !string.IsNullOrWhiteSpace(x.Issuer), "JWT issuer is required.")
@@ -41,6 +42,7 @@ builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
 builder.Services.AddSingleton<TemporaryPasswordGenerator>();
+builder.Services.AddHostedService<DevSeedHostedService>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? throw new InvalidOperationException("JWT options are not configured.");
