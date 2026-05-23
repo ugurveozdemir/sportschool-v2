@@ -62,6 +62,36 @@ public sealed class PlatformListEndpointTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PlatformOwnerCanListSchools_WithSearchFilter()
+    {
+        await using var factory = new TestAppFactory();
+        var platformOwner = TestUsers.Create(null, "platform-search@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolAId = Guid.NewGuid();
+        var schoolBId = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.AddRange(
+                CreateSchool(schoolAId, "Ankara Basketbol", "ank-1", isActive: true),
+                CreateSchool(schoolBId, "Izmir Basketbol", "izm-1", isActive: true));
+            db.Users.Add(platformOwner);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+
+        // Search for 'ankara'
+        var schools = await client.GetFromJsonAsync<List<SchoolResponse>>("/api/platform/schools?search=ankara");
+        var school = Assert.Single(schools!);
+        Assert.Equal("Ankara Basketbol", school.Name);
+
+        // Search for 'izm' (matches code/name)
+        var izmSchools = await client.GetFromJsonAsync<List<SchoolResponse>>("/api/platform/schools?search=izm-1");
+        var izmSchool = Assert.Single(izmSchools!);
+        Assert.Equal("Izmir Basketbol", izmSchool.Name);
+    }
+
     private static School CreateSchool(Guid id, string name, string code, bool isActive)
     {
         return new School

@@ -23,11 +23,21 @@ public static class PlatformEndpoints
     }
 
     private static async Task<IResult> ListSchoolsAsync(
+        string? search,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        var schools = await db.Schools
-            .AsNoTracking()
+        var query = db.Schools.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLower();
+            query = query.Where(x =>
+                x.Name.ToLower().Contains(normalizedSearch) ||
+                x.Code.ToLower().Contains(normalizedSearch));
+        }
+
+        var schools = await query
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
 

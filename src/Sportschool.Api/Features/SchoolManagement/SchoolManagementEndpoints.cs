@@ -29,6 +29,7 @@ public static class SchoolManagementEndpoints
     }
 
     private static async Task<IResult> ListUsersAsync(
+        string? search,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -39,10 +40,20 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
-        var users = await db.Users
+        var query = db.Users
             .AsNoTracking()
             .Include(x => x.Roles)
-            .Where(x => x.SchoolId == schoolId.Value && x.IsActive)
+            .Where(x => x.SchoolId == schoolId.Value && x.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLower();
+            query = query.Where(x =>
+                x.FullName.ToLower().Contains(normalizedSearch) ||
+                x.Email.ToLower().Contains(normalizedSearch));
+        }
+
+        var users = await query
             .OrderBy(x => x.FullName)
             .ToListAsync(cancellationToken);
 
@@ -73,6 +84,7 @@ public static class SchoolManagementEndpoints
     }
 
     private static async Task<IResult> ListAthletesAsync(
+        string? search,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -83,10 +95,21 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
-        var athletes = await db.AthleteProfiles
+        var query = db.AthleteProfiles
             .AsNoTracking()
             .Include(x => x.User)
-            .Where(x => x.SchoolId == schoolId.Value && x.IsActive && x.User.IsActive)
+            .Where(x => x.SchoolId == schoolId.Value && x.IsActive && x.User.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLower();
+            query = query.Where(x =>
+                x.FirstName.ToLower().Contains(normalizedSearch) ||
+                x.LastName.ToLower().Contains(normalizedSearch) ||
+                x.ParentFullName.ToLower().Contains(normalizedSearch));
+        }
+
+        var athletes = await query
             .OrderBy(x => x.LastName)
             .ThenBy(x => x.FirstName)
             .ToListAsync(cancellationToken);

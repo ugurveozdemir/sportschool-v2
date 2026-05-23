@@ -201,6 +201,70 @@ public sealed class SchoolRosterEndpointTests
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task SchoolAdminCanListUsers_WithSearchFilter()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-filter@example.com", "Admin Can", "password", UserRole.SchoolAdmin);
+        var coach = TestUsers.Create(schoolId, "coach-filter@example.com", "Veli Demir", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "filter-1"));
+            db.Users.AddRange(admin, coach);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        // Search for 'can'
+        var users = await client.GetFromJsonAsync<List<SchoolUserResponse>>("/api/school/users?search=can", JsonOptions);
+        var user = Assert.Single(users!);
+        Assert.Equal("Admin Can", user.FullName);
+
+        // Search for 'veli'
+        var veliUsers = await client.GetFromJsonAsync<List<SchoolUserResponse>>("/api/school/users?search=veli", JsonOptions);
+        var veli = Assert.Single(veliUsers!);
+        Assert.Equal("Veli Demir", veli.FullName);
+    }
+
+    [Fact]
+    public async Task CoachCanListAthletes_WithSearchFilter()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-filter-ath@example.com", "Coach A", "password", UserRole.Coach);
+        var athleteA = TestUsers.Create(schoolId, "ath-a@example.com", "Metin Oktay", "password", UserRole.Athlete);
+        var athleteB = TestUsers.Create(schoolId, "ath-b@example.com", "Lefter Kucuk", "password", UserRole.Athlete);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "filter-2"));
+            db.Users.AddRange(coach, athleteA, athleteB);
+
+            var profileA = CreateAthleteProfile(schoolId, athleteA, "Metin", "Oktay");
+            profileA.ParentFullName = "Ahmet Oktay";
+            var profileB = CreateAthleteProfile(schoolId, athleteB, "Lefter", "Kucuk");
+            profileB.ParentFullName = "Mustafa Kucuk";
+
+            db.AthleteProfiles.AddRange(profileA, profileB);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+
+        // Search by athlete first name 'metin'
+        var athletesByName = await client.GetFromJsonAsync<List<AthleteRosterResponse>>("/api/school/athletes?search=metin", JsonOptions);
+        var athlete1 = Assert.Single(athletesByName!);
+        Assert.Equal("Metin", athlete1.FirstName);
+
+        // Search by parent name 'mustafa'
+        var athletesByParent = await client.GetFromJsonAsync<List<AthleteRosterResponse>>("/api/school/athletes?search=mustafa", JsonOptions);
+        var athlete2 = Assert.Single(athletesByParent!);
+        Assert.Equal("Lefter", athlete2.FirstName);
+    }
+
     private static School CreateSchool(Guid id, string name, string code)
     {
         return new School
