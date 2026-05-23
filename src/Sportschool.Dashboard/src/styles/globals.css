@@ -95,9 +95,13 @@ pre,
 
 .page-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+}
+
+.page-grid:has(> aside) {
+  grid-template-columns: minmax(0, 1fr) 420px;
 }
 
 .card {
@@ -309,4 +313,37 @@ pre,
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.view-mode-toggle {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  margin-right: 12px;
+}
+
+.toggle-pill {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  cursor: pointer;
+}
+
+.toggle-pill.active {
+  color: #fff;
+  background: var(--primary);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.toggle-pill:hover:not(.active) {
+  background: var(--surface-high);
+  color: var(--text);
 }

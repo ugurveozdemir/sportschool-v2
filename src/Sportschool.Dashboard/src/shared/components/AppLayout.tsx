@@ -4,9 +4,11 @@ import { LogOut, Search, Settings, ShieldCheck } from "lucide-react";
 import { navigationItems, secondaryNavigationItems } from "../../config/navigation";
 import { clearStoredSession } from "../api/sessionStore";
 import { getSessionSnapshot, subscribeToSession } from "../api/sessionSubscription";
+import { getDevMode, setDevMode, subscribeToDevMode } from "../api/viewModeStore";
 
 export function AppLayout() {
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, getSessionSnapshot);
+  const devMode = useSyncExternalStore(subscribeToDevMode, getDevMode, getDevMode);
 
   return (
     <div className="app-shell">
@@ -27,10 +29,28 @@ export function AppLayout() {
             }}
           >
             <Search size={18} />
-            <span>Endpoint veya kaynak ara...</span>
+            <span>{devMode ? "Endpoint veya kaynak ara..." : "Arama yapın..."}</span>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Persisted View Mode Switch */}
+          <div className="view-mode-toggle">
+            <button
+              className={`toggle-pill ${!devMode ? "active" : ""}`}
+              onClick={() => setDevMode(false)}
+              type="button"
+            >
+              Müşteri Görünümü
+            </button>
+            <button
+              className={`toggle-pill ${devMode ? "active" : ""}`}
+              onClick={() => setDevMode(true)}
+              type="button"
+            >
+              Geliştirici Konsolu
+            </button>
+          </div>
+
           <span
             style={{
               padding: "6px 10px",
@@ -75,8 +95,8 @@ export function AppLayout() {
             SP
           </div>
           <div>
-            <strong>API Paneli</strong>
-            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Sportschool MVP</div>
+            <strong>{devMode ? "API Paneli" : "Okul Yönetimi"}</strong>
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{devMode ? "Sportschool MVP" : "Sportschool Portal"}</div>
           </div>
         </div>
 
@@ -84,14 +104,16 @@ export function AppLayout() {
           style={{
             marginBottom: 20,
             padding: "10px 12px",
-            background: "var(--surface-muted)",
-            border: "1px solid var(--border)",
+            background: devMode ? "var(--surface-muted)" : "var(--success-soft)",
+            border: devMode ? "1px solid var(--border)" : "1px solid var(--success)",
             borderRadius: 6,
-            fontFamily: "JetBrains Mono, monospace",
+            fontFamily: devMode ? "JetBrains Mono, monospace" : "inherit",
+            fontWeight: devMode ? "normal" : 700,
+            color: devMode ? "var(--text)" : "var(--success)",
             fontSize: 13
           }}
         >
-          Ortam: Localhost
+          {devMode ? "Ortam: Localhost" : "Sistem: Çevrimiçi"}
         </div>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>

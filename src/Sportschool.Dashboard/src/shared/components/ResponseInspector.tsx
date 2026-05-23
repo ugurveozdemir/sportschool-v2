@@ -1,10 +1,16 @@
 import { useSyncExternalStore } from "react";
 import { Copy, TerminalSquare } from "lucide-react";
 import { getLastResponse, subscribeToLastResponse } from "../api/lastResponseStore";
+import { getDevMode, subscribeToDevMode } from "../api/viewModeStore";
 
 export function ResponseInspector() {
+  const devMode = useSyncExternalStore(subscribeToDevMode, getDevMode, getDevMode);
   const response = useSyncExternalStore(subscribeToLastResponse, getLastResponse, getLastResponse);
   const statusLabel = response ? `${response.status} ${response.ok ? "OK" : "Hata"}` : "Hazır";
+
+  if (!devMode) {
+    return null;
+  }
 
   return (
     <aside className="card" style={{ overflow: "hidden", position: "sticky", top: 88 }}>
