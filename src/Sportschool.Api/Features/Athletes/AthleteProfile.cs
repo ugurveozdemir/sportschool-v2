@@ -25,6 +25,10 @@ public sealed class AthleteProfile
 
     public required string ParentPhone { get; set; }
 
+    public Guid? ParentUserId { get; set; }
+
+    public AppUser? Parent { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

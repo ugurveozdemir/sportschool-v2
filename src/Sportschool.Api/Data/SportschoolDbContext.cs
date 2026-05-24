@@ -9,6 +9,8 @@ using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
+using Sportschool.Api.Features.Announcements;
+using Sportschool.Api.Features.Matches;
 
 namespace Sportschool.Api.Data;
 
@@ -38,6 +40,14 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
 
     public DbSet<StudentPayment> StudentPayments => Set<StudentPayment>();
+
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+
+    public DbSet<MatchSession> MatchSessions => Set<MatchSession>();
+
+    public DbSet<MatchSquad> MatchSquads => Set<MatchSquad>();
+
+    public DbSet<AthleteMeasurement> AthleteMeasurements => Set<AthleteMeasurement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -106,6 +116,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             application.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
             application.Property(x => x.ParentFullName).HasMaxLength(160).IsRequired();
             application.Property(x => x.ParentPhone).HasMaxLength(40).IsRequired();
+            application.Property(x => x.ParentEmail).HasMaxLength(320).IsRequired();
+            application.Property(x => x.NormalizedParentEmail).HasMaxLength(320).IsRequired();
             application.HasIndex(x => new { x.SchoolId, x.NormalizedAthleteEmail, x.Status });
 
             application.HasOne(x => x.School)
@@ -136,6 +148,11 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             athlete.HasOne(x => x.User)
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            athlete.HasOne(x => x.Parent)
+                .WithMany()
+                .HasForeignKey(x => x.ParentUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -275,6 +292,63 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
                 .WithMany()
                 .HasForeignKey(x => x.UpdatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Announcement>(announcement =>
+        {
+            announcement.HasKey(x => x.Id);
+            announcement.Property(x => x.Title).HasMaxLength(160).IsRequired();
+            announcement.Property(x => x.Content).HasMaxLength(2000).IsRequired();
+            announcement.Property(x => x.TargetRole).HasConversion<string>().HasMaxLength(40);
+            announcement.HasIndex(x => new { x.SchoolId, x.IsActive, x.CreatedAt });
+
+            announcement.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MatchSession>(match =>
+        {
+            match.HasKey(x => x.Id);
+            match.Property(x => x.OpponentTeamName).HasMaxLength(160).IsRequired();
+            match.Property(x => x.Location).HasMaxLength(200).IsRequired();
+            match.HasIndex(x => new { x.SchoolId, x.IsActive, x.MatchDate });
+
+            match.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MatchSquad>(squad =>
+        {
+            squad.HasKey(x => x.Id);
+            squad.Property(x => x.Status).HasConversion<string>().HasMaxLength(40);
+            squad.HasIndex(x => new { x.MatchSessionId, x.AthleteProfileId }).IsUnique();
+
+            squad.HasOne(x => x.MatchSession)
+                .WithMany(x => x.Squad)
+                .HasForeignKey(x => x.MatchSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            squad.HasOne(x => x.AthleteProfile)
+                .WithMany()
+                .HasForeignKey(x => x.AthleteProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AthleteMeasurement>(measurement =>
+        {
+            measurement.HasKey(x => x.Id);
+            measurement.Property(x => x.Height).HasPrecision(5, 2);
+            measurement.Property(x => x.Weight).HasPrecision(5, 2);
+            measurement.HasIndex(x => new { x.AthleteProfileId, x.RecordedAt });
+
+            measurement.HasOne(x => x.AthleteProfile)
+                .WithMany()
+                .HasForeignKey(x => x.AthleteProfileId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

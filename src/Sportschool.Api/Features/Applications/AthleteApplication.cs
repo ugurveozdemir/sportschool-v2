@@ -27,6 +27,10 @@ public sealed class AthleteApplication
 
     public required string ParentPhone { get; set; }
 
+    public required string ParentEmail { get; set; }
+
+    public required string NormalizedParentEmail { get; set; }
+
     public AthleteApplicationStatus Status { get; set; } = AthleteApplicationStatus.Pending;
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

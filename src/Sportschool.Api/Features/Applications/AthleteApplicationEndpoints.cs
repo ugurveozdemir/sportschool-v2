@@ -36,7 +36,8 @@ public static class AthleteApplicationEndpoints
             || string.IsNullOrWhiteSpace(request.AthleteEmail)
             || string.IsNullOrWhiteSpace(request.Password)
             || string.IsNullOrWhiteSpace(request.ParentFullName)
-            || string.IsNullOrWhiteSpace(request.ParentPhone))
+            || string.IsNullOrWhiteSpace(request.ParentPhone)
+            || string.IsNullOrWhiteSpace(request.ParentEmail))
         {
             return Results.BadRequest();
         }
@@ -72,6 +73,8 @@ public static class AthleteApplicationEndpoints
             return Results.Conflict();
         }
 
+        var normalizedParentEmail = TextNormalizer.NormalizeEmail(request.ParentEmail);
+
         var application = new AthleteApplication
         {
             SchoolId = school.Id,
@@ -82,7 +85,9 @@ public static class AthleteApplicationEndpoints
             NormalizedAthleteEmail = normalizedEmail,
             PasswordHash = passwordHasher.Hash(request.Password),
             ParentFullName = request.ParentFullName.Trim(),
-            ParentPhone = request.ParentPhone.Trim()
+            ParentPhone = request.ParentPhone.Trim(),
+            ParentEmail = request.ParentEmail.Trim(),
+            NormalizedParentEmail = normalizedParentEmail
         };
 
         db.AthleteApplications.Add(application);
@@ -146,6 +151,34 @@ public static class AthleteApplicationEndpoints
             return Results.Conflict();
         }
 
+        // 1. Check if a parent user with this email already exists in this school
+        var parentUser = await db.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(
+                x => x.SchoolId == schoolId.Value && x.NormalizedEmail == application.NormalizedParentEmail,
+                cancellationToken);
+
+        if (parentUser is null)
+        {
+            // Create a new Parent AppUser
+            parentUser = new AppUser
+            {
+                SchoolId = schoolId.Value,
+                Email = application.ParentEmail,
+                NormalizedEmail = application.NormalizedParentEmail,
+                FullName = application.ParentFullName,
+                PasswordHash = application.PasswordHash
+            };
+            parentUser.Roles.Add(new UserRoleAssignment { User = parentUser, Role = UserRole.Parent });
+            db.Users.Add(parentUser);
+        }
+        else if (!parentUser.Roles.Any(r => r.Role == UserRole.Parent))
+        {
+            // If the user exists but doesn't have Parent role, assign it
+            parentUser.Roles.Add(new UserRoleAssignment { User = parentUser, Role = UserRole.Parent });
+        }
+
+        // 2. Create the Athlete AppUser
         var athlete = new AppUser
         {
             SchoolId = schoolId.Value,
@@ -156,12 +189,13 @@ public static class AthleteApplicationEndpoints
         };
 
         athlete.Roles.Add(new UserRoleAssignment { User = athlete, Role = UserRole.Athlete });
-        athlete.Roles.Add(new UserRoleAssignment { User = athlete, Role = UserRole.Parent });
 
+        // 3. Create the AthleteProfile, linking it to both the Athlete user and the Parent user
         var profile = new AthleteProfile
         {
             SchoolId = schoolId.Value,
             User = athlete,
+            Parent = parentUser,
             FirstName = application.AthleteFirstName,
             LastName = application.AthleteLastName,
             BirthDate = application.AthleteBirthDate,
@@ -222,7 +256,8 @@ public sealed record CreateAthleteApplicationRequest(
     string AthleteEmail,
     string Password,
     string ParentFullName,
-    string ParentPhone);
+    string ParentPhone,
+    string ParentEmail);
 
 public sealed record AthleteApplicationResponse(
     Guid Id,
@@ -233,6 +268,7 @@ public sealed record AthleteApplicationResponse(
     string AthleteEmail,
     string ParentFullName,
     string ParentPhone,
+    string ParentEmail,
     AthleteApplicationStatus Status)
 {
     public static AthleteApplicationResponse From(AthleteApplication application)
@@ -246,6 +282,7 @@ public sealed record AthleteApplicationResponse(
             application.AthleteEmail,
             application.ParentFullName,
             application.ParentPhone,
+            application.ParentEmail,
             application.Status);
     }
 }
