@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { Dumbbell, LockKeyhole, ShieldCheck } from "lucide-react";
 import { routes } from "../../../config/routes";
 import { storeSession } from "../../../shared/api/sessionStore";
@@ -12,8 +12,6 @@ import { loginSchema, type LoginForm } from "../schemas";
 
 export function AuthPage() {
   const session = getSessionSnapshot();
-  const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? routes.platform;
   
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
