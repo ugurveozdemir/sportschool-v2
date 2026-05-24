@@ -34,41 +34,30 @@ export function AppLayout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <strong style={{ color: "var(--primary)", fontSize: 24 }}>Sportschool</strong>
+        <div className="flex items-center gap-6">
+          <strong className="text-primary text-2xl font-bold">Sportschool</strong>
           <span className="topbar-context">{isPlatformOwner && !isStaff ? "Platform Paneli" : "Eğitmen Paneli"}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="flex items-center gap-3">
           <span className="role-pill">{session.fullName} · {session.roles[0]}</span>
-          <button className="button button-secondary" title="Oturum">
+          <button className="button button-secondary hidden md:inline-flex" title="Oturum">
             <ShieldCheck size={17} />
           </button>
           <button className="button button-danger" onClick={clearStoredSession} type="button">
             <LogOut size={17} />
-            Çıkış
+            <span className="hidden md:inline">Çıkış</span>
           </button>
         </div>
       </header>
 
       <aside className="sidebar">
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
-          <div
-            style={{
-              display: "grid",
-              placeItems: "center",
-              width: 42,
-              height: 42,
-              color: "#fff",
-              fontWeight: 700,
-              background: "var(--primary-strong)",
-              borderRadius: 10
-            }}
-          >
+        <div className="flex items-center gap-3 mb-4.5">
+          <div className="grid place-items-center w-10 h-10 text-white font-bold bg-primary-strong rounded-lg">
             SP
           </div>
           <div>
             <strong>{isPlatformOwner && !isStaff ? "Platform Yönetimi" : "Okul Yönetimi"}</strong>
-            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
+            <div className="text-muted-foreground text-xs">
               {isPlatformOwner && !isStaff ? "Okul ve adminler" : "Günlük operasyon"}
             </div>
           </div>
@@ -76,7 +65,7 @@ export function AppLayout() {
 
         <div className="sidebar-status">Sistem: Çevrimiçi</div>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <nav className="flex flex-col gap-1">
           {visibleNavigation.map((item) => (
             <NavLink className={({ isActive }) => `nav-link${isActive ? " active" : ""}`} key={item.href} to={item.href}>
               <item.icon size={19} />
@@ -84,12 +73,24 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-
       </aside>
 
       <main className="main-content">
         <Outlet />
       </main>
+
+      <div className="mobile-bottom-nav md:hidden">
+        <nav>
+          {visibleNavigation
+            .filter((item) => ["Ana Sayfa", "Antrenmanlar", "Yoklama", "Sporcular", "Hesap"].includes(item.label))
+            .map((item) => (
+              <NavLink className={({ isActive }) => `mobile-bottom-nav-link${isActive ? " active" : ""}`} key={item.href} to={item.href}>
+                <item.icon size={20} />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+        </nav>
+      </div>
     </div>
   );
 }
