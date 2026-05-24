@@ -6,8 +6,8 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { queryClient } from "@/app/queryClient";
-import { SessionProvider } from "@/app/sessionProvider";
+import { queryClient } from "@/core/queryClient";
+import { SessionProvider } from "@/core/sessionProvider";
 import { colors } from "@/shared/design/colors";
 
 SplashScreen.preventAutoHideAsync();

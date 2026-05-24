@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Alert, StyleSheet, Text, View } from "react-native";
 
-import { useSession } from "@/app/sessionProvider";
+import { useSession } from "@/core/sessionProvider";
 import { logout } from "@/features/auth/api";
 import { useGroups, useProfile } from "@/features/me/api";
 import { AppScreen } from "@/shared/components/AppScreen";
@@ -28,7 +28,7 @@ export default function ProfileScreen() {
     },
     onSettled: async () => {
       await clearSession();
-      router.replace("/(auth)/role");
+      router.replace("/role");
     },
     onError: () => Alert.alert("Çıkış", "Oturum yerel olarak kapatıldı.")
   });

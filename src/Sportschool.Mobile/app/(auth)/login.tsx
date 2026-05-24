@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useSession } from "@/app/sessionProvider";
+import { useSession } from "@/core/sessionProvider";
 import { login, listLoginSchools } from "@/features/auth/api";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schemas";
 import { Button } from "@/shared/components/Button";
@@ -30,7 +30,7 @@ export default function LoginScreen() {
       login({ ...values, schoolCode: values.schoolCode.trim(), mode, deviceName: "expo-mobile" }),
     onSuccess: async (session) => {
       await setSession(session);
-      router.replace("/(app)/home");
+      router.replace("/home");
     },
     onError: () => Alert.alert("Giriş başarısız", "Okul kodu, e-posta, şifre veya rol bilgisini kontrol et.")
   });
@@ -97,7 +97,7 @@ export default function LoginScreen() {
         />
       </Card>
 
-      <Pressable onPress={() => router.replace("/(auth)/role")} style={styles.switchRole}>
+      <Pressable onPress={() => router.replace("/role")} style={styles.switchRole}>
         <Text style={styles.switchRoleText}>Rol seçimine dön</Text>
       </Pressable>
     </View>

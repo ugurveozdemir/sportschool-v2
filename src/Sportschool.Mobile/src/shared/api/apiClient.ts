@@ -1,4 +1,4 @@
-import { getCurrentSession, replaceCurrentSession } from "@/app/sessionProvider";
+import { getCurrentSession, replaceCurrentSession } from "@/core/sessionProvider";
 import { endpoints } from "@/shared/constants/endpoints";
 import { ApiError } from "@/shared/api/apiError";
 import type { Session } from "@/shared/types/session";

@@ -27,7 +27,7 @@ export default function RoleScreen() {
 
       <View style={styles.stack}>
         {roles.map((role) => (
-          <Pressable key={role.mode} onPress={() => router.push({ pathname: "/(auth)/login", params: { mode: role.mode } })}>
+          <Pressable key={role.mode} onPress={() => router.push({ pathname: "/login", params: { mode: role.mode } })}>
             <Card style={styles.roleCard}>
               <View style={styles.iconWrap}>
                 <MaterialCommunityIcons name={role.icon} size={28} color={colors.primary} />
