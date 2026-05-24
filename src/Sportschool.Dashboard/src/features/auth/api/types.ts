@@ -12,6 +12,11 @@ export type BootstrapPlatformOwnerResponse = {
   fullName: string;
 };
 
+export type LoginSchoolResponse = {
+  name: string;
+  code: string;
+};
+
 export type LoginRequest = {
   schoolCode?: string | null;
   email: string;

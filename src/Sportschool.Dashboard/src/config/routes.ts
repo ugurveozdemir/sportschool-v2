@@ -1,6 +1,7 @@
 export const routes = {
   dashboard: "/dashboard",
   auth: "/dashboard/auth",
+  platform: "/dashboard/platform",
   athletes: "/dashboard/athletes",
   groups: "/dashboard/groups",
   trainings: "/dashboard/trainings",

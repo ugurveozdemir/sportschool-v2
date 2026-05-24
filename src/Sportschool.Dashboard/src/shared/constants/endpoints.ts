@@ -1,6 +1,7 @@
 export const endpoints = {
   health: "/api/health",
   bootstrapPlatformOwner: "/api/bootstrap/platform-owner",
+  loginSchools: "/api/auth/schools",
   login: "/api/auth/login",
   refresh: "/api/auth/refresh",
   logout: "/api/auth/logout",

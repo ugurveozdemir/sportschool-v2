@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Features.Auth;
+using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 using Sportschool.Api.Tests.Infrastructure;
@@ -15,6 +16,38 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
     public AuthEndpointTests(TestAppFactory factory)
     {
         _factory = factory;
+    }
+
+    [Fact]
+    public async Task LoginSchools_ReturnsOnlyActiveSchools()
+    {
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.AddRange(
+                new School
+                {
+                    Name = "Active School",
+                    Code = "active",
+                    NormalizedCode = TextNormalizer.NormalizeSchoolCode("active")
+                },
+                new School
+                {
+                    Name = "Inactive School",
+                    Code = "inactive",
+                    NormalizedCode = TextNormalizer.NormalizeSchoolCode("inactive"),
+                    IsActive = false
+                });
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateClient();
+
+        var schools = await client.GetFromJsonAsync<LoginSchoolResponse[]>("/api/auth/schools");
+
+        Assert.NotNull(schools);
+        var school = Assert.Single(schools);
+        Assert.Equal("Active School", school.Name);
+        Assert.Equal("active", school.Code);
     }
 
     [Fact]

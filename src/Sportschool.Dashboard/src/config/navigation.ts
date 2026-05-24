@@ -5,6 +5,7 @@ import {
   Dumbbell,
   FileText,
   Home,
+  Network,
   UserCircle,
   Users
 } from "lucide-react";
@@ -18,5 +19,10 @@ export const navigationItems = [
   { label: "Gruplar", href: routes.groups, icon: Users },
   { label: "Ödemeler", href: routes.payments, icon: CreditCard },
   { label: "Raporlar", href: routes.reports, icon: FileText },
+  { label: "Hesap", href: routes.account, icon: Dumbbell }
+] as const;
+
+export const platformNavigationItems = [
+  { label: "Platform", href: routes.platform, icon: Network },
   { label: "Hesap", href: routes.account, icon: Dumbbell }
 ] as const;

@@ -4,10 +4,17 @@ import type {
   BootstrapPlatformOwnerRequest,
   BootstrapPlatformOwnerResponse,
   ChangePasswordRequest,
+  LoginSchoolResponse,
   LoginRequest,
   LoginResponse,
   RefreshRequest
 } from "./types";
+
+export function listLoginSchools() {
+  return apiRequest<LoginSchoolResponse[]>(endpoints.loginSchools, {
+    auth: false
+  });
+}
 
 export function bootstrapPlatformOwner(request: BootstrapPlatformOwnerRequest) {
   return apiRequest<BootstrapPlatformOwnerResponse>(endpoints.bootstrapPlatformOwner, {

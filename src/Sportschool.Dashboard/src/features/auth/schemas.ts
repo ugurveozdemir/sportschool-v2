@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { staffLoginModes } from "../../shared/constants/roles";
+import { dashboardLoginModes } from "../../shared/constants/roles";
 
 export const bootstrapPlatformOwnerSchema = z.object({
   email: z.email("Geçerli bir e-posta gir."),
@@ -8,11 +8,14 @@ export const bootstrapPlatformOwnerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  schoolCode: z.string().min(1, "Okul kodu gerekli."),
+  schoolCode: z.string().optional(),
   email: z.email("Geçerli bir e-posta gir."),
   password: z.string().min(1, "Şifre gerekli."),
-  mode: z.enum(staffLoginModes),
+  mode: z.enum(dashboardLoginModes),
   deviceName: z.string().optional()
+}).refine((value) => value.mode === "PlatformOwner" || Boolean(value.schoolCode?.trim()), {
+  message: "Okul seçimi gerekli.",
+  path: ["schoolCode"]
 });
 
 export const changePasswordSchema = z.object({

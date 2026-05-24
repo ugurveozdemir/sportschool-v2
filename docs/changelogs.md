@@ -2,6 +2,8 @@
 
 ## 2026-05-24
 
+- Added active-school selection to the auth screen through a public login-school list endpoint, and allowed PlatformOwner login without a school selection.
+- Restored PlatformOwner dashboard access to the platform operations screen while keeping Coach/SchoolAdmin on the school workflow navigation.
 - Fixed the dashboard auth route so the login screen is outside the protected app layout and appears when no staff session exists.
 - Reworked the auth UI into a dedicated Coach/SchoolAdmin login screen and refreshed the built dashboard assets.
 - Converted the dashboard from an API testing panel into a Coach/SchoolAdmin product workflow for daily school operations.

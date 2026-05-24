@@ -19,6 +19,8 @@ public sealed record LoginRequest(
     LoginMode Mode,
     string? DeviceName);
 
+public sealed record LoginSchoolResponse(string Name, string Code);
+
 public sealed record RefreshRequest(string RefreshToken);
 
 public sealed record LogoutRequest(string RefreshToken);

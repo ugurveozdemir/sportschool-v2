@@ -6,6 +6,7 @@ import { AuthPage } from "../features/auth/pages/AuthPage";
 import { GroupsPage } from "../features/groups/pages/GroupsPage";
 import { AccountPage } from "../features/account/pages/AccountPage";
 import { PaymentsPage } from "../features/payments/pages/PaymentsPage";
+import { PlatformPage } from "../features/platform/pages/PlatformPage";
 import { ReportsPage } from "../features/reports/pages/ReportsPage";
 import { AthletesPage } from "../features/school/pages/AthletesPage";
 import { TrainingsPage } from "../features/trainings/pages/TrainingsPage";
@@ -23,6 +24,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <DashboardPage />
+      },
+      {
+        path: "platform",
+        element: <PlatformPage />
       },
       {
         path: "athletes",

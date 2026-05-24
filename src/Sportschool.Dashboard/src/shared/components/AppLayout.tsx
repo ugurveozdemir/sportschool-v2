@@ -1,7 +1,7 @@
 import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import { useSyncExternalStore } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
-import { navigationItems } from "../../config/navigation";
+import { navigationItems, platformNavigationItems } from "../../config/navigation";
 import { routes } from "../../config/routes";
 import { clearStoredSession } from "../api/sessionStore";
 import { getSessionSnapshot, subscribeToSession } from "../api/sessionSubscription";
@@ -10,17 +10,19 @@ export function AppLayout() {
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, getSessionSnapshot);
   const location = useLocation();
   const isStaff = session?.roles.some((role) => role === "Coach" || role === "SchoolAdmin") ?? false;
+  const isPlatformOwner = session?.roles.includes("PlatformOwner") ?? false;
+  const visibleNavigation = isPlatformOwner && !isStaff ? platformNavigationItems : navigationItems;
 
   if (!session) {
     return <Navigate to={routes.auth} replace state={{ from: location.pathname }} />;
   }
 
-  if (!isStaff) {
+  if (!isStaff && !isPlatformOwner) {
     return (
       <div className="auth-page">
         <section className="auth-panel">
-          <h1>Bu panel eğitmenler içindir</h1>
-          <p>Coach veya SchoolAdmin rolüyle giriş yapmalısın.</p>
+          <h1>Bu panel okul operasyonları içindir</h1>
+          <p>Coach, SchoolAdmin veya PlatformOwner rolüyle giriş yapmalısın.</p>
           <button className="button button-primary" onClick={clearStoredSession} type="button">
             Farklı hesapla giriş yap
           </button>
@@ -34,7 +36,7 @@ export function AppLayout() {
       <header className="topbar">
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <strong style={{ color: "var(--primary)", fontSize: 24 }}>Sportschool</strong>
-          <span className="topbar-context">Eğitmen Paneli</span>
+          <span className="topbar-context">{isPlatformOwner && !isStaff ? "Platform Paneli" : "Eğitmen Paneli"}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span className="role-pill">{session.fullName} · {session.roles[0]}</span>
@@ -65,15 +67,17 @@ export function AppLayout() {
             SP
           </div>
           <div>
-            <strong>Okul Yönetimi</strong>
-            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Günlük operasyon</div>
+            <strong>{isPlatformOwner && !isStaff ? "Platform Yönetimi" : "Okul Yönetimi"}</strong>
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
+              {isPlatformOwner && !isStaff ? "Okul ve adminler" : "Günlük operasyon"}
+            </div>
           </div>
         </div>
 
         <div className="sidebar-status">Sistem: Çevrimiçi</div>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {navigationItems.map((item) => (
+          {visibleNavigation.map((item) => (
             <NavLink className={({ isActive }) => `nav-link${isActive ? " active" : ""}`} key={item.href} to={item.href}>
               <item.icon size={19} />
               <span>{item.label}</span>

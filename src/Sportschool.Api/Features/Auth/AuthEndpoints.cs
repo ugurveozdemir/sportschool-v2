@@ -13,12 +13,27 @@ public static class AuthEndpoints
     {
         var group = app.MapGroup("/api/auth");
 
+        group.MapGet("/schools", ListLoginSchoolsAsync);
         group.MapPost("/login", LoginAsync);
         group.MapPost("/refresh", RefreshAsync);
         group.MapPost("/logout", LogoutAsync);
         group.MapPost("/change-password", ChangePasswordAsync).RequireAuthorization();
 
         return group;
+    }
+
+    private static async Task<IResult> ListLoginSchoolsAsync(
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schools = await db.Schools
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new LoginSchoolResponse(x.Name, x.Code))
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(schools);
     }
 
     private static async Task<IResult> LoginAsync(
