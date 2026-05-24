@@ -1,7 +1,7 @@
 import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import { useSyncExternalStore } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
-import { navigationItems, platformNavigationItems } from "../../config/navigation";
+import { platformNavigationItems } from "../../config/navigation";
 import { routes } from "../../config/routes";
 import { clearStoredSession } from "../api/sessionStore";
 import { getSessionSnapshot, subscribeToSession } from "../api/sessionSubscription";
@@ -9,20 +9,18 @@ import { getSessionSnapshot, subscribeToSession } from "../api/sessionSubscripti
 export function AppLayout() {
   const session = useSyncExternalStore(subscribeToSession, getSessionSnapshot, getSessionSnapshot);
   const location = useLocation();
-  const isStaff = session?.roles.some((role) => role === "Coach" || role === "SchoolAdmin") ?? false;
   const isPlatformOwner = session?.roles.includes("PlatformOwner") ?? false;
-  const visibleNavigation = isPlatformOwner && !isStaff ? platformNavigationItems : navigationItems;
 
   if (!session) {
     return <Navigate to={routes.auth} replace state={{ from: location.pathname }} />;
   }
 
-  if (!isStaff && !isPlatformOwner) {
+  if (!isPlatformOwner) {
     return (
       <div className="auth-page">
         <section className="auth-panel">
-          <h1>Bu panel okul operasyonları içindir</h1>
-          <p>Coach, SchoolAdmin veya PlatformOwner rolüyle giriş yapmalısın.</p>
+          <h1>Yetkisiz Erişim</h1>
+          <p>Bu panel sadece Platform Yöneticileri (PlatformOwner) içindir.</p>
           <button className="button button-primary" onClick={clearStoredSession} type="button">
             Farklı hesapla giriş yap
           </button>
@@ -36,7 +34,7 @@ export function AppLayout() {
       <header className="topbar">
         <div className="flex items-center gap-6">
           <strong className="text-primary text-2xl font-bold">Sportschool</strong>
-          <span className="topbar-context">{isPlatformOwner && !isStaff ? "Platform Paneli" : "Eğitmen Paneli"}</span>
+          <span className="topbar-context">Platform Paneli</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="role-pill">{session.fullName} · {session.roles[0]}</span>
@@ -56,9 +54,9 @@ export function AppLayout() {
             SP
           </div>
           <div>
-            <strong>{isPlatformOwner && !isStaff ? "Platform Yönetimi" : "Okul Yönetimi"}</strong>
+            <strong>Platform Yönetimi</strong>
             <div className="text-muted-foreground text-xs">
-              {isPlatformOwner && !isStaff ? "Okul ve adminler" : "Günlük operasyon"}
+              Okul ve admin işlemleri
             </div>
           </div>
         </div>
@@ -66,7 +64,7 @@ export function AppLayout() {
         <div className="sidebar-status">Sistem: Çevrimiçi</div>
 
         <nav className="flex flex-col gap-1">
-          {visibleNavigation.map((item) => (
+          {platformNavigationItems.map((item) => (
             <NavLink className={({ isActive }) => `nav-link${isActive ? " active" : ""}`} key={item.href} to={item.href}>
               <item.icon size={19} />
               <span>{item.label}</span>
@@ -81,14 +79,12 @@ export function AppLayout() {
 
       <div className="mobile-bottom-nav md:hidden">
         <nav>
-          {visibleNavigation
-            .filter((item) => ["Ana Sayfa", "Antrenmanlar", "Yoklama", "Sporcular", "Hesap"].includes(item.label))
-            .map((item) => (
-              <NavLink className={({ isActive }) => `mobile-bottom-nav-link${isActive ? " active" : ""}`} key={item.href} to={item.href}>
-                <item.icon size={20} />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
+          {platformNavigationItems.map((item) => (
+            <NavLink className={({ isActive }) => `mobile-bottom-nav-link${isActive ? " active" : ""}`} key={item.href} to={item.href}>
+              <item.icon size={20} />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
         </nav>
       </div>
     </div>
