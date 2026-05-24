@@ -2,6 +2,8 @@
 
 ## 2026-05-24
 
+- Fixed the dashboard auth route so the login screen is outside the protected app layout and appears when no staff session exists.
+- Reworked the auth UI into a dedicated Coach/SchoolAdmin login screen and refreshed the built dashboard assets.
 - Converted the dashboard from an API testing panel into a Coach/SchoolAdmin product workflow for daily school operations.
 - Added staff dashboard summary, date-range training list, group athlete roster, attendance roster, and monthly payment overview endpoints without adding migrations.
 - Allowed Coach users to update existing attendance records, matching the new correction workflow.

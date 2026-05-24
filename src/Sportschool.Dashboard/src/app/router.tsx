@@ -13,16 +13,16 @@ import { AppLayout } from "../shared/components/AppLayout";
 
 export const router = createBrowserRouter([
   {
+    path: routes.auth,
+    element: <AuthPage />
+  },
+  {
     path: routes.dashboard,
     element: <AppLayout />,
     children: [
       {
         index: true,
         element: <DashboardPage />
-      },
-      {
-        path: "auth",
-        element: <AuthPage />
       },
       {
         path: "athletes",

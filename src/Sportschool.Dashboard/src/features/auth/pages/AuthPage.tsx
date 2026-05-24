@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Navigate, useLocation } from "react-router-dom";
+import { Dumbbell, LockKeyhole, ShieldCheck } from "lucide-react";
 import { routes } from "../../../config/routes";
 import { storeSession } from "../../../shared/api/sessionStore";
 import { getSessionSnapshot } from "../../../shared/api/sessionSubscription";
@@ -36,15 +37,22 @@ export function AuthPage() {
 
   return (
     <div className="auth-page">
-      <section className="auth-panel">
-        <div>
+      <section className="auth-shell">
+        <div className="auth-intro">
+          <div className="auth-logo">
+            <Dumbbell size={24} />
+          </div>
           <strong className="auth-brand">Sportschool</strong>
-          <h1>Eğitmen paneline giriş</h1>
-          <p>Okul operasyonlarını yönetmek için Coach veya SchoolAdmin hesabınla giriş yap.</p>
+          <h1>Okul operasyon paneli</h1>
+          <p>Antrenman, yoklama, ödeme ve gelişim raporlarını tek yerden yönet.</p>
+          <div className="auth-benefits">
+            <span><ShieldCheck size={16} /> Coach ve SchoolAdmin erişimi</span>
+            <span><LockKeyhole size={16} /> Okul kodu ile tenant güvenliği</span>
+          </div>
         </div>
 
         <form
-          className="stack"
+          className="auth-panel"
           onSubmit={loginForm.handleSubmit((values) =>
             loginMutation.mutate({
               ...values,
@@ -53,6 +61,10 @@ export function AuthPage() {
             })
           )}
         >
+          <div>
+            <h2>Giriş yap</h2>
+            <p>Panel sadece eğitmen ve okul yöneticisi hesapları için açıktır.</p>
+          </div>
           <InputField error={loginForm.formState.errors.schoolCode?.message} label="Okul Kodu" {...loginForm.register("schoolCode")} />
           <InputField error={loginForm.formState.errors.email?.message} label="E-posta" {...loginForm.register("email")} />
           <InputField

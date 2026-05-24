@@ -200,21 +200,81 @@ pre,
   place-items: center;
   min-height: 100vh;
   padding: 24px;
-  background: var(--background);
+  background:
+    linear-gradient(135deg, rgb(0 74 198 / 10%), transparent 34%),
+    var(--background);
 }
 
-.auth-panel {
+.auth-shell {
   display: grid;
-  gap: 24px;
-  width: min(440px, 100%);
-  padding: 28px;
+  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1fr);
+  width: min(920px, 100%);
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
 
-.auth-panel h1 {
-  margin: 10px 0 8px;
+.auth-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  min-height: 560px;
+  padding: 40px;
+  color: #fff;
+  background: #111827;
+}
+
+.auth-logo {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 8px;
+}
+
+.auth-intro h1 {
+  max-width: 360px;
+  margin: 0;
+  font-size: 42px;
+  line-height: 1.05;
+}
+
+.auth-intro p {
+  max-width: 360px;
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.auth-benefits {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.auth-benefits span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e5e7eb;
+}
+
+.auth-panel {
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  min-height: 560px;
+  padding: 40px;
+  background: var(--surface);
+}
+
+.auth-panel h2 {
+  margin: 0 0 8px;
+  font-size: 28px;
 }
 
 .auth-panel p {
@@ -223,8 +283,8 @@ pre,
 }
 
 .auth-brand {
-  color: var(--primary);
-  font-size: 24px;
+  color: inherit;
+  font-size: 18px;
 }
 
 .button-block {
