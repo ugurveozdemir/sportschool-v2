@@ -85,6 +85,8 @@ public static class SchoolManagementEndpoints
 
     private static async Task<IResult> ListAthletesAsync(
         string? search,
+        int? page,
+        int? pageSize,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -109,12 +111,30 @@ public static class SchoolManagementEndpoints
                 x.ParentFullName.ToLower().Contains(normalizedSearch));
         }
 
-        var athletes = await query
-            .OrderBy(x => x.LastName)
-            .ThenBy(x => x.FirstName)
-            .ToListAsync(cancellationToken);
+        var totalCount = await query.CountAsync(cancellationToken);
 
-        return Results.Ok(athletes.Select(AthleteRosterResponse.From));
+        var orderedQuery = query
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName);
+
+        if (page.HasValue && pageSize.HasValue)
+        {
+            var items = await orderedQuery
+                .Skip((page.Value - 1) * pageSize.Value)
+                .Take(pageSize.Value)
+                .Select(x => AthleteRosterResponse.From(x))
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(new PaginatedList<AthleteRosterResponse>(items, totalCount, page.Value, pageSize.Value));
+        }
+        else
+        {
+            var items = await orderedQuery
+                .Select(x => AthleteRosterResponse.From(x))
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(items);
+        }
     }
 
     private static async Task<IResult> UpsertCoachAsync(
@@ -318,3 +338,5 @@ public sealed record CoachResponse(Guid Id, Guid SchoolId, string Email, string 
         return new CoachResponse(user.Id, user.SchoolId!.Value, user.Email, user.FullName, temporaryPassword);
     }
 }
+
+public sealed record PaginatedList<T>(IReadOnlyCollection<T> Items, int TotalCount, int Page, int PageSize);
