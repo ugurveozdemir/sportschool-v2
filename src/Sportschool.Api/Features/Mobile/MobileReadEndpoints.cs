@@ -135,7 +135,9 @@ public static class MobileReadEndpoints
         }
 
         return db.AthleteProfiles.FirstOrDefaultAsync(
-            x => x.SchoolId == schoolId.Value && x.UserId == userId.Value && x.IsActive,
+            x => x.SchoolId == schoolId.Value
+                && (x.UserId == userId.Value || x.ParentUserId == userId.Value)
+                && x.IsActive,
             cancellationToken);
     }
 }

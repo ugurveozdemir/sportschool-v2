@@ -1,0 +1,20 @@
+export const colors = {
+  background: "#f8f9ff",
+  surface: "#ffffff",
+  surfaceContainer: "#e5eeff",
+  surfaceContainerLow: "#eff4ff",
+  surfaceContainerHigh: "#dce9ff",
+  primary: "#031632",
+  primaryContainer: "#1a2b48",
+  primaryFixedDim: "#b6c7eb",
+  onPrimary: "#ffffff",
+  secondary: "#006d44",
+  secondaryContainer: "#68fdb3",
+  onSecondaryContainer: "#007349",
+  error: "#ba1a1a",
+  errorContainer: "#ffdad6",
+  onSurface: "#0b1c30",
+  onSurfaceVariant: "#44474d",
+  outline: "#75777e",
+  outlineVariant: "#c5c6ce"
+} as const;
