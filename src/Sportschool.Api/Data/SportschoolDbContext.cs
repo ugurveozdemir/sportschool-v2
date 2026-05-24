@@ -258,6 +258,7 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             payment.HasKey(x => x.Id);
             payment.Property(x => x.Status).HasConversion<string>().HasMaxLength(40);
             payment.Property(x => x.Amount).HasPrecision(12, 2);
+            payment.Property(x => x.AmountPaid).HasPrecision(12, 2);
             payment.HasIndex(x => new { x.SchoolId, x.AthleteProfileId, x.Year, x.Month }).IsUnique();
 
             payment.HasOne(x => x.School)

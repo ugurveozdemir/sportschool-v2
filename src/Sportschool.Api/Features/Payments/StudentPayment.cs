@@ -22,6 +22,8 @@ public sealed class StudentPayment
 
     public decimal Amount { get; set; }
 
+    public decimal AmountPaid { get; set; }
+
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
 
     public DateOnly? PaidOn { get; set; }
