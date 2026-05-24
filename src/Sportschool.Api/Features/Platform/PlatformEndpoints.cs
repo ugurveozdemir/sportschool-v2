@@ -15,6 +15,7 @@ public static class PlatformEndpoints
 
         group.MapGet("/schools", ListSchoolsAsync);
         group.MapPost("/schools", CreateSchoolAsync);
+        group.MapPut("/schools/{schoolId:guid}", UpdateSchoolAsync);
         group.MapDelete("/schools/{schoolId:guid}", DeactivateSchoolAsync);
         group.MapGet("/schools/{schoolId:guid}/admins", ListSchoolAdminsAsync);
         group.MapPost("/schools/{schoolId:guid}/admins", CreateSchoolAdminAsync);
@@ -72,6 +73,29 @@ public static class PlatformEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/platform/schools/{school.Id}", SchoolResponse.From(school));
+    }
+
+    private static async Task<IResult> UpdateSchoolAsync(
+        Guid schoolId,
+        UpdateSchoolRequest request,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return Results.BadRequest();
+        }
+
+        var school = await db.Schools.FirstOrDefaultAsync(x => x.Id == schoolId, cancellationToken);
+        if (school is null)
+        {
+            return Results.NotFound();
+        }
+
+        school.Name = request.Name.Trim();
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(SchoolResponse.From(school));
     }
 
     private static async Task<IResult> DeactivateSchoolAsync(
@@ -169,6 +193,7 @@ public static class PlatformEndpoints
 }
 
 public sealed record CreateSchoolRequest(string Name, string Code);
+public sealed record UpdateSchoolRequest(string Name);
 
 public sealed record SchoolResponse(Guid Id, string Name, string Code, bool IsActive)
 {
