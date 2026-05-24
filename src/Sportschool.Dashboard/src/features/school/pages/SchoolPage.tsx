@@ -12,7 +12,7 @@ export function SchoolPage() {
   const [coach, setCoach] = useState({ email: "", fullName: "" });
   const usersQuery = useQuery({ queryKey: ["school", "users"], queryFn: listUsers, enabled: false });
   const coachesQuery = useQuery({ queryKey: ["school", "coaches"], queryFn: listCoaches, enabled: false });
-  const athletesQuery = useQuery({ queryKey: ["school", "athletes"], queryFn: listAthletes, enabled: false });
+  const athletesQuery = useQuery({ queryKey: ["school", "athletes"], queryFn: () => listAthletes(), enabled: false });
   const createCoachMutation = useMutation({
     mutationFn: createCoach,
     onSuccess: () => void coachesQuery.refetch()

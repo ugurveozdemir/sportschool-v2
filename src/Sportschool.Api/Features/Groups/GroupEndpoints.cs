@@ -17,10 +17,51 @@ public static class GroupEndpoints
         group.MapPost("/", CreateGroupAsync);
         group.MapPut("/{groupId:guid}", UpdateGroupAsync);
         group.MapDelete("/{groupId:guid}", DeactivateGroupAsync);
+        group.MapGet("/{groupId:guid}/athletes", ListGroupAthletesAsync);
         group.MapPost("/{groupId:guid}/athletes/{athleteProfileId:guid}", AddAthleteAsync);
         group.MapDelete("/{groupId:guid}/athletes/{athleteProfileId:guid}", RemoveAthleteAsync);
 
         return group;
+    }
+
+    private static async Task<IResult> ListGroupAthletesAsync(
+        Guid groupId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var groupExists = await db.TrainingGroups.AnyAsync(
+            x => x.Id == groupId && x.SchoolId == schoolId.Value && x.IsActive,
+            cancellationToken);
+
+        if (!groupExists)
+        {
+            return Results.NotFound();
+        }
+
+        var athletes = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x => x.GroupId == groupId
+                && x.AthleteProfile.SchoolId == schoolId.Value
+                && x.AthleteProfile.IsActive
+                && x.AthleteProfile.User.IsActive)
+            .OrderBy(x => x.AthleteProfile.LastName)
+            .ThenBy(x => x.AthleteProfile.FirstName)
+            .Select(x => new GroupAthleteResponse(
+                x.AthleteProfile.Id,
+                x.AthleteProfile.FirstName,
+                x.AthleteProfile.LastName,
+                x.AthleteProfile.ParentFullName,
+                x.AthleteProfile.ParentPhone))
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(athletes);
     }
 
     private static async Task<IResult> ListGroupsAsync(
@@ -227,3 +268,10 @@ public sealed record GroupResponse(Guid Id, Guid SchoolId, string Name, string? 
         return new GroupResponse(group.Id, group.SchoolId, group.Name, group.Description, group.IsActive);
     }
 }
+
+public sealed record GroupAthleteResponse(
+    Guid Id,
+    string FirstName,
+    string LastName,
+    string ParentFullName,
+    string ParentPhone);

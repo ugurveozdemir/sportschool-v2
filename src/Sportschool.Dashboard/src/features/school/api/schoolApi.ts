@@ -19,6 +19,7 @@ export function createCoach(request: CreateCoachRequest) {
   return apiRequest<SchoolAdminResponse>(endpoints.schoolCoaches, { method: "POST", body: request });
 }
 
-export function listAthletes() {
-  return apiRequest<AthleteRosterResponse[]>(endpoints.schoolAthletes);
+export function listAthletes(search?: string) {
+  const query = search?.trim() ? `?${new URLSearchParams({ search: search.trim() })}` : "";
+  return apiRequest<AthleteRosterResponse[]>(`${endpoints.schoolAthletes}${query}`);
 }

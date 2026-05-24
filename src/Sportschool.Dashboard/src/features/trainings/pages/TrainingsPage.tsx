@@ -1,17 +1,20 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { routes } from "../../../config/routes";
 import { DataTable } from "../../../shared/components/DataTable";
-import { EndpointCard } from "../../../shared/components/EndpointCard";
 import { InputField, SelectField, TextareaField } from "../../../shared/components/FormField";
 import { PageHeader } from "../../../shared/components/PageHeader";
-import { ResponseInspector } from "../../../shared/components/ResponseInspector";
 import { trainingRecurrences, type TrainingRecurrence } from "../../../shared/constants/domain";
-import { endpoints } from "../../../shared/constants/endpoints";
-import { createTraining, listGroupTrainings } from "../api/trainingsApi";
+import { endOfWeekFromToday, formatDateTime, startOfToday, toDateTimeLocalValue } from "../../../shared/utils/date";
+import { listGroups } from "../../groups/api/groupsApi";
+import { createTraining, deactivateTraining, listTrainings, updateTraining } from "../api/trainingsApi";
 
 export function TrainingsPage() {
-  const [groupId, setGroupId] = useState("");
-  const [training, setTraining] = useState({
+  const [from, setFrom] = useState(toDateTimeLocalValue(startOfToday()));
+  const [to, setTo] = useState(toDateTimeLocalValue(endOfWeekFromToday()));
+  const [editingId, setEditingId] = useState("");
+  const [form, setForm] = useState({
     groupId: "",
     title: "",
     startsAt: "",
@@ -21,79 +24,138 @@ export function TrainingsPage() {
     location: "",
     notes: ""
   });
+  const groupsQuery = useQuery({ queryKey: ["groups"], queryFn: listGroups });
   const trainingsQuery = useQuery({
-    queryKey: ["trainings", groupId],
-    queryFn: () => listGroupTrainings(groupId),
-    enabled: false
+    queryKey: ["trainings", from, to],
+    queryFn: () => listTrainings(new Date(from).toISOString(), new Date(to).toISOString())
   });
   const createMutation = useMutation({
     mutationFn: () =>
       createTraining({
-        ...training,
-        startsAt: new Date(training.startsAt).toISOString(),
-        endsAt: new Date(training.endsAt).toISOString(),
-        recurrenceEndsOn: training.recurrence === "Weekly" && training.recurrenceEndsOn ? training.recurrenceEndsOn : null,
-        location: training.location || null,
-        notes: training.notes || null
+        ...form,
+        startsAt: new Date(form.startsAt).toISOString(),
+        endsAt: new Date(form.endsAt).toISOString(),
+        recurrenceEndsOn: form.recurrence === "Weekly" && form.recurrenceEndsOn ? form.recurrenceEndsOn : null,
+        location: form.location || null,
+        notes: form.notes || null
+      }),
+    onSuccess: () => void trainingsQuery.refetch()
+  });
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      updateTraining(editingId, {
+        title: form.title,
+        startsAt: new Date(form.startsAt).toISOString(),
+        endsAt: new Date(form.endsAt).toISOString(),
+        location: form.location || null,
+        notes: form.notes || null
       }),
     onSuccess: () => {
-      if (groupId) {
-        void trainingsQuery.refetch();
-      }
+      setEditingId("");
+      void trainingsQuery.refetch();
     }
   });
+  const deactivateMutation = useMutation({ mutationFn: deactivateTraining, onSuccess: () => void trainingsQuery.refetch() });
 
   return (
     <div>
-      <PageHeader title="Antrenmanlar" description="Antrenman seansı oluşturma ve grup bazlı listeleme." />
-      <div className="page-grid">
-        <div className="stack">
-          <EndpointCard method="POST" onSubmit={() => createMutation.mutate()} path={endpoints.schoolTrainings} title="Seans oluştur">
-            <div className="form-grid">
-              <InputField label="GroupId" onChange={(e) => setTraining({ ...training, groupId: e.target.value })} value={training.groupId} />
-              <InputField label="Başlık" onChange={(e) => setTraining({ ...training, title: e.target.value })} value={training.title} />
-              <InputField label="Başlangıç" onChange={(e) => setTraining({ ...training, startsAt: e.target.value })} type="datetime-local" value={training.startsAt} />
-              <InputField label="Bitiş" onChange={(e) => setTraining({ ...training, endsAt: e.target.value })} type="datetime-local" value={training.endsAt} />
-              <SelectField
-                label="Tekrar"
-                onChange={(e) => setTraining({ ...training, recurrence: e.target.value as TrainingRecurrence })}
-                value={training.recurrence}
-              >
-                {trainingRecurrences.map((recurrence) => (
-                  <option key={recurrence} value={recurrence}>
-                    {recurrence}
-                  </option>
-                ))}
-              </SelectField>
-              <InputField label="Tekrar Bitişi" onChange={(e) => setTraining({ ...training, recurrenceEndsOn: e.target.value })} type="date" value={training.recurrenceEndsOn} />
-              <InputField label="Konum" onChange={(e) => setTraining({ ...training, location: e.target.value })} value={training.location} />
-              <TextareaField label="Not" onChange={(e) => setTraining({ ...training, notes: e.target.value })} value={training.notes} />
-            </div>
-          </EndpointCard>
-
-          <EndpointCard
-            method="GET"
-            onSubmit={() => groupId && void trainingsQuery.refetch()}
-            path={groupId ? endpoints.groupTrainings(groupId) : "/api/school/groups/{groupId}/trainings"}
-            title="Grup antrenmanları"
-          >
-            <InputField label="GroupId" onChange={(e) => setGroupId(e.target.value)} value={groupId} />
-            <div style={{ marginTop: 16 }}>
-              <DataTable
-                emptyText="Antrenman yok."
-                items={trainingsQuery.data ?? []}
-                columns={[
-                  { key: "title", header: "Başlık", render: (item) => item.title },
-                  { key: "startsAt", header: "Başlangıç", render: (item) => new Date(item.startsAt).toLocaleString("tr-TR") },
-                  { key: "recurrence", header: "Tekrar", render: (item) => item.recurrence },
-                  { key: "id", header: "TrainingId", render: (item) => <code>{item.id}</code> }
-                ]}
-              />
-            </div>
-          </EndpointCard>
+      <PageHeader title="Antrenmanlar" description="Bugün ve hafta içindeki seansları planla, düzenle ve yoklamaya geç." />
+      <section className="card">
+        <div className="card-header">
+          <strong>Hafta görünümü</strong>
+          <div className="inline-fields">
+            <InputField label="Başlangıç" onChange={(e) => setFrom(e.target.value)} type="datetime-local" value={from} />
+            <InputField label="Bitiş" onChange={(e) => setTo(e.target.value)} type="datetime-local" value={to} />
+          </div>
         </div>
-        <ResponseInspector />
-      </div>
+        <div className="card-body">
+          <DataTable
+            emptyText={trainingsQuery.isLoading ? "Yükleniyor..." : "Antrenman yok."}
+            items={trainingsQuery.data ?? []}
+            columns={[
+              { key: "time", header: "Saat", render: (item) => formatDateTime(item.startsAt) },
+              { key: "title", header: "Başlık", render: (item) => item.title },
+              { key: "group", header: "Grup", render: (item) => item.groupName },
+              {
+                key: "attendance",
+                header: "Yoklama",
+                render: (item) => `${item.attendanceSummary.recordedCount}/${item.attendanceSummary.totalAthletes}`
+              },
+              {
+                key: "actions",
+                header: "İşlem",
+                render: (item) => (
+                  <div className="table-actions">
+                    <Link className="button button-primary" to={`${routes.attendance}?trainingId=${item.id}`}>Yoklama</Link>
+                    <button
+                      className="button button-secondary"
+                      onClick={() => {
+                        setEditingId(item.id);
+                        setForm({
+                          groupId: item.groupId,
+                          title: item.title,
+                          startsAt: toDateTimeLocalValue(new Date(item.startsAt)),
+                          endsAt: toDateTimeLocalValue(new Date(item.endsAt)),
+                          recurrence: "None",
+                          recurrenceEndsOn: "",
+                          location: item.location ?? "",
+                          notes: ""
+                        });
+                      }}
+                      type="button"
+                    >
+                      Düzenle
+                    </button>
+                    <button className="button button-danger" onClick={() => deactivateMutation.mutate(item.id)} type="button">
+                      Pasifleştir
+                    </button>
+                  </div>
+                )
+              }
+            ]}
+          />
+        </div>
+      </section>
+
+      <section className="card" style={{ marginTop: 20 }}>
+        <div className="card-header">
+          <strong>{editingId ? "Seansı düzenle" : "Yeni seans oluştur"}</strong>
+        </div>
+        <div className="card-body stack">
+          <div className="form-grid">
+            <SelectField label="Grup" onChange={(e) => setForm({ ...form, groupId: e.target.value })} value={form.groupId} disabled={Boolean(editingId)}>
+              <option value="">Grup seç</option>
+              {(groupsQuery.data ?? []).map((group) => (
+                <option key={group.id} value={group.id}>{group.name}</option>
+              ))}
+            </SelectField>
+            <InputField label="Başlık" onChange={(e) => setForm({ ...form, title: e.target.value })} value={form.title} />
+            <InputField label="Başlangıç" onChange={(e) => setForm({ ...form, startsAt: e.target.value })} type="datetime-local" value={form.startsAt} />
+            <InputField label="Bitiş" onChange={(e) => setForm({ ...form, endsAt: e.target.value })} type="datetime-local" value={form.endsAt} />
+            {!editingId ? (
+              <>
+                <SelectField label="Tekrar" onChange={(e) => setForm({ ...form, recurrence: e.target.value as TrainingRecurrence })} value={form.recurrence}>
+                  {trainingRecurrences.map((recurrence) => <option key={recurrence} value={recurrence}>{recurrence}</option>)}
+                </SelectField>
+                <InputField label="Tekrar Bitişi" onChange={(e) => setForm({ ...form, recurrenceEndsOn: e.target.value })} type="date" value={form.recurrenceEndsOn} />
+              </>
+            ) : null}
+            <InputField label="Konum" onChange={(e) => setForm({ ...form, location: e.target.value })} value={form.location} />
+            <TextareaField label="Not" onChange={(e) => setForm({ ...form, notes: e.target.value })} value={form.notes} />
+          </div>
+          <div className="actions-row">
+            {editingId ? <button className="button button-secondary" onClick={() => setEditingId("")} type="button">Vazgeç</button> : null}
+            <button
+              className="button button-primary"
+              disabled={!form.title || !form.startsAt || !form.endsAt || (!editingId && !form.groupId)}
+              onClick={() => (editingId ? updateMutation.mutate() : createMutation.mutate())}
+              type="button"
+            >
+              {editingId ? "Güncelle" : "Oluştur"}
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

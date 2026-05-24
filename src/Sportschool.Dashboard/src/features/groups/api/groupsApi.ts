@@ -1,6 +1,6 @@
 import { apiRequest } from "../../../shared/api/apiClient";
 import { endpoints } from "../../../shared/constants/endpoints";
-import type { GroupResponse } from "../../../shared/types/domain";
+import type { GroupAthleteResponse, GroupResponse } from "../../../shared/types/domain";
 
 export type SaveGroupRequest = {
   name: string;
@@ -21,6 +21,10 @@ export function updateGroup(groupId: string, request: SaveGroupRequest) {
 
 export function deactivateGroup(groupId: string) {
   return apiRequest<void>(endpoints.schoolGroup(groupId), { method: "DELETE" });
+}
+
+export function listGroupAthletes(groupId: string) {
+  return apiRequest<GroupAthleteResponse[]>(endpoints.groupAthletes(groupId));
 }
 
 export function addAthleteToGroup(groupId: string, athleteProfileId: string) {

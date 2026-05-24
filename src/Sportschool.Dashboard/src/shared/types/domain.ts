@@ -70,6 +70,14 @@ export type GroupResponse = {
   isActive: boolean;
 };
 
+export type GroupAthleteResponse = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  parentFullName: string;
+  parentPhone: string;
+};
+
 export type TrainingResponse = {
   id: string;
   groupId: string;
@@ -83,6 +91,24 @@ export type TrainingResponse = {
   notes: string | null;
 };
 
+export type AttendanceSummary = {
+  totalAthletes: number;
+  recordedCount: number;
+};
+
+export type TrainingListResponse = {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  groupId: string;
+  groupName: string;
+  coachId: string;
+  coachName: string;
+  location: string | null;
+  attendanceSummary: AttendanceSummary;
+};
+
 export type AttendanceResponse = {
   id: string;
   trainingSessionId: string;
@@ -94,6 +120,27 @@ export type AttendanceResponse = {
   updatedAt: string | null;
 };
 
+export type AttendanceRosterResponse = {
+  training: {
+    id: string;
+    title: string;
+    startsAt: string;
+    endsAt: string;
+    groupId: string;
+    groupName: string;
+  };
+  athletes: AttendanceRosterItem[];
+};
+
+export type AttendanceRosterItem = {
+  athleteProfileId: string;
+  firstName: string;
+  lastName: string;
+  parentFullName: string;
+  parentPhone: string;
+  status: AttendanceStatus | null;
+};
+
 export type PaymentResponse = {
   id: string;
   athleteProfileId: string;
@@ -101,6 +148,20 @@ export type PaymentResponse = {
   month: number;
   amount: number;
   status: PaymentStatus;
+  effectiveStatus: PaymentStatus;
+  paidOn: string | null;
+};
+
+export type MonthlyPaymentResponse = {
+  athleteProfileId: string;
+  athleteName: string;
+  parentFullName: string;
+  parentPhone: string;
+  year: number;
+  month: number;
+  paymentId: string | null;
+  amount: number | null;
+  status: PaymentStatus | null;
   effectiveStatus: PaymentStatus;
   paidOn: string | null;
 };
@@ -117,6 +178,38 @@ export type AthleteReportResponse = {
   shootingScore: number;
   createdAt: string;
   updatedAt: string | null;
+};
+
+export type DashboardSummaryResponse = {
+  todayTrainings: DashboardTrainingItem[];
+  weekTrainingCount: number;
+  missingAttendanceCount: number;
+  activeAthleteCount: number;
+  activeGroupCount: number;
+  unpaidPaymentCount: number;
+  recentReports: DashboardRecentReport[];
+};
+
+export type DashboardTrainingItem = {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  groupId: string;
+  groupName: string;
+  coachId: string;
+  coachName: string;
+  location: string | null;
+  totalAthletes: number;
+  recordedAttendanceCount: number;
+};
+
+export type DashboardRecentReport = {
+  id: string;
+  athleteProfileId: string;
+  athleteName: string;
+  summary: string;
+  createdAt: string;
 };
 
 export type MobileProfileResponse = {

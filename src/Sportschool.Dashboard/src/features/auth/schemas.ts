@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { loginModes } from "../../shared/constants/roles";
+import { staffLoginModes } from "../../shared/constants/roles";
 
 export const bootstrapPlatformOwnerSchema = z.object({
   email: z.email("Geçerli bir e-posta gir."),
@@ -8,10 +8,10 @@ export const bootstrapPlatformOwnerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  schoolCode: z.string().optional(),
+  schoolCode: z.string().min(1, "Okul kodu gerekli."),
   email: z.email("Geçerli bir e-posta gir."),
   password: z.string().min(1, "Şifre gerekli."),
-  mode: z.enum(loginModes),
+  mode: z.enum(staffLoginModes),
   deviceName: z.string().optional()
 });
 

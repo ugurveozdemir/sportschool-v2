@@ -14,11 +14,58 @@ public static class TrainingEndpoints
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
         group.MapPost("/trainings", CreateTrainingAsync);
+        group.MapGet("/trainings", ListTrainingsAsync);
         group.MapPut("/trainings/{id:guid}", UpdateTrainingAsync);
         group.MapDelete("/trainings/{id:guid}", DeactivateTrainingAsync);
         group.MapGet("/groups/{groupId:guid}/trainings", ListGroupTrainingsAsync);
 
         return group;
+    }
+
+    private static async Task<IResult> ListTrainingsAsync(
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var start = from ?? new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var end = to ?? start.AddDays(7);
+        if (end <= start)
+        {
+            return Results.BadRequest();
+        }
+
+        var trainingRows = await db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId.Value && x.IsActive)
+            .Select(x => new TrainingListResponse(
+                x.Id,
+                x.Title,
+                x.StartsAt,
+                x.EndsAt,
+                x.GroupId,
+                x.Group.Name,
+                x.CoachId,
+                x.Coach.FullName,
+                x.Location,
+                new AttendanceSummary(
+                    x.Group.Athletes.Count(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive),
+                    db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id))))
+            .ToListAsync(cancellationToken);
+        var trainings = trainingRows
+            .Where(x => x.StartsAt >= start && x.StartsAt < end)
+            .OrderBy(x => x.StartsAt)
+            .ToList();
+
+        return Results.Ok(trainings);
     }
 
     private static async Task<IResult> CreateTrainingAsync(
@@ -262,3 +309,17 @@ public sealed record UpdateTrainingRequest(
     DateTimeOffset EndsAt,
     string? Location,
     string? Notes);
+
+public sealed record TrainingListResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    Guid GroupId,
+    string GroupName,
+    Guid CoachId,
+    string CoachName,
+    string? Location,
+    AttendanceSummary AttendanceSummary);
+
+public sealed record AttendanceSummary(int TotalAthletes, int RecordedCount);

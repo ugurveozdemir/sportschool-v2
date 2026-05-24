@@ -8,6 +8,7 @@ using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Bootstrap;
+using Sportschool.Api.Features.Dashboard;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Mobile;
 using Sportschool.Api.Features.Payments;
@@ -90,6 +91,7 @@ app.MapTrainingEndpoints();
 app.MapAthleteReportEndpoints();
 app.MapAttendanceEndpoints();
 app.MapSchoolManagementEndpoints();
+app.MapDashboardEndpoints();
 app.MapFallbackToFile("/dashboard/{*path:nonfile}", "dashboard/index.html");
 
 app.Run();

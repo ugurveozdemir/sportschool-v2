@@ -1,90 +1,97 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DataTable } from "../../../shared/components/DataTable";
-import { EndpointCard } from "../../../shared/components/EndpointCard";
-import { InputField, SelectField } from "../../../shared/components/FormField";
 import { PageHeader } from "../../../shared/components/PageHeader";
-import { ResponseInspector } from "../../../shared/components/ResponseInspector";
 import { StatusBadge } from "../../../shared/components/StatusBadge";
 import { attendanceStatuses, type AttendanceStatus } from "../../../shared/constants/domain";
-import { endpoints } from "../../../shared/constants/endpoints";
-import { createAttendance, listAttendance, updateAttendance } from "../api/attendanceApi";
+import { endOfWeekFromToday, formatDateTime, startOfToday } from "../../../shared/utils/date";
+import { listTrainings } from "../../trainings/api/trainingsApi";
+import { createAttendance, getAttendanceRoster, updateAttendance } from "../api/attendanceApi";
 
 export function AttendancePage() {
-  const [trainingId, setTrainingId] = useState("");
-  const [attendance, setAttendance] = useState({ athleteProfileId: "", status: "Present" as AttendanceStatus });
-  const attendanceQuery = useQuery({
-    queryKey: ["attendance", trainingId],
-    queryFn: () => listAttendance(trainingId),
-    enabled: false
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedTrainingId = searchParams.get("trainingId") ?? "";
+  const trainingsQuery = useQuery({
+    queryKey: ["attendance-trainings"],
+    queryFn: () => listTrainings(startOfToday().toISOString(), endOfWeekFromToday().toISOString())
   });
-  const createMutation = useMutation({
-    mutationFn: () => createAttendance(trainingId, attendance),
-    onSuccess: () => void attendanceQuery.refetch()
+  const rosterQuery = useQuery({
+    queryKey: ["attendance-roster", selectedTrainingId],
+    queryFn: () => getAttendanceRoster(selectedTrainingId),
+    enabled: Boolean(selectedTrainingId)
   });
-  const updateMutation = useMutation({
-    mutationFn: () => updateAttendance(trainingId, attendance.athleteProfileId, attendance),
-    onSuccess: () => void attendanceQuery.refetch()
+  const saveMutation = useMutation({
+    mutationFn: ({ athleteProfileId, status, hasRecord }: { athleteProfileId: string; status: AttendanceStatus; hasRecord: boolean }) =>
+      hasRecord
+        ? updateAttendance(selectedTrainingId, athleteProfileId, { athleteProfileId, status })
+        : createAttendance(selectedTrainingId, { athleteProfileId, status }),
+    onSuccess: () => void rosterQuery.refetch()
   });
 
   return (
     <div>
-      <PageHeader title="Yoklama" description="Antrenman bazında sporcu katılım kayıtları." />
-      <div className="page-grid">
-        <div className="stack">
-          <EndpointCard
-            method="GET"
-            onSubmit={() => trainingId && void attendanceQuery.refetch()}
-            path={trainingId ? endpoints.trainingAttendance(trainingId) : "/api/school/trainings/{trainingId}/attendance"}
-            title="Yoklama listesi"
-          >
-            <InputField label="TrainingId" onChange={(e) => setTrainingId(e.target.value)} value={trainingId} />
-            <div style={{ marginTop: 16 }}>
+      <PageHeader title="Yoklama" description="Seans seç, grup sporcularını gör ve katılım durumunu tek ekrandan güncelle." />
+      <div className="content-grid">
+        <section className="card">
+          <div className="card-header">
+            <strong>Bu haftaki seanslar</strong>
+          </div>
+          <div className="card-body stack">
+            {trainingsQuery.data?.map((training) => (
+              <button
+                className={`training-button${training.id === selectedTrainingId ? " active" : ""}`}
+                key={training.id}
+                onClick={() => setSearchParams({ trainingId: training.id })}
+                type="button"
+              >
+                <strong>{training.title}</strong>
+                <span>{training.groupName} · {formatDateTime(training.startsAt)}</span>
+                <small>{training.attendanceSummary.recordedCount}/{training.attendanceSummary.totalAthletes} yoklama</small>
+              </button>
+            ))}
+            {trainingsQuery.data?.length === 0 ? <div className="empty-state">Bu hafta seans yok.</div> : null}
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="card-header">
+            <strong>{rosterQuery.data?.training.title ?? "Yoklama listesi"}</strong>
+            {rosterQuery.data ? <span className="muted">{rosterQuery.data.training.groupName}</span> : null}
+          </div>
+          <div className="card-body">
+            {!selectedTrainingId ? <div className="empty-state">Yoklama almak için bir seans seç.</div> : null}
+            {selectedTrainingId ? (
               <DataTable
-                emptyText="Yoklama kaydı yok."
-                items={attendanceQuery.data ?? []}
+                emptyText={rosterQuery.isLoading ? "Yükleniyor..." : "Bu grupta sporcu yok."}
+                items={rosterQuery.data?.athletes ?? []}
                 columns={[
-                  { key: "athlete", header: "AthleteId", render: (item) => <code>{item.athleteProfileId}</code> },
-                  { key: "status", header: "Durum", render: (item) => <StatusBadge value={item.status} /> },
-                  { key: "recordedAt", header: "Kayıt", render: (item) => new Date(item.recordedAt).toLocaleString("tr-TR") }
+                  { key: "athlete", header: "Sporcu", render: (item) => `${item.firstName} ${item.lastName}` },
+                  { key: "parent", header: "Veli", render: (item) => `${item.parentFullName} · ${item.parentPhone}` },
+                  { key: "status", header: "Durum", render: (item) => item.status ? <StatusBadge value={item.status} /> : "İşaretlenmedi" },
+                  {
+                    key: "actions",
+                    header: "İşaretle",
+                    render: (item) => (
+                      <div className="segmented-actions">
+                        {attendanceStatuses.map((status) => (
+                          <button
+                            className={item.status === status ? "active" : ""}
+                            disabled={saveMutation.isPending}
+                            key={status}
+                            onClick={() => saveMutation.mutate({ athleteProfileId: item.athleteProfileId, status, hasRecord: Boolean(item.status) })}
+                            type="button"
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  }
                 ]}
               />
-            </div>
-          </EndpointCard>
-
-          <EndpointCard
-            method="POST"
-            onSubmit={() => trainingId && createMutation.mutate()}
-            path={trainingId ? endpoints.trainingAttendance(trainingId) : "/api/school/trainings/{trainingId}/attendance"}
-            title="Yoklama oluştur"
-          >
-            <div className="form-grid">
-              <InputField label="TrainingId" onChange={(e) => setTrainingId(e.target.value)} value={trainingId} />
-              <InputField
-                label="AthleteProfileId"
-                onChange={(e) => setAttendance({ ...attendance, athleteProfileId: e.target.value })}
-                value={attendance.athleteProfileId}
-              />
-              <SelectField
-                label="Durum"
-                onChange={(e) => setAttendance({ ...attendance, status: e.target.value as AttendanceStatus })}
-                value={attendance.status}
-              >
-                {attendanceStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </SelectField>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button className="button button-secondary" onClick={() => updateMutation.mutate()} type="button">
-                Mevcut Kaydı Güncelle
-              </button>
-            </div>
-          </EndpointCard>
-        </div>
-        <ResponseInspector />
+            ) : null}
+          </div>
+        </section>
       </div>
     </div>
   );

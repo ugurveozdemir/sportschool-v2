@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -13,10 +14,49 @@ public static class PaymentEndpoints
         var schoolGroup = app.MapGroup("/api/school")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
+        schoolGroup.MapGet("/payments", ListMonthlyPaymentsAsync);
         schoolGroup.MapGet("/athletes/{athleteProfileId:guid}/payments", ListPaymentsAsync);
         schoolGroup.MapPut("/athletes/{athleteProfileId:guid}/payments/{year:int}/{month:int}", UpsertPaymentAsync);
 
         return schoolGroup;
+    }
+
+    private static async Task<IResult> ListMonthlyPaymentsAsync(
+        int year,
+        int month,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (month is < 1 or > 12 || year < 2000)
+        {
+            return Results.BadRequest();
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var rows = await db.AthleteProfiles
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId.Value && x.IsActive && x.User.IsActive)
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName)
+            .Select(x => new
+            {
+                Athlete = x,
+                Payment = db.StudentPayments.FirstOrDefault(payment =>
+                    payment.SchoolId == schoolId.Value
+                    && payment.AthleteProfileId == x.Id
+                    && payment.Year == year
+                    && payment.Month == month)
+            })
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(rows.Select(x => MonthlyPaymentResponse.From(x.Athlete, x.Payment, year, month, today)));
     }
 
     private static async Task<IResult> ListPaymentsAsync(
@@ -134,5 +174,40 @@ public sealed record PaymentResponse(
             payment.Status,
             PaymentStatusCalculator.GetEffectiveStatus(payment, today),
             payment.PaidOn);
+    }
+}
+
+public sealed record MonthlyPaymentResponse(
+    Guid AthleteProfileId,
+    string AthleteName,
+    string ParentFullName,
+    string ParentPhone,
+    int Year,
+    int Month,
+    Guid? PaymentId,
+    decimal? Amount,
+    PaymentStatus? Status,
+    PaymentStatus EffectiveStatus,
+    DateOnly? PaidOn)
+{
+    public static MonthlyPaymentResponse From(
+        AthleteProfile athlete,
+        StudentPayment? payment,
+        int year,
+        int month,
+        DateOnly today)
+    {
+        return new MonthlyPaymentResponse(
+            athlete.Id,
+            $"{athlete.FirstName} {athlete.LastName}",
+            athlete.ParentFullName,
+            athlete.ParentPhone,
+            year,
+            month,
+            payment?.Id,
+            payment?.Amount,
+            payment?.Status,
+            payment is null ? PaymentStatus.Unpaid : PaymentStatusCalculator.GetEffectiveStatus(payment, today),
+            payment?.PaidOn);
     }
 }

@@ -15,11 +15,12 @@ public static class AttendanceEndpoints
 
         schoolGroup.MapGet("/", ListAttendanceAsync);
         schoolGroup.MapPost("/", CreateAttendanceAsync);
+        schoolGroup.MapPut("/{athleteProfileId:guid}", UpdateAttendanceAsync);
 
-        var adminGroup = app.MapGroup("/api/school/trainings/{trainingId:guid}/attendance")
-            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+        var rosterGroup = app.MapGroup("/api/school/trainings")
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
-        adminGroup.MapPut("/{athleteProfileId:guid}", UpdateAttendanceAsync);
+        rosterGroup.MapGet("/{trainingId:guid}/attendance-roster", GetAttendanceRosterAsync);
 
         return schoolGroup;
     }
@@ -53,6 +54,58 @@ public static class AttendanceEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(records);
+    }
+
+    private static async Task<IResult> GetAttendanceRosterAsync(
+        Guid trainingId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var training = await db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.Id == trainingId && x.SchoolId == schoolId.Value && x.IsActive)
+            .Select(x => new AttendanceRosterTraining(
+                x.Id,
+                x.Title,
+                x.StartsAt,
+                x.EndsAt,
+                x.GroupId,
+                x.Group.Name))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (training is null)
+        {
+            return Results.NotFound();
+        }
+
+        var rows = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x => x.GroupId == training.GroupId
+                && x.AthleteProfile.SchoolId == schoolId.Value
+                && x.AthleteProfile.IsActive
+                && x.AthleteProfile.User.IsActive)
+            .OrderBy(x => x.AthleteProfile.LastName)
+            .ThenBy(x => x.AthleteProfile.FirstName)
+            .Select(x => new AttendanceRosterItem(
+                x.AthleteProfileId,
+                x.AthleteProfile.FirstName,
+                x.AthleteProfile.LastName,
+                x.AthleteProfile.ParentFullName,
+                x.AthleteProfile.ParentPhone,
+                db.AttendanceRecords
+                    .Where(a => a.TrainingSessionId == trainingId && a.AthleteProfileId == x.AthleteProfileId)
+                    .Select(a => (AttendanceStatus?)a.Status)
+                    .FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(new AttendanceRosterResponse(training, rows));
     }
 
     private static async Task<IResult> CreateAttendanceAsync(
@@ -186,3 +239,23 @@ public sealed record AttendanceResponse(
             attendance.UpdatedAt);
     }
 }
+
+public sealed record AttendanceRosterResponse(
+    AttendanceRosterTraining Training,
+    IReadOnlyCollection<AttendanceRosterItem> Athletes);
+
+public sealed record AttendanceRosterTraining(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    Guid GroupId,
+    string GroupName);
+
+public sealed record AttendanceRosterItem(
+    Guid AthleteProfileId,
+    string FirstName,
+    string LastName,
+    string ParentFullName,
+    string ParentPhone,
+    AttendanceStatus? Status);

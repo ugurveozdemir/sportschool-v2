@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-05-24
+
+- Converted the dashboard from an API testing panel into a Coach/SchoolAdmin product workflow for daily school operations.
+- Added staff dashboard summary, date-range training list, group athlete roster, attendance roster, and monthly payment overview endpoints without adding migrations.
+- Allowed Coach users to update existing attendance records, matching the new correction workflow.
+- Reworked dashboard routing, navigation, auth, account, home, trainings, attendance, athletes, groups, payments, and reports screens around selected records instead of manual IDs.
+- Added product endpoint tests for staff authorization, tenant isolation, attendance correction, and monthly payment rows for athletes without payment records.
+
 ## 2026-05-16
 
 - Completed the remaining dashboard MVP sections for Health, Platform, School, Applications, Athletes, Groups, Trainings, Attendance, Payments, Reports, and Me.
