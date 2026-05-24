@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Navigate, useLocation } from "react-router-dom";
 import { Dumbbell, LockKeyhole, ShieldCheck } from "lucide-react";
@@ -33,6 +34,15 @@ export function AuthPage() {
   });
   const selectedMode = useWatch({ control: loginForm.control, name: "mode" });
   const requiresSchool = selectedMode !== "PlatformOwner";
+  const errorMessage = selectedMode === "PlatformOwner"
+    ? "PlatformOwner girişi başarısız. E-posta ve şifreyi kontrol et; okul seçimi kullanılmaz."
+    : "Giriş başarısız. Okul, rol, e-posta ve şifreyi kontrol et.";
+
+  useEffect(() => {
+    if (selectedMode === "PlatformOwner") {
+      loginForm.setValue("schoolCode", "");
+    }
+  }, [loginForm, selectedMode]);
 
   if (session?.roles.some((role) => role === "Coach" || role === "SchoolAdmin" || role === "PlatformOwner")) {
     return <Navigate to={session.roles.includes("PlatformOwner") ? routes.platform : from} replace />;
@@ -92,7 +102,7 @@ export function AuthPage() {
             type="password"
             {...loginForm.register("password")}
           />
-          {loginMutation.isError ? <div className="form-error">Giriş başarısız. Okul kodu, rol ve şifreyi kontrol et.</div> : null}
+          {loginMutation.isError ? <div className="form-error">{errorMessage}</div> : null}
           <button className="button button-primary button-block" disabled={loginMutation.isPending} type="submit">
             {loginMutation.isPending ? "Giriş yapılıyor..." : "Giriş yap"}
           </button>

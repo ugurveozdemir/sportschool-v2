@@ -35,6 +35,7 @@ public sealed class BootstrapPlatformFlowTests : IAsyncLifetime
 
         using var loginResponse = await client.PostAsJsonAsync("/api/auth/login", new
         {
+            schoolCode = (string?)null,
             email = "owner@example.com",
             password = "owner-password",
             mode = "PlatformOwner",
