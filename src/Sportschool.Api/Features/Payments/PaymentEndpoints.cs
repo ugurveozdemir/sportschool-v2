@@ -140,7 +140,14 @@ public static class PaymentEndpoints
             db.StudentPayments.Add(payment);
         }
 
+        var amountPaid = request.AmountPaid ?? (request.Status == PaymentStatus.Paid ? request.Amount : 0m);
+        if (amountPaid < 0 || amountPaid > request.Amount)
+        {
+            return Results.BadRequest();
+        }
+
         payment.Amount = request.Amount;
+        payment.AmountPaid = amountPaid;
         payment.Status = request.Status;
         payment.PaidOn = request.Status == PaymentStatus.Paid ? request.PaidOn ?? DateOnly.FromDateTime(DateTime.UtcNow) : null;
         payment.UpdatedByUserId = userId.Value;
@@ -151,7 +158,7 @@ public static class PaymentEndpoints
     }
 }
 
-public sealed record SavePaymentRequest(decimal Amount, PaymentStatus Status, DateOnly? PaidOn);
+public sealed record SavePaymentRequest(decimal Amount, decimal? AmountPaid, PaymentStatus Status, DateOnly? PaidOn);
 
 public sealed record PaymentResponse(
     Guid Id,
@@ -159,6 +166,8 @@ public sealed record PaymentResponse(
     int Year,
     int Month,
     decimal Amount,
+    decimal AmountPaid,
+    decimal Balance,
     PaymentStatus Status,
     PaymentStatus EffectiveStatus,
     DateOnly? PaidOn)
@@ -171,6 +180,8 @@ public sealed record PaymentResponse(
             payment.Year,
             payment.Month,
             payment.Amount,
+            payment.AmountPaid,
+            payment.Amount - payment.AmountPaid,
             payment.Status,
             PaymentStatusCalculator.GetEffectiveStatus(payment, today),
             payment.PaidOn);
@@ -186,6 +197,8 @@ public sealed record MonthlyPaymentResponse(
     int Month,
     Guid? PaymentId,
     decimal? Amount,
+    decimal? AmountPaid,
+    decimal? Balance,
     PaymentStatus? Status,
     PaymentStatus EffectiveStatus,
     DateOnly? PaidOn)
@@ -206,6 +219,8 @@ public sealed record MonthlyPaymentResponse(
             month,
             payment?.Id,
             payment?.Amount,
+            payment?.AmountPaid ?? 0m,
+            payment is null ? null : payment.Amount - payment.AmountPaid,
             payment?.Status,
             payment is null ? PaymentStatus.Unpaid : PaymentStatusCalculator.GetEffectiveStatus(payment, today),
             payment?.PaidOn);
