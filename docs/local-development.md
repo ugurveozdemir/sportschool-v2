@@ -25,11 +25,11 @@ dotnet ef database update \
 dotnet run --project src/Sportschool.Api/Sportschool.Api.csproj
 ```
 
-Development ortamında API açılırken ilk PlatformOwner yoksa otomatik oluşturulur.
+Development ortamında API açılırken aşağıdaki PlatformOwner kullanıcı yoksa otomatik oluşturulur.
 
 ```text
-email: owner@example.com
-password: change-me
+email: ugur@gmail.com
+password: 123123
 mode: PlatformOwner
 ```
 
@@ -48,9 +48,9 @@ Normal local development için buna gerek yoktur; Development seed aynı kullan�
 curl -X POST http://localhost:5000/api/bootstrap/platform-owner \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "owner@example.com",
+    "email": "ugur@gmail.com",
     "fullName": "Platform Owner",
-    "password": "change-me"
+    "password": "123123"
   }'
 ```
 
@@ -60,8 +60,8 @@ curl -X POST http://localhost:5000/api/bootstrap/platform-owner \
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "owner@example.com",
-    "password": "change-me",
+    "email": "ugur@gmail.com",
+    "password": "123123",
     "mode": "PlatformOwner",
     "deviceName": "local"
   }'

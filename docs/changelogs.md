@@ -2,6 +2,8 @@
 
 ## 2026-05-24
 
+- Changed the Development PlatformOwner seed to `ugur@gmail.com` / `123123`.
+- Updated the Development seed behavior so the configured PlatformOwner email is created when missing, even if an older PlatformOwner already exists locally.
 - Clarified PlatformOwner login behavior in the dashboard auth screen by clearing school selection and showing a role-specific login failure message.
 - Added explicit test coverage for PlatformOwner login with `schoolCode: null`.
 - Added active-school selection to the auth screen through a public login-school list endpoint, and allowed PlatformOwner login without a school selection.
@@ -87,4 +89,4 @@
 - Athlete approval creates one AppUser with both Athlete and Parent roles; parent details live on AthleteProfile for now.
 - Training recurrence is currently stored as `None` or `Weekly`; recurrence expansion into concrete calendar occurrences is not implemented yet.
 - Dashboard source lives in `src/Sportschool.Dashboard`; local development uses Vite, production serving uses the API `/dashboard` fallback after `npm run build`.
-- Local Development seeds `owner@example.com` / `change-me` as PlatformOwner only when no PlatformOwner exists and `DevSeed:Enabled` is true.
+- Local Development seeds `ugur@gmail.com` / `123123` as PlatformOwner when that configured PlatformOwner email is missing and `DevSeed:Enabled` is true.

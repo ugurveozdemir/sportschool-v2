@@ -35,10 +35,14 @@ public sealed class DevSeedHostedService(
 
         try
         {
-            var hasPlatformOwner = await db.UserRoles
-                .AnyAsync(x => x.Role == UserRole.PlatformOwner, cancellationToken);
+            var normalizedEmail = TextNormalizer.NormalizeEmail(seed.PlatformOwnerEmail);
+            var configuredPlatformOwnerExists = await db.Users
+                .AnyAsync(x => x.SchoolId == null
+                    && x.NormalizedEmail == normalizedEmail
+                    && x.Roles.Any(role => role.Role == UserRole.PlatformOwner),
+                    cancellationToken);
 
-            if (hasPlatformOwner)
+            if (configuredPlatformOwnerExists)
             {
                 return;
             }
@@ -46,7 +50,7 @@ public sealed class DevSeedHostedService(
             var user = new AppUser
             {
                 Email = seed.PlatformOwnerEmail.Trim(),
-                NormalizedEmail = TextNormalizer.NormalizeEmail(seed.PlatformOwnerEmail),
+                NormalizedEmail = normalizedEmail,
                 FullName = seed.PlatformOwnerFullName.Trim(),
                 PasswordHash = passwordHasher.Hash(seed.PlatformOwnerPassword)
             };
