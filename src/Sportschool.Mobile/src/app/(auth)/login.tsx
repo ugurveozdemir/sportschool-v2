@@ -63,15 +63,24 @@ export default function LoginScreen() {
             name="schoolCode"
             render={({ field, fieldState }) => (
               <View style={styles.schoolPicker}>
-                <Text style={styles.fieldLabel}>Okul</Text>
+                <View style={styles.schoolHeader}>
+                  <Text style={styles.fieldLabel}>Okulunu seç</Text>
+                  <Text style={styles.helperText}>Giriş yapacağın akademiyi seç.</Text>
+                </View>
                 {schoolsQuery.isLoading ? <Text style={styles.helperText}>Okullar yükleniyor...</Text> : null}
+                {schoolsQuery.isError ? <Text style={styles.errorText}>Okullar listelenemedi. API bağlantısını kontrol et.</Text> : null}
                 <View style={styles.schoolList}>
                   {(schoolsQuery.data ?? []).map((school) => {
                     const isSelected = field.value === school.code || selectedSchoolCode === school.code;
                     return (
                       <Pressable key={school.code} onPress={() => field.onChange(school.code)} style={({ pressed }) => [styles.schoolOption, isSelected && styles.schoolOptionSelected, pressed && styles.pressed]}>
-                        <Text style={[styles.schoolName, isSelected && styles.schoolNameSelected]}>{school.name}</Text>
-                        <Text style={[styles.schoolCode, isSelected && styles.schoolCodeSelected]}>{school.code}</Text>
+                        <View style={styles.schoolOptionContent}>
+                          <View style={styles.schoolTextBlock}>
+                            <Text style={[styles.schoolName, isSelected && styles.schoolNameSelected]}>{school.name}</Text>
+                            <Text style={[styles.schoolCode, isSelected && styles.schoolCodeSelected]}>{school.code}</Text>
+                          </View>
+                          {isSelected ? <MaterialCommunityIcons name="check-circle" size={24} color={colors.secondaryContainer} /> : <MaterialCommunityIcons name="chevron-right" size={24} color={colors.outline} />}
+                        </View>
                       </Pressable>
                     );
                   })}
@@ -137,12 +146,15 @@ const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.background, flex: 1 },
   schoolCode: { ...typography.label, color: colors.onSurfaceVariant },
   schoolCodeSelected: { color: colors.primaryFixedDim },
+  schoolHeader: { gap: spacing.xs },
   schoolList: { gap: spacing.sm },
   schoolName: { ...typography.bodyLarge, color: colors.primary },
   schoolNameSelected: { color: colors.onPrimary },
-  schoolOption: { backgroundColor: colors.surface, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, gap: 2, padding: spacing.md },
+  schoolOption: { backgroundColor: colors.surface, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
+  schoolOptionContent: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   schoolOptionSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   schoolPicker: { gap: spacing.xs },
+  schoolTextBlock: { flex: 1, gap: 2 },
   subtitle: { ...typography.title, color: colors.onSurfaceVariant, textAlign: "center" },
   switchRole: { alignItems: "center", marginTop: spacing.lg },
   switchRoleText: { ...typography.label, color: colors.primary },
