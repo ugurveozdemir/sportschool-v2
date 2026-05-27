@@ -10,6 +10,7 @@
 node_modules/
 src/Sportschool.Api/wwwroot/dashboard/
 reference_project/
+mobile_project/
 
 # Local agent instructions
 AGENTS.md
