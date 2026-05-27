@@ -55,7 +55,7 @@ export default function ProfileScreen() {
         <Text style={styles.teamName}>{isCoach ? "Akademi Eğitmeni" : groups[0]?.name ?? "Akademi Oyuncusu"}</Text>
         <View style={styles.pillRow}>
           <Pill label={isCoach ? "Aktif Eğitmen" : "Aktif Oyuncu"} tone="success" />
-          <Pill label={isCoach ? `${groups.length} Takım` : "#10 Orta Saha"} tone="neutral" />
+          <Pill label={isCoach ? `${groups.length} Grup` : "#10 Orta Saha"} tone="neutral" />
         </View>
       </View>
 
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
       </SurfaceCard>
 
       <SurfaceCard style={styles.card}>
-        <SectionTitle title={isCoach ? "Takımlar" : "Gruplar"} />
+        <SectionTitle title="Gruplar" />
         {groups.length === 0 ? <Text style={styles.muted}>Henüz grup ataması yok.</Text> : null}
         {groups.map((group) => (
           <View key={group.id} style={styles.groupRow}>

@@ -29,7 +29,7 @@ export default function DevelopmentScreen() {
   const coachGroupsQuery = useCoachGroups(isCoach);
 
   if (isCoach && coachGroupsQuery.isLoading) {
-    return <LoadingState label="Takımlar yükleniyor" />;
+    return <LoadingState label="Gruplar yükleniyor" />;
   }
 
   if (!isCoach && reportsQuery.isLoading) {
@@ -50,24 +50,24 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       <View style={styles.headerBlock}>
         <View>
-          <Text style={styles.title}>Takımlar</Text>
-          <Text style={styles.subtitle}>Kulüpteki aktif takımlar ve sporcu dağılımı.</Text>
+          <Text style={styles.title}>Gruplar</Text>
+          <Text style={styles.subtitle}>Kulüpteki aktif gruplar ve sporcu dağılımı.</Text>
         </View>
         <Pressable style={styles.primaryButton}>
           <MaterialCommunityIcons name="plus" size={20} color={colors.onPrimary} />
-          <Text style={styles.primaryButtonText}>Yeni Takım Ekle</Text>
+          <Text style={styles.primaryButtonText}>Yeni Grup Ekle</Text>
         </Pressable>
       </View>
 
       <View style={styles.metricsRow}>
-        <MetricTile icon="shield-account-outline" label="Takım" value={`${groups.length}`} />
+        <MetricTile icon="shield-account-outline" label="Grup" value={`${groups.length}`} />
         <MetricTile icon="account-group-outline" label="Sporcu" value={`${totalAthletes}`} tone="success" />
       </View>
 
       <View style={styles.list}>
         {groups.length === 0 ? (
           <SurfaceCard>
-            <EmptyState title="Takım yok" description="Henüz sana atanmış aktif takım bulunmuyor." />
+            <EmptyState title="Grup yok" description="Henüz sana atanmış aktif grup bulunmuyor." />
           </SurfaceCard>
         ) : (
           groups.map((group) => <TeamRow key={group.id} group={group} />)

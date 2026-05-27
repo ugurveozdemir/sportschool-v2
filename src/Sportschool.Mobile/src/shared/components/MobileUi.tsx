@@ -40,10 +40,15 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
     <View style={styles.topBar}>
       <View style={styles.topLead}>{avatar ?? <AkademiLogo size={30} />}</View>
       <Text style={styles.topTitle}>{title}</Text>
-      <Pressable style={styles.iconButton}>
-        <MaterialCommunityIcons name="bell-outline" size={26} color={colors.primary} />
-        <View style={styles.notificationDot} />
-      </Pressable>
+      <View style={styles.topActions}>
+        <Pressable accessibilityLabel="Profil" onPress={() => router.push("/profile")} style={styles.iconButton}>
+          <MaterialCommunityIcons name="account-outline" size={26} color={colors.primary} />
+        </Pressable>
+        <Pressable accessibilityLabel="Bildirimler" style={styles.iconButton}>
+          <MaterialCommunityIcons name="bell-outline" size={26} color={colors.primary} />
+          <View style={styles.notificationDot} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -232,6 +237,7 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.title, color: colors.primary },
   shell: { backgroundColor: colors.background, flex: 1 },
   topBar: { alignItems: "center", backgroundColor: colors.background, borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", height: 64, justifyContent: "space-between", paddingHorizontal: spacing.lg },
-  topLead: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
+  topActions: { alignItems: "center", flexDirection: "row", justifyContent: "flex-end", width: 88 },
+  topLead: { alignItems: "flex-start", height: 42, justifyContent: "center", width: 88 },
   topTitle: { ...typography.title, color: colors.primary, flex: 1, textAlign: "center" }
 });
