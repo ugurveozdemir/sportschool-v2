@@ -13,7 +13,7 @@ import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatTime } from "@/shared/utils/date";
 
-const calendarDays = [28, 29, 30, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+const calendarDays = [28, 29, 30, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27];
 const markedPrimary = new Set([10, 17]);
 const markedSecondary = new Set([3, 6, 17, 20]);
 
@@ -188,17 +188,17 @@ const fallbackMatch: TrainingItem = {
 const styles = StyleSheet.create({
   addLink: { ...typography.label, color: colors.secondary, fontSize: 14 },
   calendarArrows: { flexDirection: "row", gap: spacing.sm },
-  calendarCard: { gap: spacing.lg },
+  calendarCard: { gap: spacing.lg, minHeight: 410 },
   calendarHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   circleButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 46, justifyContent: "center", width: 46 },
   coachTitle: { ...typography.headline, color: colors.primary },
-  dayCell: { alignItems: "center", aspectRatio: 1, justifyContent: "center" },
+  dayCell: { alignItems: "center", flexBasis: `${100 / 7}%`, height: 48, justifyContent: "center" },
   dayCellRound: { borderRadius: radius.full },
   daySelected: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.16, shadowRadius: 7, shadowOffset: { height: 4, width: 0 } },
   dayText: { ...typography.bodyLarge, color: colors.primary },
   dayTextInactive: { color: colors.outlineVariant },
   dayTextSelected: { color: colors.onPrimary, fontFamily: "Inter_700Bold" },
-  daysGrid: { flexDirection: "row", flexWrap: "wrap" },
+  daysGrid: { flexDirection: "row", flexWrap: "wrap", rowGap: spacing.xs },
   dot: { borderRadius: 3, height: 6, width: 6 },
   dotRow: { flexDirection: "row", gap: 2, height: 8, marginTop: 2 },
   dotSelected: { backgroundColor: colors.secondaryContainer },
