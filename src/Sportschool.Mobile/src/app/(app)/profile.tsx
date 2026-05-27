@@ -1,25 +1,26 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import { logout } from "@/features/auth/api";
+import { useCoachGroups } from "@/features/coach/api";
 import { useGroups, useProfile } from "@/features/me/api";
-import { AppScreen } from "@/shared/components/AppScreen";
-import { Badge } from "@/shared/components/Badge";
-import { Button } from "@/shared/components/Button";
-import { Card } from "@/shared/components/Card";
 import { LoadingState } from "@/shared/components/LoadingState";
+import { CircularScore, InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
+import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatDate } from "@/shared/utils/date";
 
 export default function ProfileScreen() {
   const { session, clearSession } = useSession();
-  const profileQuery = useProfile();
-  const groupsQuery = useGroups();
+  const isCoach = session?.roles.includes("Coach") ?? false;
+  const profileQuery = useProfile(!isCoach);
+  const groupsQuery = useGroups(!isCoach);
+  const coachGroupsQuery = useCoachGroups(isCoach);
   const logoutMutation = useMutation({
     mutationFn: async () => {
       if (session?.refreshToken) {
@@ -33,42 +34,82 @@ export default function ProfileScreen() {
     onError: () => Alert.alert("Çıkış", "Oturum yerel olarak kapatıldı.")
   });
 
-  if (profileQuery.isLoading) {
+  if ((isCoach ? coachGroupsQuery : profileQuery).isLoading) {
     return <LoadingState label="Profil yükleniyor" />;
   }
 
   const profile = profileQuery.data;
+  const displayName = isCoach ? session?.fullName : profile ? `${profile.firstName} ${profile.lastName}` : session?.fullName;
+  const groups = isCoach ? coachGroupsQuery.data ?? [] : groupsQuery.data ?? [];
 
   return (
-    <AppScreen>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       <View style={styles.profileHero}>
-        <View style={styles.avatar}>
-          <MaterialCommunityIcons name="account" size={54} color={colors.onPrimary} />
+        <View style={styles.avatarWrap}>
+          <InitialsAvatar label={initials(displayName ?? "A")} size={128} tone="dark" />
+          <View style={styles.verifiedBadge}>
+            <MaterialCommunityIcons name={isCoach ? "whistle-outline" : "check-decagram"} size={18} color={colors.onSecondaryContainer} />
+          </View>
         </View>
-        <Text style={styles.name}>{profile ? `${profile.firstName} ${profile.lastName}` : session?.fullName}</Text>
-        <Badge label="Aktif Oyuncu" tone="success" />
+        <Text style={styles.name}>{displayName ?? "Profil"}</Text>
+        <Text style={styles.teamName}>{isCoach ? "Akademi Eğitmeni" : groups[0]?.name ?? "Akademi Oyuncusu"}</Text>
+        <View style={styles.pillRow}>
+          <Pill label={isCoach ? "Aktif Eğitmen" : "Aktif Oyuncu"} tone="success" />
+          <Pill label={isCoach ? `${groups.length} Takım` : "#10 Orta Saha"} tone="neutral" />
+        </View>
       </View>
 
-      <Card style={styles.card}>
-        <Info label="Doğum tarihi" value={profile ? formatDate(profile.birthDate) : "-"} />
-        <Info label="Veli" value={profile?.parentFullName ?? "-"} />
-        <Info label="Veli telefonu" value={profile?.parentPhone ?? "-"} />
-        <Info label="E-posta" value={session?.email ?? "-"} />
-      </Card>
+      {!isCoach ? (
+        <View style={styles.scoreGrid}>
+          <CircularScore value={85} label="Hız" />
+          <CircularScore value={92} label="Teknik" />
+          <CircularScore value={78} label="Kondisyon" color={colors.primary} />
+        </View>
+      ) : null}
 
-      <Card style={styles.card}>
-        <Text style={styles.sectionTitle}>Gruplar</Text>
-        {(groupsQuery.data ?? []).map((group) => (
+      <SurfaceCard style={styles.card}>
+        <SectionTitle title="Kişisel Bilgiler" />
+        {!isCoach ? <Info label="Doğum tarihi" value={profile ? formatDate(profile.birthDate) : "-"} /> : null}
+        {!isCoach ? <Info label="Veli" value={profile?.parentFullName ?? "-"} /> : null}
+        {!isCoach ? <Info label="Veli telefonu" value={profile?.parentPhone ?? "-"} /> : null}
+        <Info label="E-posta" value={session?.email ?? "-"} />
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.card}>
+        <SectionTitle title={isCoach ? "Takımlar" : "Gruplar"} />
+        {groups.length === 0 ? <Text style={styles.muted}>Henüz grup ataması yok.</Text> : null}
+        {groups.map((group) => (
           <View key={group.id} style={styles.groupRow}>
-            <Text style={styles.groupName}>{group.name}</Text>
-            <Badge label="Aktif" tone="success" />
+            <View style={styles.groupLead}>
+              <MaterialCommunityIcons name={isCoach ? "shield-account-outline" : "account-group-outline"} size={22} color={colors.primary} />
+              <Text style={styles.groupName}>{group.name}</Text>
+            </View>
+            <Pill label={isCoach && "athleteCount" in group ? `${group.athleteCount} sporcu` : "Aktif"} tone="success" />
           </View>
         ))}
-        {groupsQuery.data?.length === 0 ? <Text style={styles.muted}>Henüz grup ataması yok.</Text> : null}
-      </Card>
+      </SurfaceCard>
 
-      <Button disabled={logoutMutation.isPending} label="Çıkış Yap" onPress={() => logoutMutation.mutate()} variant="outline" />
-    </AppScreen>
+      {!isCoach ? (
+        <SurfaceCard style={styles.card}>
+          <SectionTitle title="Durum Özeti" />
+          <StatusRow icon="cash-check" label="Son Ödeme" value="Yapıldı" badge="Güncel" />
+          <StatusRow icon="calendar-remove-outline" label="Devamsızlık Oranı" value="%5" badge="İyi" />
+          <StatusRow icon="medical-bag" label="Sağlık Durumu" value="Antrenmana Hazır" badge="Aktif" />
+        </SurfaceCard>
+      ) : null}
+
+      <SurfaceCard style={styles.settingsCard}>
+        <SectionTitle title="Ayarlar" />
+        <SettingRow icon="account-outline" label="Kişisel Bilgiler" />
+        <SettingRow icon="bell-ring-outline" label="Bildirim Ayarları" />
+        <SettingRow icon="shield-check-outline" label="Güvenlik" />
+      </SurfaceCard>
+
+      <Pressable disabled={logoutMutation.isPending} onPress={() => logoutMutation.mutate()} style={styles.logoutButton}>
+        <MaterialCommunityIcons name="logout" size={20} color={colors.error} />
+        <Text style={styles.logoutText}>Çıkış Yap</Text>
+      </Pressable>
+    </ScreenShell>
   );
 }
 
@@ -81,16 +122,64 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
+function StatusRow({ icon, label, value, badge }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: string; badge: string }) {
+  return (
+    <View style={styles.statusRow}>
+      <View style={styles.groupLead}>
+        <View style={styles.statusIcon}>
+          <MaterialCommunityIcons name={icon} size={22} color={colors.primary} />
+        </View>
+        <View>
+          <Text style={styles.infoLabel}>{label}</Text>
+          <Text style={styles.statusValue}>{value}</Text>
+        </View>
+      </View>
+      <Pill label={badge} tone="success" />
+    </View>
+  );
+}
+
+function SettingRow({ icon, label }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }) {
+  return (
+    <View style={styles.settingRow}>
+      <View style={styles.groupLead}>
+        <View style={styles.settingIcon}>
+          <MaterialCommunityIcons name={icon} size={22} color={colors.onSurfaceVariant} />
+        </View>
+        <Text style={styles.settingText}>{label}</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={24} color={colors.outline} />
+    </View>
+  );
+}
+
+function initials(name: string) {
+  return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
 const styles = StyleSheet.create({
-  avatar: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, height: 108, justifyContent: "center", width: 108 },
-  card: { gap: spacing.md, marginBottom: spacing.lg },
-  groupName: { ...typography.bodyLarge, color: colors.primary },
-  groupRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  avatarWrap: { position: "relative" },
+  card: { gap: spacing.md },
+  groupLead: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  groupName: { ...typography.bodyLarge, color: colors.primary, flex: 1 },
+  groupRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, justifyContent: "space-between", paddingTop: spacing.md },
   infoLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   infoRow: { gap: 2 },
   infoValue: { ...typography.bodyLarge, color: colors.primary },
+  logoutButton: { alignItems: "center", borderColor: colors.outline, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
+  logoutText: { ...typography.title, color: colors.error },
   muted: { ...typography.body, color: colors.onSurfaceVariant },
-  name: { ...typography.display, color: colors.primary, textAlign: "center" },
-  profileHero: { alignItems: "center", gap: spacing.md, marginBottom: spacing.lg, marginTop: spacing.md },
-  sectionTitle: { ...typography.title, color: colors.primary }
+  name: { ...typography.headline, color: colors.primary, textAlign: "center" },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
+  profileHero: { alignItems: "center", gap: spacing.md },
+  scoreGrid: { flexDirection: "row", gap: spacing.sm, justifyContent: "space-around" },
+  settingIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.lg, height: 42, justifyContent: "center", width: 42 },
+  settingRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.md },
+  settingsCard: { gap: spacing.md },
+  settingText: { ...typography.bodyLarge, color: colors.onSurface },
+  statusIcon: { alignItems: "center", backgroundColor: colors.primaryFixed, borderRadius: radius.md, height: 42, justifyContent: "center", width: 42 },
+  statusRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
+  statusValue: { ...typography.title, color: colors.primary },
+  teamName: { ...typography.title, color: colors.onSurfaceVariant, textAlign: "center" },
+  verifiedBadge: { alignItems: "center", backgroundColor: colors.secondaryContainer, borderColor: colors.surface, borderRadius: radius.full, borderWidth: 2, bottom: 4, height: 34, justifyContent: "center", position: "absolute", right: 4, width: 34 }
 });
