@@ -1,119 +1,459 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useSession } from "@/core/sessionProvider";
+import { useCoachSummary } from "@/features/coach/api";
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
-import { AppScreen } from "@/shared/components/AppScreen";
-import { Badge } from "@/shared/components/Badge";
-import { Card } from "@/shared/components/Card";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { LoadingState } from "@/shared/components/LoadingState";
+import { CircularScore, InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
+import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatDate, formatTime } from "@/shared/utils/date";
+import { formatMoney } from "@/shared/utils/money";
 
 export default function HomeScreen() {
-  const profileQuery = useProfile();
-  const trainingsQuery = useTrainings();
-  const groupsQuery = useGroups();
-  const attendanceQuery = useAttendance();
-  const paymentsQuery = usePayments();
-  const reportsQuery = useReports();
+  const { session } = useSession();
+  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isParent = session?.roles.includes("Parent") ?? false;
+  const navItems = getMobileNav(session);
+  const shellTitle = getShellTitle(session);
 
-  if (profileQuery.isLoading) {
-    return <LoadingState label="Panel hazırlanıyor" />;
+  const profileQuery = useProfile(!isCoach);
+  const trainingsQuery = useTrainings(!isCoach);
+  const groupsQuery = useGroups(!isCoach);
+  const attendanceQuery = useAttendance(!isCoach);
+  const paymentsQuery = usePayments(!isCoach);
+  const reportsQuery = useReports(!isCoach);
+  const coachSummaryQuery = useCoachSummary(isCoach);
+
+  if (isCoach) {
+    return <CoachHome sessionName={session?.fullName} summary={coachSummaryQuery.data} navItems={navItems} shellTitle={shellTitle} />;
   }
 
   const profile = profileQuery.data;
   const trainings = trainingsQuery.data ?? [];
   const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now()) ?? trainings[0];
-  const unpaidCount = (paymentsQuery.data ?? []).filter((payment) => payment.effectiveStatus !== "Paid").length;
+  const payments = paymentsQuery.data ?? [];
+  const unpaidCount = payments.filter((payment) => payment.effectiveStatus !== "Paid").length;
+  const unpaidTotal = payments.reduce((sum, payment) => sum + (payment.effectiveStatus === "Paid" ? 0 : payment.balance), 0);
   const latestReport = reportsQuery.data?.[0];
 
-  return (
-    <AppScreen>
-      <View style={styles.header}>
-        <Text style={styles.title}>Merhaba, {profile?.firstName ?? "Sporcu"}</Text>
-        <Text style={styles.subtitle}>Programını, ödeme durumunu ve gelişim raporlarını buradan takip et.</Text>
-      </View>
+  if (isParent) {
+    return (
+      <ParentHome
+        navItems={navItems}
+        shellTitle={shellTitle}
+        parentName={session?.fullName?.split(" ")[0] ?? "Mehmet"}
+        childName={profile?.firstName ?? "Emre"}
+        nextTraining={nextTraining}
+        unpaidTotal={unpaidTotal}
+        reportScore={latestReport ? averageScore([latestReport.speedScore, latestReport.strengthScore, latestReport.dribblingScore, latestReport.shootingScore]) : 8.4}
+      />
+    );
+  }
 
-      {nextTraining ? (
-        <View style={styles.heroCard}>
-          <MaterialCommunityIcons name="soccer" size={112} color="rgba(255,255,255,0.08)" style={styles.heroIcon} />
-          <Text style={styles.heroKicker}>Sıradaki Antrenman</Text>
-          <Text style={styles.heroTitle}>{nextTraining.title}</Text>
-          <Text style={styles.heroText}>{formatDate(nextTraining.startsAt)} • {formatTime(nextTraining.startsAt)} - {formatTime(nextTraining.endsAt)}</Text>
-          <Text style={styles.heroText}>{nextTraining.location ?? "Lokasyon belirtilmedi"}</Text>
+  return (
+    <AthleteHome
+      navItems={navItems}
+      shellTitle={shellTitle}
+      firstName={profile?.firstName ?? "Arda"}
+      nextTraining={nextTraining}
+      groupCount={groupsQuery.data?.length ?? 0}
+      attendanceCount={attendanceQuery.data?.length ?? 0}
+      unpaidCount={unpaidCount}
+      latestReport={latestReport}
+    />
+  );
+}
+
+function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName?: string; summary?: { todayTrainings: { title: string; startsAt: string; endsAt: string; groupName: string; location: string | null }[]; groupCount: number; athleteCount: number; missingAttendanceCount: number }; navItems: ReturnType<typeof getMobileNav>; shellTitle: string }) {
+  const nextTraining = summary?.todayTrainings[0];
+
+  return (
+    <ScreenShell title={shellTitle} navItems={navItems}>
+      <View style={styles.welcomeRow}>
+        <View>
+          <Text style={styles.dateText}>24 Ekim Perşembe</Text>
+          <Text style={styles.displayTitle}>Merhaba, {sessionName?.split(" ")[0] ?? "Koç"}</Text>
         </View>
-      ) : (
-        <Card>
-          <EmptyState title="Antrenman yok" description="Aktif grubun için planlanmış antrenman bulunmuyor." />
-        </Card>
-      )}
-
-      <View style={styles.metrics}>
-        <MetricCard icon="account-group-outline" label="Grup" value={`${groupsQuery.data?.length ?? 0}`} />
-        <MetricCard icon="calendar-check-outline" label="Yoklama" value={`${attendanceQuery.data?.length ?? 0}`} />
-        <MetricCard icon="credit-card-clock-outline" label="Borç" value={`${unpaidCount}`} danger={unpaidCount > 0} />
+        <InitialsAvatar label="KÇ" size={54} tone="dark" />
       </View>
 
-      {latestReport ? (
-        <Card style={styles.reportCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Son Gelişim Raporu</Text>
-            <Badge label={formatDate(latestReport.createdAt)} />
+      <View style={styles.sectionStack}>
+        <SectionTitle title="Bugünkü Etkinlikler" />
+        {nextTraining ? (
+          <EventCard accent="secondary" icon="run" kicker={`${formatTime(nextTraining.startsAt)} • ${nextTraining.location ?? "Tesis 1"}`} title={`Antrenman: ${nextTraining.groupName}`} />
+        ) : (
+          <SurfaceCard>
+            <EmptyState title="Bugün antrenman yok" description="Bugün için atanmış antrenman bulunmuyor." />
+          </SurfaceCard>
+        )}
+        <EventCard accent="primary" icon="scoreboard-outline" kicker="19:30 • Merkez Stadyum" title="Maç: U16 vs Kartal SK" />
+      </View>
+
+      <View style={styles.sectionStack}>
+        <SectionTitle title="Hızlı Aksiyonlar" />
+        <View style={styles.quickGrid}>
+          <QuickAction label="Yoklama Al" icon="clipboard-check-outline" primary />
+          <QuickAction label="Ödeme Kaydet" icon="cash-multiple" />
+          <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" />
+        </View>
+      </View>
+
+      <SurfaceCard style={styles.sectionStack}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconTitleRow}>
+            <MaterialCommunityIcons name="alert-outline" size={30} color={colors.error} />
+            <Text style={styles.cardTitle}>Bekleyen Ödemeler</Text>
           </View>
-          <Text style={styles.body}>{latestReport.summary}</Text>
-          <View style={styles.scoreGrid}>
-            <Score label="Hız" value={latestReport.speedScore} />
-            <Score label="Güç" value={latestReport.strengthScore} />
-            <Score label="Dribling" value={latestReport.dribblingScore} />
-            <Score label="Şut" value={latestReport.shootingScore} />
-          </View>
-        </Card>
-      ) : null}
-    </AppScreen>
+          <Text style={styles.mutedBold}>Tümü</Text>
+        </View>
+        <PaymentRow initials="CK" name="Caner Kaya" detail="Eylül Aidatı" amount="₺1.500" />
+        <View style={styles.separator} />
+        <PaymentRow initials="MY" name="Mert Yılmaz" detail="Eylül Aidatı" amount="₺1.500" />
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.sectionStack}>
+        <View style={styles.iconTitleRow}>
+          <MaterialCommunityIcons name="account-off-outline" size={30} color={colors.outline} />
+          <Text style={styles.cardTitle}>Eksik Oyuncular</Text>
+        </View>
+        <View style={styles.chipRow}>
+          <Pill label="A. Öztürk (Sakat)" tone="danger" />
+          <Pill label="B. Şahin (İzinli)" tone="warning" />
+        </View>
+      </SurfaceCard>
+    </ScreenShell>
   );
 }
 
-function MetricCard({ icon, label, value, danger }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: string; danger?: boolean }) {
+function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; groupCount: number; attendanceCount: number; unpaidCount: number; latestReport?: { summary: string; createdAt: string; speedScore: number; strengthScore: number; dribblingScore: number; shootingScore: number } }) {
+  const speed = latestReport?.speedScore ?? 85;
+  const technique = latestReport?.dribblingScore ?? 72;
+  const condition = latestReport?.strengthScore ?? 92;
+
   return (
-    <Card style={styles.metricCard}>
-      <MaterialCommunityIcons name={icon} size={22} color={danger ? colors.error : colors.primary} />
-      <Text style={[styles.metricValue, danger && styles.danger]}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </Card>
+    <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={firstName.slice(0, 1)} size={42} tone="dark" />}>
+      <View style={styles.headerBlock}>
+        <Text style={styles.displayTitle}>Merhaba, {firstName}</Text>
+        <Text style={styles.subtitle}>Performansına odaklan, sınırlarını zorla.</Text>
+      </View>
+
+      <HeroTrainingCard title={nextTraining?.title ?? "Taktik ve Çift Kale Maç"} location={nextTraining?.location ?? "Saha 1"} group="A Takımı" time={nextTraining ? formatTime(nextTraining.startsAt) : "17:00"} />
+
+      <View style={styles.sectionStack}>
+        <SectionTitle title="Hızlı İşlemler" />
+        <View style={styles.quickGrid}>
+          <QuickAction label="Yoklama\nDurumum" icon="account-check-outline" />
+          <QuickAction label="Beslenme\nProgramı" icon="silverware-fork-knife" />
+          <QuickAction label="Duyurular" icon="bullhorn-outline" badge />
+        </View>
+      </View>
+
+      <SurfaceCard style={styles.sectionStack}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconTitleRow}>
+            <MaterialCommunityIcons name="chart-line" size={28} color={colors.secondary} />
+            <Text style={styles.cardTitle}>Gelişim Özeti</Text>
+          </View>
+          <Text style={styles.linkText}>Detaylar</Text>
+        </View>
+        <View style={styles.scoreRow}>
+          <CircularScore label="Hız" value={speed} color={colors.secondary} />
+          <CircularScore label="Teknik" value={technique} color={colors.primary} />
+          <CircularScore label="Kondisyon" value={condition} color={colors.secondaryFixedDim} />
+        </View>
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.sectionStack}>
+        <View style={styles.iconTitleRow}>
+          <MaterialCommunityIcons name="calendar-month-outline" size={28} color={colors.primary} />
+          <Text style={styles.cardTitle}>Yaklaşan Maçlar</Text>
+        </View>
+        <MatchRow initials="GS" name="Galatasaray U19" date="12 Kas, 14:00" />
+        <MatchRow initials="BJK" name="Beşiktaş U19" date="19 Kas, 15:30" />
+      </SurfaceCard>
+
+      <View style={styles.metricsRow}>
+        <MetricTile icon="account-group-outline" label="Grup" value={`${groupCount}`} />
+        <MetricTile icon="calendar-check-outline" label="Yoklama" value={`${attendanceCount}`} />
+        <MetricTile icon="credit-card-clock-outline" label="Borç" value={`${unpaidCount}`} tone={unpaidCount > 0 ? "danger" : "primary"} />
+      </View>
+    </ScreenShell>
   );
 }
 
-function Score({ label, value }: { label: string; value: number }) {
+function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining, unpaidTotal, reportScore }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; unpaidTotal: number; reportScore: number }) {
   return (
-    <View style={styles.score}>
-      <Text style={styles.scoreValue}>{value.toFixed(1)}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
+    <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={childName.slice(0, 1)} size={42} tone="light" />}>
+      <View style={styles.headerBlockSmallGap}>
+        <Text style={styles.parentTitle}>Günaydın, {parentName}</Text>
+        <Text style={styles.subtitle}>Bugün 1 antrenman ve 1 yeni duyuru var.</Text>
+        <View style={styles.childSwitch}>
+          <View style={styles.childSwitchActive}>
+            <InitialsAvatar label={childName.slice(0, 1)} size={24} tone="dark" />
+            <Text style={styles.childSwitchActiveText}>{childName} (U12)</Text>
+          </View>
+          <View style={styles.childSwitchInactive}>
+            <InitialsAvatar label="K" size={24} tone="light" />
+            <Text style={styles.childSwitchText}>Kerem (U15)</Text>
+          </View>
+        </View>
+      </View>
+
+      <SurfaceCard style={styles.parentTrainingCard}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconTitleRow}>
+            <MaterialCommunityIcons name="soccer" size={24} color={colors.secondary} />
+            <Text style={styles.parentCardTitle}>Sıradaki Antrenman</Text>
+          </View>
+          <Pill label="Bugün" tone="success" />
+        </View>
+        <Text style={styles.smallMeta}>U12 A Takımı • {nextTraining?.title ?? "Taktik & Kondisyon"}</Text>
+        <View style={styles.parentInfoBox}>
+          <InitialsAvatar label="◷" size={48} tone="dark" />
+          <View>
+            <Text style={styles.kickerDark}>Zaman</Text>
+            <Text style={styles.infoTitle}>{nextTraining ? `${formatTime(nextTraining.startsAt)} - ${formatTime(nextTraining.endsAt)}` : "17:30 - 19:00"}</Text>
+          </View>
+        </View>
+        <View style={styles.parentInfoBox}>
+          <InitialsAvatar label="⌖" size={48} tone="light" />
+          <View>
+            <Text style={styles.kickerDark}>Tesis</Text>
+            <Text style={styles.infoTitle}>{nextTraining?.location ?? "Merkez Kampüs Saha 2"}</Text>
+          </View>
+        </View>
+      </SurfaceCard>
+
+      <View style={styles.darkScoreCard}>
+        <Text style={styles.darkCardTitle}>Gelişim Özeti</Text>
+        <Text style={styles.darkSubtitle}>Son 30 günlük performans</Text>
+        <View style={styles.scoreInline}>
+          <Text style={styles.largeWhite}>{reportScore.toFixed(1)}</Text>
+          <Text style={styles.greenText}>↗ 0.3 puan</Text>
+        </View>
+        <Progress label="Devamlılık" value={95} />
+        <Progress label="Teknik Kapasite" value={82} light />
+      </View>
+
+      <SurfaceCard style={styles.noPaddingCard}>
+        <View style={styles.cardInsetHeader}>
+          <Text style={styles.parentCardTitle}>Kulüp Duyuruları</Text>
+          <Text style={styles.linkText}>Tümünü Gör</Text>
+        </View>
+        <AnnouncementItem dotColor={colors.secondary} title="Kış Dönemi Ekipman Siparişleri" text="Soğuk hava şartlarına uygun antrenman ekipmanları için sipariş formu açılmıştır." date="2 saat önce" />
+        <AnnouncementItem dotColor={colors.outlineVariant} title="Hafta Sonu Turnuva Programı" text="U12 ve U15 kategorilerindeki hafta sonu hazırlık turnuvası fikstürü yayınlandı." date="Dün" />
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.sectionStack}>
+        <Text style={styles.parentCardTitle}>Finansal Durum</Text>
+        <View style={styles.debtBox}>
+          <InitialsAvatar label="!" size={42} tone="red" />
+          <View style={styles.flexOne}>
+            <Text style={styles.infoTitle}>Kasım Ayı Aidatı</Text>
+            <Text style={styles.smallMeta}>Son Ödeme: 05 Kasım 2023</Text>
+          </View>
+          <View style={styles.rightText}>
+            <Text style={styles.infoTitle}>{formatMoney(unpaidTotal || 1250)}</Text>
+            <Text style={styles.errorSmall}>Gecikmede</Text>
+          </View>
+        </View>
+        <View style={styles.payButton}>
+          <Text style={styles.payButtonText}>Şimdi Öde</Text>
+        </View>
+        <View style={styles.outlineButton}>
+          <Text style={styles.outlineButtonText}>Geçmiş Ödemeler</Text>
+        </View>
+      </SurfaceCard>
+    </ScreenShell>
+  );
+}
+
+function EventCard({ accent, icon, kicker, title }: { accent: "primary" | "secondary"; icon: keyof typeof MaterialCommunityIcons.glyphMap; kicker: string; title: string }) {
+  return (
+    <SurfaceCard accent={accent} style={styles.eventCard}>
+      <View style={styles.eventIconCircle}>
+        <MaterialCommunityIcons name={icon} size={28} color={accent === "secondary" ? colors.secondary : colors.primary} />
+      </View>
+      <View style={styles.flexOne}>
+        <Text style={[styles.eventKicker, accent === "secondary" && styles.greenText]}>{kicker}</Text>
+        <Text style={styles.eventTitle}>{title}</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={30} color={colors.outlineVariant} />
+    </SurfaceCard>
+  );
+}
+
+function QuickAction({ label, icon, primary, badge }: { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; primary?: boolean; badge?: boolean }) {
+  return (
+    <View style={[styles.quickAction, primary && styles.quickActionPrimary]}>
+      {badge ? <View style={styles.smallRedDot} /> : null}
+      <View style={[styles.quickIconCircle, primary && styles.quickIconPrimary]}>
+        <MaterialCommunityIcons name={icon} size={26} color={primary ? colors.onPrimary : colors.primary} />
+      </View>
+      <Text style={[styles.quickText, primary && styles.quickTextPrimary]}>{label}</Text>
     </View>
   );
 }
 
+function PaymentRow({ initials, name, detail, amount }: { initials: string; name: string; detail: string; amount: string }) {
+  return (
+    <View style={styles.paymentRow}>
+      <InitialsAvatar label={initials} />
+      <View style={styles.flexOne}>
+        <Text style={styles.rowTitle}>{name}</Text>
+        <Text style={styles.rowMeta}>{detail}</Text>
+      </View>
+      <Text style={styles.amountRed}>{amount}</Text>
+    </View>
+  );
+}
+
+function MatchRow({ initials, name, date }: { initials: string; name: string; date: string }) {
+  return (
+    <View style={styles.matchRow}>
+      <InitialsAvatar label={initials} size={54} />
+      <View style={styles.flexOne}>
+        <Text style={styles.matchTitle}>{name}</Text>
+        <Text style={styles.rowMeta}>{date}</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={30} color={colors.outlineVariant} />
+    </View>
+  );
+}
+
+function HeroTrainingCard({ title, location, group, time }: { title: string; location: string; group: string; time: string }) {
+  return (
+    <View style={styles.heroCard}>
+      <MaterialCommunityIcons name="soccer" size={190} color="rgba(255,255,255,0.09)" style={styles.heroIcon} />
+      <View style={styles.iconTitleRow}>
+        <MaterialCommunityIcons name="clock-outline" size={20} color={colors.secondaryContainer} />
+        <Text style={styles.heroKicker}>Sıradaki Antrenman</Text>
+      </View>
+      <Text style={styles.heroTitle}>{title}</Text>
+      <View style={styles.metaRow}>
+        <Text style={styles.heroText}>⌖ {location}</Text>
+        <Text style={styles.heroText}>♟ {group}</Text>
+      </View>
+      <View style={styles.countdownBox}>
+        <Text style={styles.heroText}>Başlamasına</Text>
+        <Text style={styles.countdown}>02:15</Text>
+        <Text style={styles.heroText}>{time}</Text>
+      </View>
+    </View>
+  );
+}
+
+function Progress({ label, value, light }: { label: string; value: number; light?: boolean }) {
+  return (
+    <View style={styles.progressWrap}>
+      <View style={styles.cardHeaderRow}>
+        <Text style={styles.progressLabel}>{label}</Text>
+        <Text style={styles.progressLabel}>{value}%</Text>
+      </View>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${value}%`, backgroundColor: light ? colors.primaryFixed : colors.secondaryContainer }]} />
+      </View>
+    </View>
+  );
+}
+
+function AnnouncementItem({ dotColor, title, text, date }: { dotColor: string; title: string; text: string; date: string }) {
+  return (
+    <View style={styles.announcementItem}>
+      <View style={[styles.announcementDot, { backgroundColor: dotColor }]} />
+      <View style={styles.flexOne}>
+        <Text style={styles.infoTitle}>{title}</Text>
+        <Text style={styles.rowMeta}>{text}</Text>
+        <Text style={styles.dateSmall}>{date}</Text>
+      </View>
+    </View>
+  );
+}
+
+function averageScore(values: number[]) {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 const styles = StyleSheet.create({
-  body: { ...typography.body, color: colors.onSurfaceVariant },
-  danger: { color: colors.error },
-  header: { gap: spacing.sm, marginBottom: spacing.lg },
-  heroCard: { backgroundColor: colors.primary, borderRadius: radius.xl, gap: spacing.sm, marginBottom: spacing.lg, overflow: "hidden", padding: spacing.lg },
-  heroIcon: { position: "absolute", right: -18, top: -18 },
+  amountRed: { ...typography.title, color: colors.error },
+  announcementDot: { borderRadius: 4, height: 8, marginTop: 7, width: 8 },
+  announcementItem: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.lg },
+  cardHeaderRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  cardInsetHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", padding: spacing.lg },
+  cardTitle: { ...typography.headline, color: colors.primary },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  childSwitch: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, borderRadius: radius.full, borderWidth: 1, flexDirection: "row", padding: 4 },
+  childSwitchActive: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.sm },
+  childSwitchActiveText: { ...typography.label, color: colors.onPrimary },
+  childSwitchInactive: { alignItems: "center", flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.sm },
+  childSwitchText: { ...typography.label, color: colors.onSurfaceVariant },
+  countdown: { ...typography.headline, color: colors.secondaryContainer },
+  countdownBox: { alignItems: "center", alignSelf: "flex-start", backgroundColor: "rgba(215,226,255,0.15)", borderColor: "rgba(215,226,255,0.2)", borderRadius: radius.md, borderWidth: 1, gap: 2, marginTop: spacing.lg, minWidth: 132, padding: spacing.md },
+  darkCardTitle: { ...typography.title, color: colors.onPrimary },
+  darkScoreCard: { backgroundColor: colors.primary, borderRadius: radius.lg, gap: spacing.sm, padding: spacing.lg },
+  darkSubtitle: { ...typography.body, color: colors.primaryFixedDim },
+  dateSmall: { ...typography.label, color: colors.outline, marginTop: spacing.sm },
+  dateText: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginBottom: 4 },
+  debtBox: { alignItems: "center", backgroundColor: "rgba(255,218,214,0.35)", borderColor: colors.errorContainer, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
+  displayTitle: { ...typography.display, color: colors.primary },
+  errorSmall: { ...typography.label, color: colors.error },
+  eventCard: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingLeft: spacing.xl },
+  eventIconCircle: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 62, justifyContent: "center", width: 62 },
+  eventKicker: { ...typography.label, color: colors.primary, textTransform: "uppercase" },
+  eventTitle: { ...typography.headline, color: colors.primary },
+  flexOne: { flex: 1 },
+  greenText: { color: colors.secondary },
+  headerBlock: { gap: spacing.sm },
+  headerBlockSmallGap: { gap: spacing.sm },
+  heroCard: { backgroundColor: colors.primary, borderRadius: radius.xl, gap: spacing.sm, overflow: "hidden", padding: spacing.xl },
+  heroIcon: { position: "absolute", right: -38, top: -22 },
   heroKicker: { ...typography.label, color: colors.secondaryContainer, textTransform: "uppercase" },
-  heroText: { ...typography.body, color: colors.primaryFixedDim },
+  heroText: { ...typography.bodyLarge, color: colors.primaryFixedDim },
   heroTitle: { ...typography.headline, color: colors.onPrimary },
-  metricCard: { alignItems: "center", flex: 1, gap: spacing.xs, padding: spacing.md },
-  metricLabel: { ...typography.label, color: colors.onSurfaceVariant },
-  metricValue: { ...typography.headline, color: colors.primary },
-  metrics: { flexDirection: "row", gap: spacing.md, marginBottom: spacing.lg },
-  reportCard: { gap: spacing.md },
-  score: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flex: 1, gap: 2, padding: spacing.sm },
-  scoreGrid: { flexDirection: "row", gap: spacing.sm },
-  scoreValue: { ...typography.title, color: colors.primary },
-  sectionHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  sectionTitle: { ...typography.title, color: colors.primary },
+  iconTitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  infoTitle: { ...typography.title, color: colors.primary },
+  kickerDark: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
+  largeWhite: { ...typography.display, color: colors.onPrimary, fontSize: 48, lineHeight: 56 },
+  linkText: { ...typography.label, color: colors.primary },
+  matchRow: { alignItems: "center", borderColor: colors.borderSoft, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
+  matchTitle: { ...typography.title, color: colors.primary },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
+  metricsRow: { flexDirection: "row", gap: spacing.md },
+  mutedBold: { ...typography.title, color: colors.outline },
+  noPaddingCard: { padding: 0 },
+  outlineButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
+  outlineButtonText: { ...typography.title, color: colors.primary },
+  parentCardTitle: { ...typography.title, color: colors.primary },
+  parentInfoBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceContainerHigh, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
+  parentTitle: { ...typography.headline, color: colors.primary },
+  parentTrainingCard: { backgroundColor: "rgba(232,255,243,0.45)", gap: spacing.md },
+  payButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.md },
+  payButtonText: { ...typography.title, color: colors.onPrimary },
+  paymentRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  progressFill: { borderRadius: radius.full, height: "100%" },
+  progressLabel: { ...typography.label, color: colors.onPrimary },
+  progressTrack: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: radius.full, height: 7, overflow: "hidden" },
+  progressWrap: { gap: 4 },
+  quickAction: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radius.lg, borderWidth: 1, flex: 1, gap: spacing.sm, minHeight: 130, justifyContent: "center", padding: spacing.sm },
+  quickActionPrimary: { backgroundColor: colors.primary },
+  quickGrid: { flexDirection: "row", gap: spacing.md },
+  quickIconCircle: { alignItems: "center", backgroundColor: colors.primaryFixed, borderRadius: radius.full, height: 54, justifyContent: "center", width: 54 },
+  quickIconPrimary: { backgroundColor: colors.primary },
+  quickText: { ...typography.label, color: colors.primary, fontSize: 14, lineHeight: 18, textAlign: "center" },
+  quickTextPrimary: { color: colors.onPrimary },
+  rightText: { alignItems: "flex-end" },
+  rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
+  rowTitle: { ...typography.bodyLarge, color: colors.primary },
+  scoreInline: { alignItems: "flex-end", flexDirection: "row", gap: spacing.sm },
+  scoreRow: { flexDirection: "row", justifyContent: "space-around" },
+  sectionStack: { gap: spacing.lg },
+  separator: { backgroundColor: colors.borderSoft, height: 1 },
+  smallMeta: { ...typography.body, color: colors.onSurfaceVariant },
+  smallRedDot: { backgroundColor: colors.error, borderRadius: 5, height: 10, position: "absolute", right: spacing.md, top: spacing.md, width: 10 },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
-  title: { ...typography.display, color: colors.primary }
+  welcomeRow: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" }
 });
