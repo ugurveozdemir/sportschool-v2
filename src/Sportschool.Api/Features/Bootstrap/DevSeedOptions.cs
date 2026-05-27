@@ -11,4 +11,12 @@ public sealed class DevSeedOptions
     public string PlatformOwnerFullName { get; set; } = "";
 
     public string PlatformOwnerPassword { get; set; } = "";
+
+    public string CoachSchoolCode { get; set; } = "istanbul";
+
+    public string CoachEmail { get; set; } = "egitmen@istanbul.com";
+
+    public string CoachFullName { get; set; } = "İstanbul Eğitmeni";
+
+    public string CoachPassword { get; set; } = "egitmen123";
 }

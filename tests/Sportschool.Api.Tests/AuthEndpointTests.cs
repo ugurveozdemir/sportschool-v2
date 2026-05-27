@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Schools;
@@ -11,6 +13,11 @@ namespace Sportschool.Api.Tests;
 
 public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     private readonly TestAppFactory _factory;
 
     public AuthEndpointTests(TestAppFactory factory)
@@ -45,9 +52,44 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
         var schools = await client.GetFromJsonAsync<LoginSchoolResponse[]>("/api/auth/schools");
 
         Assert.NotNull(schools);
-        var school = Assert.Single(schools);
-        Assert.Equal("Active School", school.Name);
-        Assert.Equal("active", school.Code);
+        Assert.Contains(schools, school => school.Name == "Active School" && school.Code == "active");
+        Assert.DoesNotContain(schools, school => school.Name == "Inactive School" || school.Code == "inactive");
+    }
+
+    [Fact]
+    public async Task Login_AllowsCoachModeForSchoolCoach()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var school = new School
+        {
+            Name = $"Coach Login {suffix}",
+            Code = $"coach-login-{suffix}",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode($"coach-login-{suffix}")
+        };
+        var coach = TestUsers.Create(school.Id, $"coach-login-{suffix}@example.com", "Coach Login", "coach-password", UserRole.Coach);
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.Add(school);
+            db.Users.Add(coach);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            schoolCode = school.Code,
+            email = coach.Email,
+            password = "coach-password",
+            mode = LoginMode.Coach,
+            deviceName = "test"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+        Assert.NotNull(auth);
+        Assert.Contains(UserRole.Coach, auth!.Roles);
     }
 
     [Fact]

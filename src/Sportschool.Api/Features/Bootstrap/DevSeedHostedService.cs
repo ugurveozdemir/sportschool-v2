@@ -51,6 +51,7 @@ public sealed class DevSeedHostedService(
         try
         {
             await SeedPlatformOwnerAsync(db, passwordHasher, seed, cancellationToken);
+            await SeedCoachAsync(db, passwordHasher, seed, cancellationToken);
             await SeedIstanbulAthletesAsync(db, passwordHasher, cancellationToken);
         }
         catch (Exception exception) when (exception is InvalidOperationException or DbUpdateException)
@@ -91,6 +92,72 @@ public sealed class DevSeedHostedService(
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Seeded development PlatformOwner user {Email}.", user.Email);
+    }
+
+    private async Task SeedCoachAsync(
+        SportschoolDbContext db,
+        PasswordHasher passwordHasher,
+        DevSeedOptions seed,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(seed.CoachSchoolCode)
+            || string.IsNullOrWhiteSpace(seed.CoachEmail)
+            || string.IsNullOrWhiteSpace(seed.CoachFullName)
+            || string.IsNullOrWhiteSpace(seed.CoachPassword))
+        {
+            logger.LogWarning("Development seed is enabled but Coach seed credentials are incomplete.");
+            return;
+        }
+
+        var normalizedSchoolCode = TextNormalizer.NormalizeSchoolCode(seed.CoachSchoolCode);
+        var school = await db.Schools
+            .FirstOrDefaultAsync(x => x.NormalizedCode == normalizedSchoolCode && x.IsActive, cancellationToken);
+
+        if (school is null)
+        {
+            logger.LogWarning("Development Coach seed was skipped because school {SchoolCode} was not found.", seed.CoachSchoolCode);
+            return;
+        }
+
+        var normalizedEmail = TextNormalizer.NormalizeEmail(seed.CoachEmail);
+        var coach = await db.Users
+            .Include(x => x.Roles)
+            .FirstOrDefaultAsync(
+                x => x.SchoolId == school.Id && x.NormalizedEmail == normalizedEmail,
+                cancellationToken);
+
+        if (coach is null)
+        {
+            coach = new AppUser
+            {
+                SchoolId = school.Id,
+                Email = seed.CoachEmail.Trim(),
+                NormalizedEmail = normalizedEmail,
+                FullName = seed.CoachFullName.Trim(),
+                PasswordHash = passwordHasher.Hash(seed.CoachPassword)
+            };
+
+            coach.Roles.Add(new UserRoleAssignment { User = coach, Role = UserRole.Coach });
+            db.Users.Add(coach);
+            await db.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("Seeded development Coach user {Email} for school {SchoolCode}.", coach.Email, school.Code);
+            return;
+        }
+
+        coach.Email = seed.CoachEmail.Trim();
+        coach.NormalizedEmail = normalizedEmail;
+        coach.FullName = seed.CoachFullName.Trim();
+        coach.PasswordHash = passwordHasher.Hash(seed.CoachPassword);
+        coach.IsActive = true;
+
+        if (!coach.Roles.Any(x => x.Role == UserRole.Coach))
+        {
+            coach.Roles.Add(new UserRoleAssignment { User = coach, Role = UserRole.Coach });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Updated development Coach user {Email} for school {SchoolCode}.", coach.Email, school.Code);
     }
 
     private async Task SeedIstanbulAthletesAsync(

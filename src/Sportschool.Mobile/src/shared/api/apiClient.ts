@@ -10,7 +10,7 @@ type RequestOptions = {
   retryOnUnauthorized?: boolean;
 };
 
-const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
+const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:5062";
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
   const response = await sendRequest<TResponse>(path, options);

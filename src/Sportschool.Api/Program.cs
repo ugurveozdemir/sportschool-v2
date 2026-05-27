@@ -84,6 +84,7 @@ app.MapMethods("/favicon.ico", [HttpMethods.Get, HttpMethods.Head], () => Result
 app.MapAuthEndpoints();
 app.MapAthleteApplicationEndpoints();
 app.MapGroupEndpoints();
+app.MapMobileCoachEndpoints();
 app.MapMobileReadEndpoints();
 app.MapPaymentEndpoints();
 app.MapPlatformEndpoints();

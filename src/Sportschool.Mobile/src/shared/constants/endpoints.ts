@@ -8,5 +8,11 @@ export const endpoints = {
   meTrainings: "/api/me/trainings",
   meAttendance: "/api/me/attendance",
   mePayments: "/api/me/payments",
-  meAthleteReports: "/api/me/athlete-reports"
+  meAthleteReports: "/api/me/athlete-reports",
+  coachSummary: "/api/mobile/coach/summary",
+  coachGroups: "/api/mobile/coach/groups",
+  coachTrainings: "/api/mobile/coach/trainings",
+  coachAttendanceRoster: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance-roster`,
+  coachAttendance: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance`,
+  coachAttendanceItem: (trainingId: string, athleteProfileId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance/${athleteProfileId}`
 } as const;
