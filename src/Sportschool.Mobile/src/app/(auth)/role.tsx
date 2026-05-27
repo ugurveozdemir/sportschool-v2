@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ImageBackground, Pressable, SafeAreaView, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
+import { ImageBackground, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 
 import { AkademiLogo } from "@/shared/components/AkademiLogo";
 import { colors } from "@/shared/design/colors";
@@ -35,28 +35,30 @@ export default function RoleScreen() {
       <View style={styles.patternLogo}>
         <AkademiLogo size={280} />
       </View>
-      <View style={styles.header}>
-        <View style={styles.logoBubble}>
-          <AkademiLogo size={84} />
+      <ScrollView alwaysBounceVertical contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.logoBubble}>
+            <AkademiLogo size={84} />
+          </View>
+          <Text style={styles.country}>Türkiye</Text>
+          <Text style={styles.title}>{`Türkiye'nin Bir Numaralı\nAkademisi`}</Text>
+          <Text style={styles.subtitle}>{"Futbol eğitimi ve kişisel gelişim antrenmanları Türkiye'de ilk defa Akademi Pro çatısı altında..."}</Text>
         </View>
-        <Text style={styles.country}>Türkiye</Text>
-        <Text style={styles.title}>{`Türkiye'nin Bir Numaralı\nAkademisi`}</Text>
-        <Text style={styles.subtitle}>{"Futbol eğitimi ve kişisel gelişim antrenmanları Türkiye'de ilk defa Akademi Pro çatısı altında..."}</Text>
-      </View>
 
-      <View style={styles.cards}>
-        {roles.map((role) => {
-          const selected = selectedRole === role.mode;
-          return (
-            <Pressable key={role.mode} onPress={() => setSelectedRole(role.mode)} style={({ pressed }) => [styles.roleCard, selected && styles.roleCardSelected, pressed && styles.pressed]}>
-              <ImageBackground source={role.image} resizeMode="cover" style={styles.roleImage} imageStyle={styles.roleImageRadius}>
-                <View style={styles.roleOverlay} />
-                <Text style={styles.roleTitle}>{role.title}</Text>
-              </ImageBackground>
-            </Pressable>
-          );
-        })}
-      </View>
+        <View style={styles.cards}>
+          {roles.map((role) => {
+            const selected = selectedRole === role.mode;
+            return (
+              <Pressable key={role.mode} onPress={() => setSelectedRole(role.mode)} style={({ pressed }) => [styles.roleCard, selected && styles.roleCardSelected, pressed && styles.pressed]}>
+                <ImageBackground source={role.image} resizeMode="cover" style={styles.roleImage} imageStyle={styles.roleImageRadius}>
+                  <View style={styles.roleOverlay} />
+                  <Text style={styles.roleTitle}>{role.title}</Text>
+                </ImageBackground>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
 
       <Pressable onPress={() => router.push({ pathname: "/login", params: { mode: selectedRole } })} style={styles.footer}>
         <Text style={styles.footerText}>Devam Et</Text>
@@ -68,6 +70,7 @@ export default function RoleScreen() {
 
 const styles = StyleSheet.create({
   cards: { gap: spacing.lg, paddingHorizontal: spacing.lg },
+  content: { flexGrow: 1, paddingBottom: spacing.xl },
   country: { ...typography.label, color: colors.primary, textAlign: "center", textTransform: "uppercase" },
   footer: { alignItems: "center", backgroundColor: colors.primary, flexDirection: "row", gap: spacing.sm, height: 72, justifyContent: "flex-end", marginTop: "auto", paddingHorizontal: spacing.xl },
   footerText: { ...typography.bodyLarge, color: colors.onPrimary, fontFamily: "Inter_600SemiBold" },

@@ -50,7 +50,7 @@ export default function LoginScreen() {
       <View style={styles.backgroundLogo}>
         <AkademiLogo size={360} />
       </View>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView alwaysBounceVertical contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.brand}>
           <AkademiLogo size={132} />
           <Text style={styles.title}>Akademi Pro</Text>
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   brand: { alignItems: "center", gap: spacing.sm, marginBottom: spacing.xl },
   clubButton: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   clubText: { ...typography.headline, color: colors.primary },
-  content: { flexGrow: 1, justifyContent: "center", padding: spacing.lg },
+  content: { flexGrow: 1, justifyContent: "center", padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   divider: { backgroundColor: colors.outlineVariant, flex: 1, height: 1 },
   dividerRow: { alignItems: "center", flexDirection: "row", gap: spacing.lg, paddingVertical: spacing.sm },
   dividerText: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
