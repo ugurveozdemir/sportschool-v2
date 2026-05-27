@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ImageBackground, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, SafeAreaView, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 
 import { AkademiLogo } from "@/shared/components/AkademiLogo";
 import { colors } from "@/shared/design/colors";
@@ -9,21 +9,21 @@ import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import type { LoginMode } from "@/shared/constants/roles";
 
-const roles: { mode: LoginMode; title: string; image: string }[] = [
+const roles: { mode: LoginMode; title: string; image: ImageSourcePropType }[] = [
   {
     mode: "Athlete",
     title: "Sporcular",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB52OOTYRV0JoUTZ8mOO6zFzOknZ8eKejQVms7gHiiUSAvAJR-TooJbcMD_V19RgRFxaUhQJchjE2mYRFeefIxT5A5aHkhqGkTNiaw3mhQpe5wCv1QFzffXnC-ZrmEI5_tuemmQoN-0o1j-TuY73WuBFeTAq_snkKUhJF2tYIBrWWp0KZaqTO_wvsu58QptibFQ1gsFHkg23_sNsxXlH4lLDY2iF6fFGzfQe3q8LhLcvzI_R04AmmoYfM9I_ps0YdgSck__Prtg9AJx"
+    image: require("../../assets/role-athletes.png")
   },
   {
     mode: "Coach",
     title: "Antrenörler",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCPakDmkmkJ82Yn4txQUZyVhF9IaFOICjlKaa7BfxniGj4sIX83xkFy7kyfUy20U7KJIswm2_z6Ds7yDVap1cSfDCRUHXKk45LHDZPA-Tcc3UuLBm4FpXPE9qI3x9BWb76sfcZqrHPdxH4Rj1mJfR2D59I7nSHnU7p1MXfdFkSiB-dZQ-H-2j7A6jSbCa822-bqUfWEunp4haIHQJ86CgTsWBMHw_W6l1aI6V7g_TE3u5AyzyRyRnf2sA8cpDR1zA1x1zUoUh2Jso1_"
+    image: require("../../assets/role-coaches.png")
   },
   {
     mode: "Parent",
     title: "Veliler",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCC-MdDf86Qlipq1ie3hzVmw5MPn49QoQkP9t7Y_6GuPwMges04SabeZpZFSdWjt3bzFFa7nlmGcIlFt9jEpvRD8nWIyXDIEvHG_jCatZNiBSuvKhhQG_zD0g66vjw8NUfKfDrBTbqJASX9sZQVYF8mm0Ky9BcQl4XPN02HkG-Hoeq5yxk2pIcmoZ32Mt7e0wtfZiuFdsFng7_jJHWTAdknjyxXMGX1WyAWQrVxoO_5z0sLhV-k-4ZTARgyX7n5qxGQxCUmH3p2ybSX"
+    image: require("../../assets/role-parents.png")
   }
 ];
 
@@ -40,8 +40,8 @@ export default function RoleScreen() {
           <AkademiLogo size={84} />
         </View>
         <Text style={styles.country}>Türkiye</Text>
-        <Text style={styles.title}>Türkiye'nin Bir Numaralı{`\n`}Akademisi</Text>
-        <Text style={styles.subtitle}>Futbol eğitimi ve kişisel gelişim antrenmanları Türkiye'de ilk defa Akademi Pro çatısı altında...</Text>
+        <Text style={styles.title}>{`Türkiye'nin Bir Numaralı\nAkademisi`}</Text>
+        <Text style={styles.subtitle}>{"Futbol eğitimi ve kişisel gelişim antrenmanları Türkiye'de ilk defa Akademi Pro çatısı altında..."}</Text>
       </View>
 
       <View style={styles.cards}>
@@ -49,7 +49,7 @@ export default function RoleScreen() {
           const selected = selectedRole === role.mode;
           return (
             <Pressable key={role.mode} onPress={() => setSelectedRole(role.mode)} style={({ pressed }) => [styles.roleCard, selected && styles.roleCardSelected, pressed && styles.pressed]}>
-              <ImageBackground source={{ uri: role.image }} resizeMode="cover" style={styles.roleImage} imageStyle={styles.roleImageRadius}>
+              <ImageBackground source={role.image} resizeMode="cover" style={styles.roleImage} imageStyle={styles.roleImageRadius}>
                 <View style={styles.roleOverlay} />
                 <Text style={styles.roleTitle}>{role.title}</Text>
               </ImageBackground>
