@@ -1,15 +1,16 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
-import { useCoachAttendanceRoster, useCoachTrainings, useSaveCoachAttendance } from "@/features/coach/api";
+import { useCoachAthletes } from "@/features/coach/api";
+import type { CoachAthleteListItem } from "@/features/coach/types";
 import { useAttendance, useTrainings } from "@/features/me/api";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { InitialsAvatar, MetricTile, Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
-import type { AttendanceStatus } from "@/shared/constants/domain";
 import { colors } from "@/shared/design/colors";
-import { radius, spacing } from "@/shared/design/spacing";
+import { spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatDate, formatTime } from "@/shared/utils/date";
@@ -20,14 +21,10 @@ export default function AttendanceScreen() {
   const isCoach = session?.roles.includes("Coach") ?? false;
   const attendanceQuery = useAttendance(!isCoach);
   const trainingsQuery = useTrainings(!isCoach);
-  const coachTrainingsQuery = useCoachTrainings(isCoach);
-  const coachTrainings = coachTrainingsQuery.data ?? [];
-  const selectedTraining = coachTrainings.find((training) => new Date(training.startsAt).getTime() >= Date.now()) ?? coachTrainings[0];
-  const rosterQuery = useCoachAttendanceRoster(isCoach ? selectedTraining?.id : undefined);
-  const saveAttendanceMutation = useSaveCoachAttendance(selectedTraining?.id);
+  const coachAthletesQuery = useCoachAthletes(isCoach);
 
-  if (isCoach && (coachTrainingsQuery.isLoading || rosterQuery.isLoading)) {
-    return <LoadingState label="Yoklama listesi yükleniyor" />;
+  if (isCoach && coachAthletesQuery.isLoading) {
+    return <LoadingState label="Sporcular yükleniyor" />;
   }
 
   if (!isCoach && attendanceQuery.isLoading) {
@@ -35,68 +32,33 @@ export default function AttendanceScreen() {
   }
 
   if (isCoach) {
-    const roster = rosterQuery.data;
-    const total = roster?.athletes.length ?? 0;
-    const present = roster?.athletes.filter((athlete) => athlete.status === "Present").length ?? 0;
-    const absent = roster?.athletes.filter((athlete) => athlete.status === "Absent").length ?? 0;
-    const excused = roster?.athletes.filter((athlete) => athlete.status === "Excused" || athlete.status === "Late").length ?? 0;
+    const athletes = coachAthletesQuery.data ?? [];
+    const scoredAthletes = athletes.filter((athlete) => athlete.latestAverageScore !== null).length;
+    const groupCount = new Set(athletes.flatMap((athlete) => athlete.groups)).size;
 
     return (
       <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
-        {!selectedTraining || !roster ? (
-          <SurfaceCard>
-            <EmptyState title="Antrenman yok" description="Yoklama alınacak aktif antrenman bulunmuyor." />
-          </SurfaceCard>
-        ) : (
-          <>
-            <View style={styles.headerBlock}>
-              <View style={styles.metaRow}>
-                <MaterialCommunityIcons name="calendar-month-outline" size={20} color={colors.onSurfaceVariant} />
-                <Text style={styles.subtitle}>{formatDate(roster.training.startsAt)} • {formatTime(roster.training.startsAt)} Antrenmanı</Text>
-              </View>
-              <Text style={styles.title}>{roster.training.groupName} Yoklaması</Text>
-              <View style={styles.metricsRow}>
-                <MetricTile icon="account-group-outline" label="Toplam" value={`${total}`} />
-                <MetricTile icon="check-circle-outline" label="Geldi" value={`${present}`} tone="success" />
-                <MetricTile icon="close-circle-outline" label="Gelmedi" value={`${absent}`} tone="danger" />
-                <MetricTile icon="calendar-remove-outline" label="İzinli" value={`${excused}`} tone="warning" />
-              </View>
-              <Pressable
-                disabled={saveAttendanceMutation.isPending}
-                onPress={() => roster.athletes.forEach((athlete) => saveAttendanceMutation.mutate(
-                  { athleteProfileId: athlete.athleteProfileId, status: "Present", existing: Boolean(athlete.status) },
-                  { onError: () => Alert.alert("Yoklama", "Kayıt güncellenemedi.") }
-                ))}
-                style={styles.markAllButton}
-              >
-                <MaterialCommunityIcons name="check-all" size={24} color={colors.onPrimary} />
-                <Text style={styles.markAllText}>Tümünü Geldi İşaretle</Text>
-              </Pressable>
-            </View>
+        <View style={styles.headerBlock}>
+          <View>
+            <Text style={styles.title}>Sporcular</Text>
+            <Text style={styles.subtitle}>Sana atanmış gruplardaki aktif sporcular.</Text>
+          </View>
+          <View style={styles.metricsRow}>
+            <MetricTile icon="account-multiple-outline" label="Sporcu" value={`${athletes.length}`} />
+            <MetricTile icon="account-group-outline" label="Grup" value={`${groupCount}`} tone="success" />
+            <MetricTile icon="chart-line" label="Raporlu" value={`${scoredAthletes}`} tone="warning" />
+          </View>
+        </View>
 
-            <View style={styles.rosterList}>
-              {roster.athletes.length === 0 ? (
-                <SurfaceCard>
-                  <EmptyState title="Sporcu yok" description="Bu antrenman grubunda aktif sporcu bulunmuyor." />
-                </SurfaceCard>
-              ) : (
-                roster.athletes.map((athlete) => (
-                  <RosterRow
-                    key={athlete.athleteProfileId}
-                    disabled={saveAttendanceMutation.isPending}
-                    name={`${athlete.firstName} ${athlete.lastName}`}
-                    meta={athlete.parentFullName}
-                    status={athlete.status}
-                    onSelect={(status) => saveAttendanceMutation.mutate(
-                      { athleteProfileId: athlete.athleteProfileId, status, existing: Boolean(athlete.status) },
-                      { onError: () => Alert.alert("Yoklama", "Kayıt güncellenemedi.") }
-                    )}
-                  />
-                ))
-              )}
-            </View>
-          </>
-        )}
+        <View style={styles.rosterList}>
+          {athletes.length === 0 ? (
+            <SurfaceCard>
+              <EmptyState title="Sporcu yok" description="Henüz sana atanmış aktif sporcu bulunmuyor." />
+            </SurfaceCard>
+          ) : (
+            athletes.map((athlete) => <AthleteRow key={athlete.athleteProfileId} athlete={athlete} />)
+          )}
+        </View>
       </ScreenShell>
     );
   }
@@ -134,33 +96,21 @@ export default function AttendanceScreen() {
   );
 }
 
-function RosterRow({ name, meta, status, disabled, onSelect }: { name: string; meta: string; status: AttendanceStatus | null; disabled: boolean; onSelect: (status: AttendanceStatus) => void }) {
-  const accent = status === "Present" ? colors.secondaryContainer : status === "Absent" ? colors.errorContainer : status === "Excused" || status === "Late" ? colors.tertiaryFixedDim : colors.primaryFixed;
+function AthleteRow({ athlete }: { athlete: CoachAthleteListItem }) {
+  const name = `${athlete.firstName} ${athlete.lastName}`;
+  const score = athlete.latestAverageScore;
   return (
-    <SurfaceCard style={{ ...styles.rosterCard, borderColor: accent }}>
-      <View style={styles.rosterHeader}>
-        <InitialsAvatar label={initials(name)} size={58} tone={status === "Absent" ? "red" : "light"} />
+    <Pressable onPress={() => router.push({ pathname: "/athletes/[athleteProfileId]", params: { athleteProfileId: athlete.athleteProfileId } })}>
+      <SurfaceCard style={styles.athleteCard}>
+        <InitialsAvatar label={initials(name)} size={58} tone="light" />
         <View style={styles.flexOne}>
           <Text style={styles.athleteName}>{name}</Text>
-          <Text style={styles.rowMeta}>{meta}</Text>
+          <Text style={styles.rowMeta}>{athlete.groups.join(", ") || "Grup ataması yok"}</Text>
+          <Text style={styles.rowMeta}>Veli: {athlete.parentFullName}</Text>
         </View>
-      </View>
-      <View style={styles.segmentControl}>
-        <StatusButton disabled={disabled} active={status === "Present"} icon="check" label="Geldi" tone="success" onPress={() => onSelect("Present")} />
-        <StatusButton disabled={disabled} active={status === "Absent"} icon="close" label="Gelmedi" tone="danger" onPress={() => onSelect("Absent")} />
-        <StatusButton disabled={disabled} active={status === "Excused" || status === "Late"} icon="calendar-remove-outline" label="İzinli" tone="warning" onPress={() => onSelect("Excused")} />
-      </View>
-    </SurfaceCard>
-  );
-}
-
-function StatusButton({ active, label, icon, tone, disabled, onPress }: { active: boolean; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; tone: "success" | "danger" | "warning"; disabled: boolean; onPress: () => void }) {
-  const backgroundColor = tone === "success" ? colors.secondary : tone === "danger" ? colors.error : colors.tertiaryFixedDim;
-  const textColor = tone === "warning" ? colors.onTertiaryFixed : colors.onPrimary;
-  return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.statusButton, active && { backgroundColor }]}>
-      <MaterialCommunityIcons name={icon} size={20} color={active ? textColor : colors.onSurfaceVariant} />
-      <Text style={[styles.statusText, active && { color: textColor }]}>{label}</Text>
+        {score !== null ? <Pill label={`${score.toFixed(1)} skor`} tone="success" /> : <Pill label="Rapor yok" tone="neutral" />}
+        <MaterialCommunityIcons name="chevron-right" size={26} color={colors.outline} />
+      </SurfaceCard>
     </Pressable>
   );
 }
@@ -170,22 +120,15 @@ function initials(name: string) {
 }
 
 const styles = StyleSheet.create({
+  athleteCard: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   athleteName: { ...typography.title, color: colors.primary },
   flexOne: { flex: 1 },
   headerBlock: { gap: spacing.lg },
   historyRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  markAllButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
-  markAllText: { ...typography.title, color: colors.onPrimary },
-  metaRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   metricsRow: { flexDirection: "row", gap: spacing.sm },
-  rosterCard: { gap: spacing.lg },
-  rosterHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   rosterList: { gap: spacing.md },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
   rowTitle: { ...typography.title, color: colors.primary },
-  segmentControl: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, flexDirection: "row", padding: 4 },
-  statusButton: { alignItems: "center", borderRadius: radius.full, flex: 1, flexDirection: "row", gap: 4, justifyContent: "center", paddingVertical: spacing.md },
-  statusText: { ...typography.body, color: colors.onSurfaceVariant },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   title: { ...typography.headline, color: colors.primary }
 });

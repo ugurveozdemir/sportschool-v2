@@ -5,6 +5,7 @@ using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Mobile;
+using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
@@ -70,6 +71,64 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         Assert.Equal(data.Coach.Id, saved.RecordedByUserId);
     }
 
+    [Fact]
+    public async Task CoachAthletes_ReturnsOnlyCurrentCoachGroupAthletes()
+    {
+        var data = await SeedCoachScenarioAsync();
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        var athletes = await client.GetFromJsonAsync<MobileCoachAthleteListItem[]>("/api/mobile/coach/athletes");
+
+        Assert.NotNull(athletes);
+        var athlete = Assert.Single(athletes!);
+        Assert.Equal(data.Athlete.Id, athlete.AthleteProfileId);
+        Assert.Equal("Mobile", athlete.FirstName);
+    }
+
+    [Fact]
+    public async Task CoachCanCreateReportForOwnAthlete()
+    {
+        var data = await SeedCoachScenarioAsync();
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        using var response = await client.PostAsJsonAsync($"/api/mobile/coach/athletes/{data.Athlete.Id}/reports", new
+        {
+            athleteProfileId = data.Athlete.Id,
+            summary = "Tempo iyi, karar verme daha hızlı.",
+            improvementAreas = "İlk kontrol ve topsuz koşu.",
+            speedScore = 8.5m,
+            strengthScore = 7.5m,
+            dribblingScore = 8m,
+            shootingScore = 7m
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var saved = await _factory.QueryAsync(db => db.AthleteReports.SingleAsync(x => x.AthleteProfileId == data.Athlete.Id));
+        Assert.Equal(data.Coach.Id, saved.CoachId);
+        Assert.Equal(8.5m, saved.SpeedScore);
+    }
+
+    [Fact]
+    public async Task CoachCannotCreateReportForAnotherCoachAthlete()
+    {
+        var data = await SeedCoachScenarioAsync();
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        using var response = await client.PostAsJsonAsync($"/api/mobile/coach/athletes/{data.OtherCoachAthlete.Id}/reports", new
+        {
+            athleteProfileId = data.OtherCoachAthlete.Id,
+            summary = "Geçersiz erişim.",
+            improvementAreas = "Geçersiz erişim.",
+            speedScore = 8m,
+            strengthScore = 8m,
+            dribblingScore = 8m,
+            shootingScore = 8m
+        });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private async Task<CoachScenario> SeedCoachScenarioAsync()
     {
         var suffix = Guid.NewGuid().ToString("N");
@@ -82,6 +141,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         var coach = TestUsers.Create(school.Id, $"coach-{suffix}@example.com", "Mobile Coach", "password", UserRole.Coach);
         var otherCoach = TestUsers.Create(school.Id, $"other-coach-{suffix}@example.com", "Other Coach", "password", UserRole.Coach);
         var athleteUser = TestUsers.Create(school.Id, $"athlete-{suffix}@example.com", "Mobile Athlete", "password", UserRole.Athlete);
+        var otherCoachAthleteUser = TestUsers.Create(school.Id, $"other-athlete-{suffix}@example.com", "Other Athlete", "password", UserRole.Athlete);
         var group = new TrainingGroup
         {
             SchoolId = school.Id,
@@ -101,6 +161,16 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             BirthDate = new DateOnly(2014, 1, 1),
             ParentFullName = "Mobile Parent",
             ParentPhone = "05000000000"
+        };
+        var otherCoachAthlete = new AthleteProfile
+        {
+            SchoolId = school.Id,
+            User = otherCoachAthleteUser,
+            FirstName = "Other",
+            LastName = "Athlete",
+            BirthDate = new DateOnly(2013, 1, 1),
+            ParentFullName = "Other Parent",
+            ParentPhone = "05000000001"
         };
         var now = DateTimeOffset.UtcNow;
         var todayStartsAt = new DateTimeOffset(now.Year, now.Month, now.Day, 12, 0, 0, TimeSpan.Zero);
@@ -128,20 +198,22 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         await _factory.SeedAsync(db =>
         {
             db.Schools.Add(school);
-            db.Users.AddRange(coach, otherCoach, athleteUser);
+            db.Users.AddRange(coach, otherCoach, athleteUser, otherCoachAthleteUser);
             db.TrainingGroups.AddRange(group, otherGroup);
-            db.AthleteProfiles.Add(athlete);
+            db.AthleteProfiles.AddRange(athlete, otherCoachAthlete);
             db.GroupAthletes.Add(new GroupAthlete { Group = group, AthleteProfile = athlete });
+            db.GroupAthletes.Add(new GroupAthlete { Group = otherGroup, AthleteProfile = otherCoachAthlete });
             db.TrainingSessions.AddRange(coachTraining, otherCoachTraining);
             return Task.CompletedTask;
         });
 
-        return new CoachScenario(coach, coachTraining, otherCoachTraining, athlete);
+        return new CoachScenario(coach, coachTraining, otherCoachTraining, athlete, otherCoachAthlete);
     }
 
     private sealed record CoachScenario(
         AppUser Coach,
         TrainingSession CoachTraining,
         TrainingSession OtherCoachTraining,
-        AthleteProfile Athlete);
+        AthleteProfile Athlete,
+        AthleteProfile OtherCoachAthlete);
 }

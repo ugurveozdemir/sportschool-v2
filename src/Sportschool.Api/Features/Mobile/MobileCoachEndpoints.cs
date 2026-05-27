@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Attendance;
+using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
@@ -17,6 +18,9 @@ public static class MobileCoachEndpoints
 
         group.MapGet("/summary", GetSummaryAsync);
         group.MapGet("/groups", ListGroupsAsync);
+        group.MapGet("/athletes", ListAthletesAsync);
+        group.MapGet("/athletes/{athleteProfileId:guid}", GetAthleteAsync);
+        group.MapPost("/athletes/{athleteProfileId:guid}/reports", CreateAthleteReportAsync);
         group.MapGet("/trainings", ListTrainingsAsync);
         group.MapGet("/trainings/{trainingId:guid}/attendance-roster", GetAttendanceRosterAsync);
         group.MapPost("/trainings/{trainingId:guid}/attendance", SaveAttendanceAsync);
@@ -104,6 +108,185 @@ public static class MobileCoachEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(groups);
+    }
+
+    private static async Task<IResult> ListAthletesAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var context = GetCoachContext(currentUser);
+        if (context is null)
+        {
+            return Results.Forbid();
+        }
+
+        var coachGroupIds = CoachGroupIds(context, db);
+        var athleteRows = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x => coachGroupIds.Contains(x.GroupId)
+                && x.AthleteProfile.SchoolId == context.SchoolId
+                && x.AthleteProfile.IsActive
+                && x.AthleteProfile.User.IsActive)
+            .Select(x => new
+            {
+                x.AthleteProfileId,
+                x.AthleteProfile.FirstName,
+                x.AthleteProfile.LastName,
+                x.AthleteProfile.BirthDate,
+                x.AthleteProfile.ParentFullName,
+                x.AthleteProfile.ParentPhone,
+                GroupName = x.Group.Name
+            })
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName)
+            .ToListAsync(cancellationToken);
+
+        var athleteIds = athleteRows.Select(x => x.AthleteProfileId).Distinct().ToArray();
+        var reportScores = await db.AthleteReports
+            .AsNoTracking()
+            .Where(x => x.SchoolId == context.SchoolId && athleteIds.Contains(x.AthleteProfileId))
+            .Select(x => new
+            {
+                x.AthleteProfileId,
+                x.CreatedAt,
+                AverageScore = (x.SpeedScore + x.StrengthScore + x.DribblingScore + x.ShootingScore) / 4
+            })
+            .ToListAsync(cancellationToken);
+
+        var latestScores = reportScores
+            .GroupBy(x => x.AthleteProfileId)
+            .ToDictionary(
+                x => x.Key,
+                x => (decimal?)x.OrderByDescending(report => report.CreatedAt).First().AverageScore);
+
+        var athletes = athleteRows
+            .GroupBy(x => new
+            {
+                x.AthleteProfileId,
+                x.FirstName,
+                x.LastName,
+                x.BirthDate,
+                x.ParentFullName,
+                x.ParentPhone
+            })
+            .Select(x => new MobileCoachAthleteListItem(
+                x.Key.AthleteProfileId,
+                x.Key.FirstName,
+                x.Key.LastName,
+                x.Key.BirthDate,
+                x.Key.ParentFullName,
+                x.Key.ParentPhone,
+                x.Select(row => row.GroupName).OrderBy(name => name).ToArray(),
+                latestScores.GetValueOrDefault(x.Key.AthleteProfileId)))
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName)
+            .ToArray();
+
+        return Results.Ok(athletes);
+    }
+
+    private static async Task<IResult> GetAthleteAsync(
+        Guid athleteProfileId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var context = GetCoachContext(currentUser);
+        if (context is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (!await CoachCanAccessAthleteAsync(athleteProfileId, context, db, cancellationToken))
+        {
+            return Results.NotFound();
+        }
+
+        var athlete = await db.AthleteProfiles
+            .AsNoTracking()
+            .Where(x => x.Id == athleteProfileId && x.SchoolId == context.SchoolId && x.IsActive && x.User.IsActive)
+            .Select(x => new
+            {
+                x.Id,
+                x.FirstName,
+                x.LastName,
+                x.BirthDate,
+                x.ParentFullName,
+                x.ParentPhone
+            })
+            .FirstAsync(cancellationToken);
+
+        var coachGroupIds = CoachGroupIds(context, db);
+        var groups = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x => x.AthleteProfileId == athleteProfileId && coachGroupIds.Contains(x.GroupId))
+            .OrderBy(x => x.Group.Name)
+            .Select(x => x.Group.Name)
+            .ToArrayAsync(cancellationToken);
+
+        var reportRows = await db.AthleteReports
+            .AsNoTracking()
+            .Where(x => x.SchoolId == context.SchoolId && x.AthleteProfileId == athleteProfileId)
+            .Select(x => AthleteReportResponse.From(x))
+            .ToArrayAsync(cancellationToken);
+        var reports = reportRows
+            .OrderByDescending(x => x.CreatedAt)
+            .ToArray();
+
+        return Results.Ok(new MobileCoachAthleteDetailResponse(
+            athlete.Id,
+            athlete.FirstName,
+            athlete.LastName,
+            athlete.BirthDate,
+            athlete.ParentFullName,
+            athlete.ParentPhone,
+            groups,
+            reports));
+    }
+
+    private static async Task<IResult> CreateAthleteReportAsync(
+        Guid athleteProfileId,
+        SaveMobileCoachAthleteReportRequest request,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var context = GetCoachContext(currentUser);
+        if (context is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (request.AthleteProfileId != athleteProfileId || !IsValidReportRequest(request))
+        {
+            return Results.BadRequest();
+        }
+
+        if (!await CoachCanAccessAthleteAsync(athleteProfileId, context, db, cancellationToken))
+        {
+            return Results.NotFound();
+        }
+
+        var report = new AthleteReport
+        {
+            SchoolId = context.SchoolId,
+            AthleteProfileId = athleteProfileId,
+            CoachId = context.CoachId,
+            Summary = request.Summary.Trim(),
+            ImprovementAreas = request.ImprovementAreas.Trim(),
+            SpeedScore = request.SpeedScore,
+            StrengthScore = request.StrengthScore,
+            DribblingScore = request.DribblingScore,
+            ShootingScore = request.ShootingScore
+        };
+
+        db.AthleteReports.Add(report);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Created(
+            $"/api/mobile/coach/athletes/{athleteProfileId}/reports/{report.Id}",
+            AthleteReportResponse.From(report));
     }
 
     private static async Task<IResult> ListTrainingsAsync(
@@ -324,6 +507,42 @@ public static class MobileCoachEndpoints
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    private static IQueryable<Guid> CoachGroupIds(CoachContext context, SportschoolDbContext db)
+    {
+        return db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.SchoolId == context.SchoolId && x.CoachId == context.CoachId && x.IsActive && x.Group.IsActive)
+            .Select(x => x.GroupId)
+            .Distinct();
+    }
+
+    private static Task<bool> CoachCanAccessAthleteAsync(
+        Guid athleteProfileId,
+        CoachContext context,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var coachGroupIds = CoachGroupIds(context, db);
+        return db.GroupAthletes.AnyAsync(
+            x => x.AthleteProfileId == athleteProfileId
+                && coachGroupIds.Contains(x.GroupId)
+                && x.AthleteProfile.SchoolId == context.SchoolId
+                && x.AthleteProfile.IsActive
+                && x.AthleteProfile.User.IsActive,
+            cancellationToken);
+    }
+
+    private static bool IsValidReportRequest(SaveMobileCoachAthleteReportRequest request)
+    {
+        return request.AthleteProfileId != Guid.Empty
+            && !string.IsNullOrWhiteSpace(request.Summary)
+            && !string.IsNullOrWhiteSpace(request.ImprovementAreas)
+            && ReportScoreValidator.IsValid(request.SpeedScore)
+            && ReportScoreValidator.IsValid(request.StrengthScore)
+            && ReportScoreValidator.IsValid(request.DribblingScore)
+            && ReportScoreValidator.IsValid(request.ShootingScore);
+    }
+
     private sealed record CoachContext(Guid SchoolId, Guid CoachId);
 }
 
@@ -339,6 +558,26 @@ public sealed record MobileCoachGroupResponse(
     string Name,
     string? Description,
     int AthleteCount);
+
+public sealed record MobileCoachAthleteListItem(
+    Guid AthleteProfileId,
+    string FirstName,
+    string LastName,
+    DateOnly BirthDate,
+    string ParentFullName,
+    string ParentPhone,
+    IReadOnlyCollection<string> Groups,
+    decimal? LatestAverageScore);
+
+public sealed record MobileCoachAthleteDetailResponse(
+    Guid AthleteProfileId,
+    string FirstName,
+    string LastName,
+    DateOnly BirthDate,
+    string ParentFullName,
+    string ParentPhone,
+    IReadOnlyCollection<string> Groups,
+    IReadOnlyCollection<AthleteReportResponse> Reports);
 
 public sealed record MobileCoachTrainingItem(
     Guid Id,
@@ -373,6 +612,15 @@ public sealed record MobileCoachAttendanceRosterItem(
     AttendanceStatus? Status);
 
 public sealed record SaveMobileCoachAttendanceRequest(Guid AthleteProfileId, AttendanceStatus Status);
+
+public sealed record SaveMobileCoachAthleteReportRequest(
+    Guid AthleteProfileId,
+    string Summary,
+    string ImprovementAreas,
+    decimal SpeedScore,
+    decimal StrengthScore,
+    decimal DribblingScore,
+    decimal ShootingScore);
 
 public sealed record MobileCoachAttendanceResponse(
     Guid Id,

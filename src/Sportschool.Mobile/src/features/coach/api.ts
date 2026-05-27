@@ -3,7 +3,16 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/core/queryClient";
 import { apiRequest } from "@/shared/api/apiClient";
 import { endpoints } from "@/shared/constants/endpoints";
-import type { CoachAttendanceRosterResponse, CoachGroupResponse, CoachSummaryResponse, CoachTrainingItem, SaveCoachAttendanceRequest } from "@/features/coach/types";
+import type {
+  CoachAthleteDetailResponse,
+  CoachAthleteListItem,
+  CoachAttendanceRosterResponse,
+  CoachGroupResponse,
+  CoachSummaryResponse,
+  CoachTrainingItem,
+  SaveCoachAthleteReportRequest,
+  SaveCoachAttendanceRequest
+} from "@/features/coach/types";
 
 export function useCoachSummary(enabled = true) {
   return useQuery({ enabled, queryKey: ["coach", "summary"], queryFn: () => apiRequest<CoachSummaryResponse>(endpoints.coachSummary) });
@@ -11,6 +20,18 @@ export function useCoachSummary(enabled = true) {
 
 export function useCoachGroups(enabled = true) {
   return useQuery({ enabled, queryKey: ["coach", "groups"], queryFn: () => apiRequest<CoachGroupResponse[]>(endpoints.coachGroups) });
+}
+
+export function useCoachAthletes(enabled = true) {
+  return useQuery({ enabled, queryKey: ["coach", "athletes"], queryFn: () => apiRequest<CoachAthleteListItem[]>(endpoints.coachAthletes) });
+}
+
+export function useCoachAthlete(athleteProfileId?: string) {
+  return useQuery({
+    enabled: Boolean(athleteProfileId),
+    queryKey: ["coach", "athlete", athleteProfileId],
+    queryFn: () => apiRequest<CoachAthleteDetailResponse>(endpoints.coachAthlete(athleteProfileId!))
+  });
 }
 
 export function useCoachTrainings(enabled = true) {
@@ -40,6 +61,24 @@ export function useSaveCoachAttendance(trainingId?: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["coach"] });
+    }
+  });
+}
+
+export function useCreateCoachAthleteReport(athleteProfileId?: string) {
+  return useMutation({
+    mutationFn: (request: SaveCoachAthleteReportRequest) => {
+      if (!athleteProfileId) {
+        throw new Error("Athlete is required.");
+      }
+      return apiRequest(endpoints.coachAthleteReports(athleteProfileId), {
+        method: "POST",
+        body: request
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["coach", "athletes"] });
+      await queryClient.invalidateQueries({ queryKey: ["coach", "athlete", athleteProfileId] });
     }
   });
 }

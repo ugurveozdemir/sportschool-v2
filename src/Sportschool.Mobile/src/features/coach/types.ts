@@ -1,4 +1,5 @@
 import type { AttendanceStatus } from "@/shared/constants/domain";
+import type { AthleteReportResponse } from "@/features/me/types";
 
 export type CoachSummaryResponse = {
   todayTrainings: CoachTrainingItem[];
@@ -13,6 +14,28 @@ export type CoachGroupResponse = {
   name: string;
   description: string | null;
   athleteCount: number;
+};
+
+export type CoachAthleteListItem = {
+  athleteProfileId: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  parentFullName: string;
+  parentPhone: string;
+  groups: string[];
+  latestAverageScore: number | null;
+};
+
+export type CoachAthleteDetailResponse = {
+  athleteProfileId: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  parentFullName: string;
+  parentPhone: string;
+  groups: string[];
+  reports: AthleteReportResponse[];
 };
 
 export type CoachTrainingItem = {
@@ -54,4 +77,14 @@ export type CoachAttendanceRosterItem = {
 export type SaveCoachAttendanceRequest = {
   athleteProfileId: string;
   status: AttendanceStatus;
+};
+
+export type SaveCoachAthleteReportRequest = {
+  athleteProfileId: string;
+  summary: string;
+  improvementAreas: string;
+  speedScore: number;
+  strengthScore: number;
+  dribblingScore: number;
+  shootingScore: number;
 };
