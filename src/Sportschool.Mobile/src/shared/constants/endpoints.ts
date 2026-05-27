@@ -9,6 +9,7 @@ export const endpoints = {
   meAttendance: "/api/me/attendance",
   mePayments: "/api/me/payments",
   meAthleteReports: "/api/me/athlete-reports",
+  schoolTrainings: "/api/school/trainings",
   coachSummary: "/api/mobile/coach/summary",
   coachGroups: "/api/mobile/coach/groups",
   coachAthletes: "/api/mobile/coach/athletes",

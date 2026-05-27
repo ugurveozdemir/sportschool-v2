@@ -1,21 +1,21 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
-import { useCoachTrainings } from "@/features/coach/api";
+import { useCoachGroups, useCoachTrainings, useCreateCoachTraining } from "@/features/coach/api";
+import type { CoachGroupResponse, CreateCoachTrainingRequest } from "@/features/coach/types";
 import { useGroups, useTrainings } from "@/features/me/api";
+import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { InitialsAvatar, Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
+import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
-import { formatTime } from "@/shared/utils/date";
-
-const calendarDays = [28, 29, 30, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27];
-const markedPrimary = new Set([10, 17]);
-const markedSecondary = new Set([3, 6, 17, 20]);
+import { formatMonth, formatTime } from "@/shared/utils/date";
 
 type TrainingItem = {
   id: string;
@@ -28,27 +28,124 @@ type TrainingItem = {
   totalAthletes?: number;
 };
 
+type TrainingFormState = {
+  groupId: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  notes: string;
+};
+
+const initialTrainingForm: TrainingFormState = {
+  groupId: "",
+  title: "Antrenman",
+  startTime: "17:00",
+  endTime: "18:30",
+  location: "",
+  notes: ""
+};
+
 export default function CalendarScreen() {
   const { session } = useSession();
   const isCoach = session?.roles.includes("Coach") ?? false;
-  const trainingsQuery = useTrainings(!isCoach);
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
+  const monthRange = useMemo(() => getMonthRange(visibleMonth), [visibleMonth]);
+  const trainingsQuery = useTrainings(!isCoach, monthRange);
   const groupsQuery = useGroups(!isCoach);
-  const coachTrainingsQuery = useCoachTrainings(isCoach);
+  const coachTrainingsQuery = useCoachTrainings(isCoach, monthRange);
 
   if ((isCoach ? coachTrainingsQuery : trainingsQuery).isLoading) {
     return <LoadingState label="Antrenmanlar yükleniyor" />;
   }
 
   const trainings = ((isCoach ? coachTrainingsQuery.data : trainingsQuery.data) ?? []) as TrainingItem[];
+  const markedDates = new Set(trainings.map((training) => getDateKey(new Date(training.startsAt))));
+  const selectedTrainings = trainings.filter((training) => isSameDate(new Date(training.startsAt), selectedDate));
+
+  function changeMonth(offset: number) {
+    const nextMonth = addMonths(visibleMonth, offset);
+    setVisibleMonth(nextMonth);
+    setSelectedDate((current) => new Date(nextMonth.getFullYear(), nextMonth.getMonth(), Math.min(current.getDate(), getDaysInMonth(nextMonth))));
+  }
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={isCoach ? undefined : <InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "E"} size={42} tone="dark" />}>
-      {isCoach ? <CoachCalendar trainings={trainings} /> : <MemberCalendar trainings={trainings} groupName={(groupId) => groupsQuery.data?.find((group) => group.id === groupId)?.name ?? "A Takımı"} />}
+      {isCoach ? (
+        <CoachCalendar
+          markedDates={markedDates}
+          selectedDate={selectedDate}
+          selectedTrainings={selectedTrainings}
+          visibleMonth={visibleMonth}
+          onChangeMonth={changeMonth}
+          onSelectDate={setSelectedDate}
+        />
+      ) : (
+        <MemberCalendar
+          groupName={(groupId) => groupsQuery.data?.find((group) => group.id === groupId)?.name ?? "A Takımı"}
+          markedDates={markedDates}
+          selectedDate={selectedDate}
+          selectedTrainings={selectedTrainings}
+          visibleMonth={visibleMonth}
+          onChangeMonth={changeMonth}
+          onSelectDate={setSelectedDate}
+        />
+      )}
     </ScreenShell>
   );
 }
 
-function CoachCalendar({ trainings }: { trainings: TrainingItem[] }) {
+function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMonth, onChangeMonth, onSelectDate }: CalendarViewProps) {
+  const groupsQuery = useCoachGroups();
+  const createTraining = useCreateCoachTraining();
+  const [isCreateVisible, setIsCreateVisible] = useState(false);
+  const [form, setForm] = useState(initialTrainingForm);
+  const groups = groupsQuery.data ?? [];
+
+  function openCreateTraining() {
+    if (groups.length === 0) {
+      Alert.alert("Takvim", "Etkinlik eklemek için önce aktif bir grup olmalı.");
+      return;
+    }
+
+    setForm({ ...initialTrainingForm, groupId: groups[0].id });
+    setIsCreateVisible(true);
+  }
+
+  function submitTraining() {
+    const startsAt = buildDateTime(selectedDate, form.startTime);
+    const endsAt = buildDateTime(selectedDate, form.endTime);
+    if (!startsAt || !endsAt || !form.groupId || !form.title.trim()) {
+      Alert.alert("Takvim", "Grup, başlık ve saatleri kontrol et.");
+      return;
+    }
+
+    if (endsAt <= startsAt) {
+      Alert.alert("Takvim", "Bitiş saati başlangıç saatinden sonra olmalı.");
+      return;
+    }
+
+    const request: CreateCoachTrainingRequest = {
+      groupId: form.groupId,
+      title: form.title.trim(),
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      recurrence: "None",
+      recurrenceEndsOn: null,
+      location: form.location.trim() || null,
+      notes: form.notes.trim() || null
+    };
+
+    createTraining.mutate(request, {
+      onSuccess: () => {
+        setIsCreateVisible(false);
+        Alert.alert("Takvim", "Etkinlik kaydedildi.");
+      },
+      onError: () => Alert.alert("Takvim", "Etkinlik kaydedilemedi.")
+    });
+  }
+
   return (
     <>
       <View style={styles.headerBlock}>
@@ -58,67 +155,105 @@ function CoachCalendar({ trainings }: { trainings: TrainingItem[] }) {
           <View style={styles.segmentedInactive}><Text style={styles.segmentedInactiveText}>Haftalık</Text></View>
         </View>
       </View>
-      <CalendarPanel roundedDays />
-      <ScheduleList title="17 Ekim Salı" subtitle={`${Math.max(trainings.length || 2, 2)} Planlı Antrenman`} trainings={trainings} coach />
+      <CalendarPanel
+        markedDates={markedDates}
+        roundedDays
+        selectedDate={selectedDate}
+        visibleMonth={visibleMonth}
+        onChangeMonth={onChangeMonth}
+        onSelectDate={onSelectDate}
+      />
+      <ScheduleList
+        coach
+        subtitle={`${selectedTrainings.length} Planlı Antrenman`}
+        title={formatSelectedDate(selectedDate)}
+        trainings={selectedTrainings}
+        onAddPress={openCreateTraining}
+      />
+      <CreateTrainingModal
+        form={form}
+        groups={groups}
+        saving={createTraining.isPending}
+        selectedDate={selectedDate}
+        visible={isCreateVisible}
+        onChangeForm={(patch) => setForm((current) => ({ ...current, ...patch }))}
+        onClose={() => setIsCreateVisible(false)}
+        onSubmit={submitTraining}
+      />
     </>
   );
 }
 
-function MemberCalendar({ trainings, groupName }: { trainings: TrainingItem[]; groupName: (groupId: string) => string }) {
+function MemberCalendar({ groupName, markedDates, selectedDate, selectedTrainings, visibleMonth, onChangeMonth, onSelectDate }: CalendarViewProps & { groupName: (groupId: string) => string }) {
   return (
     <>
       <View style={styles.headerBlock}>
         <Text style={styles.memberTitle}>Antrenman Programı</Text>
-        <Text style={styles.subtitle}>Ekim 2023</Text>
+        <Text style={styles.subtitle}>{formatMonth(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1)}</Text>
       </View>
-      <SurfaceCard style={styles.monthNav}>
-        <MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} />
-        <Text style={styles.monthTitle}>Ekim 2023</Text>
-        <MaterialCommunityIcons name="chevron-right" size={28} color={colors.primary} />
-      </SurfaceCard>
-      <CalendarPanel />
-      <ScheduleList title="17 Ekim Salı" subtitle={`${Math.max(trainings.length || 2, 2)} Etkinlik`} trainings={trainings} groupName={groupName} />
+      <CalendarPanel
+        markedDates={markedDates}
+        selectedDate={selectedDate}
+        visibleMonth={visibleMonth}
+        onChangeMonth={onChangeMonth}
+        onSelectDate={onSelectDate}
+      />
+      <ScheduleList title={formatSelectedDate(selectedDate)} subtitle={`${selectedTrainings.length} Etkinlik`} trainings={selectedTrainings} groupName={groupName} />
     </>
   );
 }
 
-function CalendarPanel({ roundedDays }: { roundedDays?: boolean }) {
+type CalendarViewProps = {
+  markedDates: Set<string>;
+  selectedDate: Date;
+  selectedTrainings: TrainingItem[];
+  visibleMonth: Date;
+  onChangeMonth: (offset: number) => void;
+  onSelectDate: (date: Date) => void;
+};
+
+function CalendarPanel({ markedDates, roundedDays, selectedDate, visibleMonth, onChangeMonth, onSelectDate }: Omit<CalendarViewProps, "selectedTrainings"> & { roundedDays?: boolean }) {
+  const cells = useMemo(() => buildMonthCells(visibleMonth), [visibleMonth]);
+  const monthTitle = formatMonth(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1);
+
   return (
     <SurfaceCard style={styles.calendarCard}>
       <View style={styles.calendarHeader}>
-        <Text style={styles.monthTitle}>Ekim 2023</Text>
+        <Text style={styles.monthTitle}>{monthTitle}</Text>
         <View style={styles.calendarArrows}>
-          <View style={styles.circleButton}><MaterialCommunityIcons name="chevron-left" size={22} color={colors.primary} /></View>
-          <View style={styles.circleButton}><MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} /></View>
+          <Pressable accessibilityLabel="Önceki ay" onPress={() => onChangeMonth(-1)} style={styles.circleButton}>
+            <MaterialCommunityIcons name="chevron-left" size={22} color={colors.primary} />
+          </Pressable>
+          <Pressable accessibilityLabel="Sonraki ay" onPress={() => onChangeMonth(1)} style={styles.circleButton}>
+            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+          </Pressable>
         </View>
       </View>
       <View style={styles.weekRow}>{["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((day) => <Text key={day} style={styles.weekText}>{day}</Text>)}</View>
       <View style={styles.daysGrid}>
-        {calendarDays.map((day, index) => {
-          const inactive = index < 3;
-          const selected = day === 17;
+        {cells.map((cell) => {
+          const selected = isSameDate(cell.date, selectedDate);
+          const hasTraining = markedDates.has(getDateKey(cell.date));
           return (
-            <View key={`${day}-${index}`} style={[styles.dayCell, roundedDays && styles.dayCellRound, selected && styles.daySelected]}>
-              <Text style={[styles.dayText, inactive && styles.dayTextInactive, selected && styles.dayTextSelected]}>{day}</Text>
-              <View style={styles.dotRow}>
-                {markedSecondary.has(day) ? <View style={[styles.dot, selected && styles.dotSelected, { backgroundColor: colors.secondary }]} /> : null}
-                {markedPrimary.has(day) ? <View style={[styles.dot, selected && styles.dotSelected, { backgroundColor: colors.primary }]} /> : null}
+            <Pressable key={cell.key} disabled={!cell.isCurrentMonth} onPress={() => onSelectDate(cell.date)} style={styles.dayCell}>
+              <View style={[styles.dayInner, roundedDays && styles.dayCellRound, selected && styles.daySelected]}>
+                <Text style={[styles.dayText, !cell.isCurrentMonth && styles.dayTextInactive, selected && styles.dayTextSelected]}>{cell.date.getDate()}</Text>
+                <View style={styles.dotRow}>
+                  {hasTraining ? <View style={[styles.dot, selected && styles.dotSelected, { backgroundColor: selected ? colors.secondaryContainer : colors.primary }]} /> : null}
+                </View>
               </View>
-            </View>
+            </Pressable>
           );
         })}
       </View>
       <View style={styles.legendRow}>
         <Legend color={colors.primary} label="Antrenman" />
-        <Legend color={colors.secondary} label="Maç" />
       </View>
     </SurfaceCard>
   );
 }
 
-function ScheduleList({ title, subtitle, trainings, coach, groupName }: { title: string; subtitle: string; trainings: TrainingItem[]; coach?: boolean; groupName?: (groupId: string) => string }) {
-  const cards = trainings.length > 0 ? trainings.slice(0, 2) : [];
-
+function ScheduleList({ title, subtitle, trainings, coach, groupName, onAddPress }: { title: string; subtitle: string; trainings: TrainingItem[]; coach?: boolean; groupName?: (groupId: string) => string; onAddPress?: () => void }) {
   return (
     <View style={styles.scheduleWrap}>
       <View style={styles.scheduleHeader}>
@@ -126,16 +261,19 @@ function ScheduleList({ title, subtitle, trainings, coach, groupName }: { title:
           <Text style={styles.scheduleTitle}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-        {coach ? <Text style={styles.addLink}>+ Yeni Ekle</Text> : null}
+        {coach && onAddPress ? (
+          <Pressable onPress={onAddPress} style={styles.addButton}>
+            <Text style={styles.addLink}>+ Yeni Ekle</Text>
+          </Pressable>
+        ) : null}
       </View>
-      {cards.length === 0 ? (
+      {trainings.length === 0 ? (
         <SurfaceCard>
-          <EmptyState title="Program boş" description="Şu anda görüntülenecek antrenman bulunmuyor." />
+          <EmptyState title="Program boş" description="Seçili günde görüntülenecek antrenman bulunmuyor." />
         </SurfaceCard>
       ) : (
-        cards.map((training, index) => <TrainingCard key={training.id} training={training} accent={index === 0 ? "secondary" : "warning"} coach={coach} group={training.groupName ?? groupName?.(training.groupId) ?? "A Takımı"} />)
+        trainings.map((training, index) => <TrainingCard key={training.id} training={training} accent={index === 0 ? "secondary" : "warning"} coach={coach} group={training.groupName ?? groupName?.(training.groupId) ?? "A Takımı"} />)
       )}
-      {cards.length === 1 ? <TrainingCard training={fallbackMatch} accent="secondary" group="A Takımı" /> : null}
     </View>
   );
 }
@@ -147,21 +285,70 @@ function TrainingCard({ training, accent, coach, group }: { training: TrainingIt
       <View style={[styles.trainingAccent, { backgroundColor: accentColor }]} />
       <View style={styles.trainingTopRow}>
         <View style={styles.trainingTimeBlock}>
-          <Text style={styles.trainingTime}>{formatTime(training.startsAt)}</Text>
-          {coach ? <Text style={styles.trainingEnd}>{formatTime(training.endsAt)}</Text> : null}
+          <Text style={styles.trainingTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
+          <Text style={styles.trainingEnd}>{group}</Text>
         </View>
-        {!coach ? <Pill label={training.id === fallbackMatch.id ? "Hazırlık Maçı" : "Antrenman"} tone={accent === "secondary" ? "success" : "neutral"} icon={training.id === fallbackMatch.id ? "trophy-outline" : "soccer"} /> : null}
+        {!coach ? <Pill label="Antrenman" tone={accent === "secondary" ? "success" : "neutral"} icon="soccer" /> : null}
       </View>
       <View style={styles.tagRow}>
-        {coach ? <Pill label={training.title.toLowerCase().includes("kondisyon") ? "Kondisyon" : "Taktik"} tone="neutral" /> : null}
-        {coach && accent === "secondary" ? <Pill label="Zorunlu" tone="success" /> : null}
+        {coach ? <Pill label={training.title.toLowerCase().includes("kondisyon") ? "Kondisyon" : "Antrenman"} tone="neutral" /> : null}
+        {coach && accent === "secondary" ? <Pill label="Planlı" tone="success" /> : null}
       </View>
-      <Text style={styles.trainingTitle}>{coach ? `${group} Antrenmanı` : training.title}</Text>
+      <Text style={styles.trainingTitle}>{training.title}</Text>
       <View style={styles.metaRow}>
-        <Text style={styles.metaText}>⌖ {training.location ?? (coach ? "Saha 1 (Ana Çim)" : "Tesisler 2 No'lu Saha")}</Text>
-        <Text style={styles.metaText}>{coach ? `♟ ${training.totalAthletes ?? 18} Oyuncu` : "◷ 90 Dakika"}</Text>
+        <Text style={styles.metaText}>{training.location ?? (coach ? "Konum girilmedi" : "Tesis bilgisi yok")}</Text>
+        <Text style={styles.metaText}>{coach ? `${training.totalAthletes ?? 0} sporcu` : group}</Text>
       </View>
     </SurfaceCard>
+  );
+}
+
+function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onChangeForm, onClose, onSubmit }: {
+  form: TrainingFormState;
+  groups: CoachGroupResponse[];
+  saving: boolean;
+  selectedDate: Date;
+  visible: boolean;
+  onChangeForm: (patch: Partial<TrainingFormState>) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>Yeni Antrenman</Text>
+              <Text style={styles.subtitle}>{formatSelectedDate(selectedDate)}</Text>
+            </View>
+            <Pressable accessibilityLabel="Kapat" onPress={onClose} style={styles.closeButton}>
+              <MaterialCommunityIcons name="close" size={22} color={colors.primary} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.groupOptions}>
+              {groups.map((group) => {
+                const selected = group.id === form.groupId;
+                return (
+                  <Pressable key={group.id} onPress={() => onChangeForm({ groupId: group.id })} style={[styles.groupOption, selected && styles.groupOptionSelected]}>
+                    <Text style={[styles.groupOptionText, selected && styles.groupOptionTextSelected]}>{group.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <TextField label="Başlık" value={form.title} onChangeText={(value) => onChangeForm({ title: value })} placeholder="Antrenman başlığı" />
+            <View style={styles.timeRow}>
+              <TextField label="Başlangıç" value={form.startTime} onChangeText={(value) => onChangeForm({ startTime: value })} placeholder="17:00" />
+              <TextField label="Bitiş" value={form.endTime} onChangeText={(value) => onChangeForm({ endTime: value })} placeholder="18:30" />
+            </View>
+            <TextField label="Konum" value={form.location} onChangeText={(value) => onChangeForm({ location: value })} placeholder="Saha 1" />
+            <TextField label="Not" multiline value={form.notes} onChangeText={(value) => onChangeForm({ notes: value })} placeholder="Opsiyonel not" />
+            <Button disabled={saving} label={saving ? "Kaydediliyor" : "Kaydet"} onPress={onSubmit} />
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -174,26 +361,81 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-const fallbackMatch: TrainingItem = {
-  id: "fallback-match",
-  title: "vs. Altay U19",
-  startsAt: "2023-10-17T19:30:00Z",
-  endsAt: "2023-10-17T21:00:00Z",
-  groupId: "fallback",
-  groupName: "A Takımı",
-  location: "Merkez Stadyum",
-  totalAthletes: 22
-};
+function buildMonthCells(month: Date) {
+  const monthStart = startOfMonth(month);
+  const leadingDays = (monthStart.getDay() + 6) % 7;
+  const gridStart = addDays(monthStart, -leadingDays);
+  const cellCount = Math.ceil((leadingDays + getDaysInMonth(monthStart)) / 7) * 7;
+
+  return Array.from({ length: cellCount }, (_, index) => {
+    const date = addDays(gridStart, index);
+    return {
+      date,
+      isCurrentMonth: date.getMonth() === monthStart.getMonth(),
+      key: getDateKey(date)
+    };
+  });
+}
+
+function getMonthRange(month: Date) {
+  const start = startOfMonth(month);
+  const end = addMonths(start, 1);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+function buildDateTime(date: Date, time: string) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time.trim());
+  if (!match) {
+    return null;
+  }
+
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), Number(match[1]), Number(match[2]));
+}
+
+function formatSelectedDate(date: Date) {
+  return new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", weekday: "long" }).format(date);
+}
+
+function getDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function isSameDate(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function getDaysInMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
 
 const styles = StyleSheet.create({
+  addButton: { paddingVertical: spacing.sm },
   addLink: { ...typography.label, color: colors.secondary, fontSize: 14 },
   calendarArrows: { flexDirection: "row", gap: spacing.sm },
-  calendarCard: { gap: spacing.lg, minHeight: 410 },
+  calendarCard: { gap: spacing.lg, minHeight: 430 },
   calendarHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   circleButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 46, justifyContent: "center", width: 46 },
+  closeButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
   coachTitle: { ...typography.headline, color: colors.primary },
-  dayCell: { alignItems: "center", flexBasis: `${100 / 7}%`, height: 48, justifyContent: "center" },
+  dayCell: { alignItems: "center", flexBasis: `${100 / 7}%`, height: 52, justifyContent: "center" },
   dayCellRound: { borderRadius: radius.full },
+  dayInner: { alignItems: "center", height: 46, justifyContent: "center", width: 46 },
   daySelected: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.16, shadowRadius: 7, shadowOffset: { height: 4, width: 0 } },
   dayText: { ...typography.bodyLarge, color: colors.primary },
   dayTextInactive: { color: colors.outlineVariant },
@@ -202,6 +444,11 @@ const styles = StyleSheet.create({
   dot: { borderRadius: 3, height: 6, width: 6 },
   dotRow: { flexDirection: "row", gap: 2, height: 8, marginTop: 2 },
   dotSelected: { backgroundColor: colors.secondaryContainer },
+  groupOption: { borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  groupOptionSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  groupOptionText: { ...typography.label, color: colors.primary },
+  groupOptionTextSelected: { color: colors.onPrimary },
+  groupOptions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   headerBlock: { gap: spacing.lg },
   legendDot: { borderRadius: 4, height: 8, width: 8 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
@@ -210,7 +457,11 @@ const styles = StyleSheet.create({
   memberTitle: { ...typography.display, color: colors.primary },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg, marginTop: spacing.sm },
   metaText: { ...typography.body, color: colors.onSurfaceVariant },
-  monthNav: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  modalBackdrop: { backgroundColor: "rgba(0, 0, 0, 0.32)", flex: 1, justifyContent: "flex-end" },
+  modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: "88%", padding: spacing.lg },
+  modalContent: { gap: spacing.md, paddingBottom: spacing.xl },
+  modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.lg },
+  modalTitle: { ...typography.headline, color: colors.primary },
   monthTitle: { ...typography.title, color: colors.primary },
   scheduleHeader: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" },
   scheduleTitle: { ...typography.headline, color: colors.primary },
@@ -222,9 +473,10 @@ const styles = StyleSheet.create({
   segmentedInactiveText: { ...typography.label, color: colors.onSurfaceVariant },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   tagRow: { flexDirection: "row", gap: spacing.sm },
+  timeRow: { flexDirection: "row", gap: spacing.md },
   trainingAccent: { bottom: 0, left: 0, position: "absolute", top: 0, width: 5 },
   trainingCard: { gap: spacing.md, paddingLeft: spacing.xl },
-  trainingEnd: { ...typography.body, color: colors.outline, textDecorationLine: "line-through" },
+  trainingEnd: { ...typography.body, color: colors.outline },
   trainingTime: { ...typography.headline, color: colors.primary },
   trainingTimeBlock: { flex: 1 },
   trainingTitle: { ...typography.title, color: colors.primary },

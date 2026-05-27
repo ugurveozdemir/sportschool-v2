@@ -50,6 +50,17 @@ export type CoachTrainingItem = {
   recordedAttendanceCount: number;
 };
 
+export type CreateCoachTrainingRequest = {
+  groupId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  recurrence: "None" | "Weekly";
+  recurrenceEndsOn: string | null;
+  location: string | null;
+  notes: string | null;
+};
+
 export type CoachAttendanceRosterResponse = {
   training: CoachAttendanceRosterTraining;
   athletes: CoachAttendanceRosterItem[];

@@ -10,9 +10,15 @@ import type {
   CoachGroupResponse,
   CoachSummaryResponse,
   CoachTrainingItem,
+  CreateCoachTrainingRequest,
   SaveCoachAthleteReportRequest,
   SaveCoachAttendanceRequest
 } from "@/features/coach/types";
+
+type TrainingRange = {
+  from: string;
+  to: string;
+};
 
 export function useCoachSummary(enabled = true) {
   return useQuery({ enabled, queryKey: ["coach", "summary"], queryFn: () => apiRequest<CoachSummaryResponse>(endpoints.coachSummary) });
@@ -34,8 +40,24 @@ export function useCoachAthlete(athleteProfileId?: string) {
   });
 }
 
-export function useCoachTrainings(enabled = true) {
-  return useQuery({ enabled, queryKey: ["coach", "trainings"], queryFn: () => apiRequest<CoachTrainingItem[]>(endpoints.coachTrainings) });
+export function useCoachTrainings(enabled = true, range?: TrainingRange) {
+  return useQuery({
+    enabled,
+    queryKey: ["coach", "trainings", range?.from, range?.to],
+    queryFn: () => apiRequest<CoachTrainingItem[]>(withRange(endpoints.coachTrainings, range))
+  });
+}
+
+export function useCreateCoachTraining() {
+  return useMutation({
+    mutationFn: (request: CreateCoachTrainingRequest) => apiRequest(endpoints.schoolTrainings, {
+      method: "POST",
+      body: request
+    }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["coach"] });
+    }
+  });
 }
 
 export function useCoachAttendanceRoster(trainingId?: string) {
@@ -81,4 +103,13 @@ export function useCreateCoachAthleteReport(athleteProfileId?: string) {
       await queryClient.invalidateQueries({ queryKey: ["coach", "athlete", athleteProfileId] });
     }
   });
+}
+
+function withRange(path: string, range?: TrainingRange) {
+  if (!range) {
+    return path;
+  }
+
+  const params = new URLSearchParams({ from: range.from, to: range.to });
+  return `${path}?${params.toString()}`;
 }

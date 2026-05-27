@@ -57,6 +57,8 @@ public static class MobileReadEndpoints
     }
 
     private static async Task<IResult> ListTrainingsAsync(
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -67,12 +69,24 @@ public static class MobileReadEndpoints
             return Results.NotFound();
         }
 
+        var now = DateTimeOffset.UtcNow;
+        var start = from ?? new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var end = to ?? start.AddDays(30);
+        if (end <= start)
+        {
+            return Results.BadRequest();
+        }
+
         var groupIds = db.GroupAthletes
             .Where(x => x.AthleteProfileId == profile.Id)
             .Select(x => x.GroupId);
 
         var trainings = await db.TrainingSessions
-            .Where(x => x.SchoolId == profile.SchoolId && x.IsActive && groupIds.Contains(x.GroupId))
+            .Where(x => x.SchoolId == profile.SchoolId
+                && x.IsActive
+                && groupIds.Contains(x.GroupId)
+                && x.StartsAt >= start
+                && x.StartsAt < end)
             .OrderBy(x => x.StartsAt)
             .Select(x => TrainingResponse.From(x))
             .ToListAsync(cancellationToken);
