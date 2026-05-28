@@ -16,6 +16,19 @@ export type CoachGroupResponse = {
   athleteCount: number;
 };
 
+export type SchoolGroupResponse = {
+  id: string;
+  schoolId: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+};
+
+export type SaveSchoolGroupRequest = {
+  name: string;
+  description: string | null;
+};
+
 export type CoachAthleteListItem = {
   athleteProfileId: string;
   firstName: string;

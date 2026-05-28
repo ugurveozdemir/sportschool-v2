@@ -9,6 +9,8 @@ export const endpoints = {
   meAttendance: "/api/me/attendance",
   mePayments: "/api/me/payments",
   meAthleteReports: "/api/me/athlete-reports",
+  schoolGroups: "/api/school/groups",
+  schoolGroup: (groupId: string) => `/api/school/groups/${groupId}`,
   schoolTrainings: "/api/school/trainings",
   coachSummary: "/api/mobile/coach/summary",
   coachGroups: "/api/mobile/coach/groups",

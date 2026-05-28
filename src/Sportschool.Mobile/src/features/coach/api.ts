@@ -11,8 +11,10 @@ import type {
   CoachSummaryResponse,
   CoachTrainingItem,
   CreateCoachTrainingRequest,
+  SaveSchoolGroupRequest,
   SaveCoachAthleteReportRequest,
-  SaveCoachAttendanceRequest
+  SaveCoachAttendanceRequest,
+  SchoolGroupResponse
 } from "@/features/coach/types";
 
 type TrainingRange = {
@@ -26,6 +28,43 @@ export function useCoachSummary(enabled = true) {
 
 export function useCoachGroups(enabled = true) {
   return useQuery({ enabled, queryKey: ["coach", "groups"], queryFn: () => apiRequest<CoachGroupResponse[]>(endpoints.coachGroups) });
+}
+
+export function useSchoolGroups(enabled = true) {
+  return useQuery({ enabled, queryKey: ["school", "groups"], queryFn: () => apiRequest<SchoolGroupResponse[]>(endpoints.schoolGroups) });
+}
+
+export function useCreateSchoolGroup() {
+  return useMutation({
+    mutationFn: (request: SaveSchoolGroupRequest) => apiRequest<SchoolGroupResponse>(endpoints.schoolGroups, {
+      method: "POST",
+      body: request
+    }),
+    onSuccess: invalidateGroups
+  });
+}
+
+export function useUpdateSchoolGroup(groupId?: string) {
+  return useMutation({
+    mutationFn: (request: SaveSchoolGroupRequest) => {
+      if (!groupId) {
+        throw new Error("Group is required.");
+      }
+
+      return apiRequest<SchoolGroupResponse>(endpoints.schoolGroup(groupId), {
+        method: "PUT",
+        body: request
+      });
+    },
+    onSuccess: invalidateGroups
+  });
+}
+
+export function useDeleteSchoolGroup() {
+  return useMutation({
+    mutationFn: (groupId: string) => apiRequest(endpoints.schoolGroup(groupId), { method: "DELETE" }),
+    onSuccess: invalidateGroups
+  });
 }
 
 export function useCoachAthletes(enabled = true) {
@@ -112,4 +151,9 @@ function withRange(path: string, range?: TrainingRange) {
 
   const params = new URLSearchParams({ from: range.from, to: range.to });
   return `${path}?${params.toString()}`;
+}
+
+async function invalidateGroups() {
+  await queryClient.invalidateQueries({ queryKey: ["school", "groups"] });
+  await queryClient.invalidateQueries({ queryKey: ["coach"] });
 }
