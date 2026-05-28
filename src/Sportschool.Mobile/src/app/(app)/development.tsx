@@ -59,23 +59,12 @@ export default function DevelopmentScreen() {
 
 function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession>["session"]; groups: SchoolGroupResponse[] }) {
   const createGroup = useCreateSchoolGroup();
-  const deleteGroup = useDeleteSchoolGroup();
-  const [editingGroup, setEditingGroup] = useState<SchoolGroupResponse | null>(null);
   const [form, setForm] = useState(emptyGroupForm);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [athletesGroup, setAthletesGroup] = useState<SchoolGroupResponse | null>(null);
-  const updateGroup = useUpdateSchoolGroup(editingGroup?.id);
-  const isSaving = createGroup.isPending || updateGroup.isPending;
+  const isSaving = createGroup.isPending;
 
   function openCreateForm() {
-    setEditingGroup(null);
     setForm(emptyGroupForm);
-    setIsFormVisible(true);
-  }
-
-  function openEditForm(group: SchoolGroupResponse) {
-    setEditingGroup(group);
-    setForm({ name: group.name, description: group.description ?? "" });
     setIsFormVisible(true);
   }
 
@@ -90,30 +79,14 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
       return;
     }
 
-    const mutation = editingGroup ? updateGroup : createGroup;
-    mutation.mutate(request, {
-      onSuccess: () => {
+    createGroup.mutate(request, {
+      onSuccess: (newGroup) => {
         setIsFormVisible(false);
-        Alert.alert("Gruplar", editingGroup ? "Grup güncellendi." : "Grup eklendi.");
+        Alert.alert("Gruplar", "Grup eklendi.");
+        router.push(`/groups/${newGroup.id}`);
       },
-      onError: () => Alert.alert("Gruplar", editingGroup ? "Grup güncellenemedi." : "Grup eklenemedi.")
+      onError: () => Alert.alert("Gruplar", "Grup eklenemedi.")
     });
-  }
-
-  function confirmDelete(group: SchoolGroupResponse) {
-    Alert.alert("Grubu sil", `${group.name} grubunu silmek istiyor musun?`, [
-      { text: "Vazgeç", style: "cancel" },
-      {
-        text: "Sil",
-        style: "destructive",
-        onPress: () => {
-          deleteGroup.mutate(group.id, {
-            onSuccess: () => Alert.alert("Gruplar", "Grup silindi."),
-            onError: () => Alert.alert("Gruplar", "Grup silinemedi.")
-          });
-        }
-      }
-    ]);
   }
 
   return (
@@ -140,21 +113,16 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
             <EmptyState title="Grup yok" description="Henüz aktif grup bulunmuyor." />
           </SurfaceCard>
         ) : (
-          groups.map((group) => <TeamRow key={group.id} deleting={deleteGroup.isPending} group={group} onDelete={confirmDelete} onEdit={openEditForm} onManageAthletes={setAthletesGroup} />)
+          groups.map((group) => <GroupCard key={group.id} group={group} />)
         )}
       </View>
       <GroupFormModal
-        editing={Boolean(editingGroup)}
         form={form}
         saving={isSaving}
         visible={isFormVisible}
         onChangeForm={(patch) => setForm((current) => ({ ...current, ...patch }))}
         onClose={() => setIsFormVisible(false)}
         onSubmit={submitGroup}
-      />
-      <GroupAthletesModal
-        group={athletesGroup}
-        onClose={() => setAthletesGroup(null)}
       />
     </ScreenShell>
   );
