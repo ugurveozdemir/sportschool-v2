@@ -35,6 +35,7 @@ type TrainingFormState = {
   endTime: string;
   location: string;
   notes: string;
+  date: Date;
 };
 
 const initialTrainingForm: TrainingFormState = {
@@ -43,7 +44,8 @@ const initialTrainingForm: TrainingFormState = {
   startTime: "17:00",
   endTime: "18:30",
   location: "",
-  notes: ""
+  notes: "",
+  date: new Date()
 };
 
 export default function CalendarScreen() {
