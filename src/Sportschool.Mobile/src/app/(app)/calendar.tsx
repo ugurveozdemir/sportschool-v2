@@ -318,6 +318,12 @@ function TrainingCard({ training, accent, coach, group }: { training: TrainingIt
 
 const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
 const minutes = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+const monthsTurkish = [
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+];
+const years = [2026, 2027, 2028];
+const days = Array.from({ length: 31 }, (_, i) => i + 1);
 
 function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onChangeForm, onClose, onSubmit }: {
   form: TrainingFormState;
@@ -333,6 +339,11 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
   const [selectedHour, setSelectedHour] = useState("17");
   const [selectedMinute, setSelectedMinute] = useState("00");
   const [isGroupPickerVisible, setIsGroupPickerVisible] = useState(false);
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
+  
+  const [tempDay, setTempDay] = useState(selectedDate.getDate());
+  const [tempMonth, setTempMonth] = useState(selectedDate.getMonth());
+  const [tempYear, setTempYear] = useState(selectedDate.getFullYear());
 
   const selectedGroupName = groups.find((g) => g.id === form.groupId)?.name;
 
@@ -349,6 +360,21 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
       onChangeForm({ [timePickerTarget]: `${selectedHour}:${selectedMinute}` });
     }
     setTimePickerTarget(null);
+  }
+
+  function handleOpenDatePicker() {
+    setTempDay(form.date.getDate());
+    setTempMonth(form.date.getMonth());
+    setTempYear(form.date.getFullYear());
+    setIsDatePickerVisible(true);
+  }
+
+  function handleConfirmDate() {
+    const maxDays = new Date(tempYear, tempMonth + 1, 0).getDate();
+    const safeDay = Math.min(tempDay, maxDays);
+    const newDate = new Date(tempYear, tempMonth, safeDay);
+    onChangeForm({ date: newDate });
+    setIsDatePickerVisible(false);
   }
 
   return (
@@ -372,6 +398,18 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
                 <MaterialCommunityIcons name="account-group-outline" size={18} color={colors.primary} />
                 <Text style={[styles.groupPickerValue, !form.groupId && styles.groupPickerPlaceholder]}>
                   {selectedGroupName || "Grup Seçin..."}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.outline} />
+              </View>
+            </Pressable>
+
+            {/* Custom Date Picker */}
+            <Pressable onPress={handleOpenDatePicker} style={styles.groupPickerButton}>
+              <Text style={styles.groupPickerLabel}>Tarih</Text>
+              <View style={styles.groupPickerBox}>
+                <MaterialCommunityIcons name="calendar-outline" size={18} color={colors.primary} />
+                <Text style={styles.groupPickerValue}>
+                  {formatSelectedDate(form.date)}
                 </Text>
                 <MaterialCommunityIcons name="chevron-down" size={20} color={colors.outline} />
               </View>
@@ -475,6 +513,67 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
               })}
             </ScrollView>
             <Button label="İptal" variant="outline" onPress={() => setIsGroupPickerVisible(false)} />
+          </View>
+        </View>
+      )}
+
+      {/* Date Picker Overlay */}
+      {isDatePickerVisible && (
+        <View style={styles.timePickerOverlay}>
+          <View style={[styles.timePickerCard, { width: "90%" }]}>
+            <Text style={styles.timePickerTitle}>Tarih Seçin</Text>
+            
+            <View style={styles.pickerColumns}>
+              {/* Gün Sütunu */}
+              <View style={[styles.pickerColumn, { flex: 0.8 }]}>
+                <Text style={styles.columnLabel}>Gün</Text>
+                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                  {days.map((d) => {
+                    const active = d === tempDay;
+                    return (
+                      <Pressable key={d} onPress={() => setTempDay(d)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{d}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Ay Sütunu */}
+              <View style={[styles.pickerColumn, { flex: 1.4 }]}>
+                <Text style={styles.columnLabel}>Ay</Text>
+                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                  {monthsTurkish.map((m, index) => {
+                    const active = index === tempMonth;
+                    return (
+                      <Pressable key={m} onPress={() => setTempMonth(index)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{m}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Yıl Sütunu */}
+              <View style={[styles.pickerColumn, { flex: 1.2 }]}>
+                <Text style={styles.columnLabel}>Yıl</Text>
+                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                  {years.map((y) => {
+                    const active = y === tempYear;
+                    return (
+                      <Pressable key={y} onPress={() => setTempYear(y)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{y}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={styles.pickerActions}>
+              <Button label="İptal" variant="outline" onPress={() => setIsDatePickerVisible(false)} />
+              <Button label="Tamam" onPress={handleConfirmDate} />
+            </View>
           </View>
         </View>
       )}
