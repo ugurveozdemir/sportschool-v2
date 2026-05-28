@@ -10,6 +10,7 @@ export const endpoints = {
   mePayments: "/api/me/payments",
   meAthleteReports: "/api/me/athlete-reports",
   schoolGroups: "/api/school/groups",
+  schoolAthletes: "/api/school/athletes",
   schoolGroup: (groupId: string) => `/api/school/groups/${groupId}`,
   schoolGroupAthletes: (groupId: string) => `/api/school/groups/${groupId}/athletes`,
   schoolGroupAthlete: (groupId: string, athleteProfileId: string) => `/api/school/groups/${groupId}/athletes/${athleteProfileId}`,
