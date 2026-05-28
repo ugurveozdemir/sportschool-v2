@@ -37,6 +37,17 @@ export type GroupAthleteResponse = {
   parentPhone: string;
 };
 
+export type AthleteRosterResponse = {
+  id: string;
+  schoolId: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  parentFullName: string;
+  parentPhone: string;
+};
+
 export type CoachAthleteListItem = {
   athleteProfileId: string;
   firstName: string;
