@@ -38,7 +38,7 @@ public sealed class TrainingEndpointTests
         using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
 
         var request = new CreateTrainingRequest(
-            GroupId: groupId,
+            GroupIds: [groupId],
             Title: "Basketball Fundamentals",
             StartsAt: DateTimeOffset.UtcNow.AddDays(1),
             EndsAt: DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
@@ -54,12 +54,61 @@ public sealed class TrainingEndpointTests
         Assert.NotNull(body);
         Assert.Equal(request.Title, body.Title);
         Assert.Equal(TrainingRecurrence.None, body.Recurrence);
+        Assert.Equal([groupId], body.Groups.Select(x => x.Id));
 
         // Verify database has exactly 1 session
         var dbSessions = await factory.QueryAsync(db => db.TrainingSessions.Where(x => x.SchoolId == schoolId).ToListAsync());
         var singleSession = Assert.Single(dbSessions);
         Assert.Equal(body.Id, singleSession.Id);
         Assert.Equal("Gym A", singleSession.Location);
+        var savedGroup = await factory.QueryAsync(db => db.TrainingSessionGroups.SingleAsync(x => x.TrainingSessionId == singleSession.Id));
+        Assert.Equal(groupId, savedGroup.GroupId);
+    }
+
+    [Fact]
+    public async Task CreateTrainingSession_WithMultipleGroups_CreatesGroupLinks()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupAId = Guid.NewGuid();
+        var groupBId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-training-multi@example.com", "Coach A", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "train-multi"));
+            db.TrainingGroups.AddRange(
+                new TrainingGroup { Id = groupAId, SchoolId = schoolId, Name = "Group A" },
+                new TrainingGroup { Id = groupBId, SchoolId = schoolId, Name = "Group B" });
+            db.Users.Add(coach);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+
+        var request = new CreateTrainingRequest(
+            GroupIds: [groupAId, groupBId],
+            Title: "Combined Practice",
+            StartsAt: DateTimeOffset.UtcNow.AddDays(1),
+            EndsAt: DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            Recurrence: TrainingRecurrence.None,
+            RecurrenceEndsOn: null,
+            Location: "Main Field",
+            Notes: null);
+
+        using var response = await client.PostAsJsonAsync("/api/school/trainings", request, JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<TrainingResponse>(JsonOptions);
+        Assert.NotNull(body);
+        Assert.Equal(new[] { groupAId, groupBId }.Order(), body!.Groups.Select(x => x.Id).Order());
+
+        var savedGroupIds = await factory.QueryAsync(db => db.TrainingSessionGroups
+            .Where(x => x.TrainingSessionId == body.Id)
+            .Select(x => x.GroupId)
+            .Order()
+            .ToArrayAsync());
+        Assert.Equal(new[] { groupAId, groupBId }.Order(), savedGroupIds);
     }
 
     [Fact]
@@ -85,7 +134,7 @@ public sealed class TrainingEndpointTests
         var recurrenceEnd = new DateOnly(2026, 6, 15); // Monday two weeks later (3 sessions: June 1, June 8, June 15)
 
         var request = new CreateTrainingRequest(
-            GroupId: groupId,
+            GroupIds: [groupId],
             Title: "Weekly Team Practice",
             StartsAt: startDate,
             EndsAt: endDate,
@@ -111,9 +160,13 @@ public sealed class TrainingEndpointTests
         Assert.Equal(startDate.AddDays(7), orderedSessions[1].StartsAt);
         Assert.Equal(startDate.AddDays(14), orderedSessions[2].StartsAt);
 
+        var sessionGroups = await factory.QueryAsync(db => db.TrainingSessionGroups
+            .Where(x => orderedSessions.Select(session => session.Id).Contains(x.TrainingSessionId))
+            .ToListAsync());
+
         Assert.All(orderedSessions, s =>
         {
-            Assert.Equal(groupId, s.GroupId);
+            Assert.Contains(sessionGroups, group => group.TrainingSessionId == s.Id && group.GroupId == groupId);
             Assert.Equal("Court B", s.Location);
             Assert.Equal(TrainingRecurrence.Weekly, s.Recurrence);
             Assert.Equal(recurrenceEnd, s.RecurrenceEndsOn);
@@ -139,7 +192,7 @@ public sealed class TrainingEndpointTests
         using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
 
         var request = new CreateTrainingRequest(
-            GroupId: groupId,
+            GroupIds: [groupId],
             Title: "Weekly Team Practice",
             StartsAt: DateTimeOffset.UtcNow,
             EndsAt: DateTimeOffset.UtcNow.AddHours(1),
@@ -171,7 +224,7 @@ public sealed class TrainingEndpointTests
         using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
 
         var request = new CreateTrainingRequest(
-            GroupId: groupId,
+            GroupIds: [groupId],
             Title: "Weekly Team Practice",
             StartsAt: DateTimeOffset.UtcNow,
             EndsAt: DateTimeOffset.UtcNow.AddHours(1),
@@ -203,12 +256,12 @@ public sealed class TrainingEndpointTests
             {
                 Id = trainingId,
                 SchoolId = schoolId,
-                GroupId = groupId,
                 CoachId = coach.Id,
                 Title = "Old Title",
                 StartsAt = DateTimeOffset.UtcNow.AddDays(1),
                 EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
-                Location = "Old Loc"
+                Location = "Old Loc",
+                Groups = { new TrainingSessionGroup { GroupId = groupId } }
             });
             return Task.CompletedTask;
         });
@@ -216,6 +269,7 @@ public sealed class TrainingEndpointTests
         using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
 
         var request = new UpdateTrainingRequest(
+            GroupIds: [groupId],
             Title: "New Title",
             StartsAt: DateTimeOffset.UtcNow.AddDays(2),
             EndsAt: DateTimeOffset.UtcNow.AddDays(2).AddHours(2),
@@ -250,11 +304,11 @@ public sealed class TrainingEndpointTests
             {
                 Id = trainingId,
                 SchoolId = schoolId,
-                GroupId = groupId,
                 CoachId = coach.Id,
                 Title = "Session to Delete",
                 StartsAt = DateTimeOffset.UtcNow.AddDays(1),
-                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1)
+                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                Groups = { new TrainingSessionGroup { GroupId = groupId } }
             });
             return Task.CompletedTask;
         });
@@ -288,11 +342,11 @@ public sealed class TrainingEndpointTests
             {
                 Id = trainingAId,
                 SchoolId = schoolAId,
-                GroupId = groupAId,
                 CoachId = coachA.Id,
                 Title = "School A Session",
                 StartsAt = DateTimeOffset.UtcNow.AddDays(1),
-                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1)
+                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                Groups = { new TrainingSessionGroup { GroupId = groupAId } }
             });
             return Task.CompletedTask;
         });
@@ -301,6 +355,7 @@ public sealed class TrainingEndpointTests
         using var client = factory.CreateAuthenticatedClient(coachB, UserRole.Coach);
 
         var editRequest = new UpdateTrainingRequest(
+            GroupIds: [groupAId],
             Title: "Hacked",
             StartsAt: DateTimeOffset.UtcNow.AddDays(1),
             EndsAt: DateTimeOffset.UtcNow.AddDays(1).AddHours(1),

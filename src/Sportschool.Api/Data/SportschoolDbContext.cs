@@ -35,6 +35,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
 
     public DbSet<TrainingSession> TrainingSessions => Set<TrainingSession>();
 
+    public DbSet<TrainingSessionGroup> TrainingSessionGroups => Set<TrainingSessionGroup>();
+
     public DbSet<AthleteReport> AthleteReports => Set<AthleteReport>();
 
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
@@ -192,21 +194,32 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             training.Property(x => x.Location).HasMaxLength(160);
             training.Property(x => x.Notes).HasMaxLength(1000);
             training.Property(x => x.Recurrence).HasConversion<string>().HasMaxLength(40);
-            training.HasIndex(x => new { x.SchoolId, x.GroupId, x.StartsAt });
+            training.HasIndex(x => new { x.SchoolId, x.StartsAt });
 
             training.HasOne(x => x.School)
                 .WithMany()
                 .HasForeignKey(x => x.SchoolId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            training.HasOne(x => x.Group)
-                .WithMany()
-                .HasForeignKey(x => x.GroupId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             training.HasOne(x => x.Coach)
                 .WithMany()
                 .HasForeignKey(x => x.CoachId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TrainingSessionGroup>(trainingGroup =>
+        {
+            trainingGroup.HasKey(x => new { x.TrainingSessionId, x.GroupId });
+            trainingGroup.HasIndex(x => new { x.GroupId, x.TrainingSessionId });
+
+            trainingGroup.HasOne(x => x.TrainingSession)
+                .WithMany(x => x.Groups)
+                .HasForeignKey(x => x.TrainingSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            trainingGroup.HasOne(x => x.Group)
+                .WithMany(x => x.TrainingSessions)
+                .HasForeignKey(x => x.GroupId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

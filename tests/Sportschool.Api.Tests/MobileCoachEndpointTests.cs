@@ -34,6 +34,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         Assert.NotNull(summary);
         var training = Assert.Single(summary!.TodayTrainings);
         Assert.Equal(data.CoachTraining.Id, training.Id);
+        Assert.Equal(data.Group.Id, Assert.Single(training.Groups).Id);
         Assert.Equal(1, summary.WeekTrainingCount);
         Assert.Equal(1, summary.MissingAttendanceCount);
         Assert.Equal(1, summary.GroupCount);
@@ -49,6 +50,53 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         using var response = await client.GetAsync($"/api/mobile/coach/trainings/{data.OtherCoachTraining.Id}/attendance-roster");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AttendanceRoster_ForMultiGroupTraining_ReturnsDistinctAthletesFromAllGroups()
+    {
+        var data = await SeedCoachScenarioAsync();
+        var suffix = Guid.NewGuid().ToString("N");
+        var extraGroup = new TrainingGroup
+        {
+            SchoolId = data.Group.SchoolId,
+            Name = $"U16 {suffix}"
+        };
+        var extraAthleteUser = TestUsers.Create(data.Group.SchoolId, $"extra-athlete-{suffix}@example.com", "Extra Athlete", "password", UserRole.Athlete);
+        var extraAthlete = new AthleteProfile
+        {
+            SchoolId = data.Group.SchoolId,
+            User = extraAthleteUser,
+            FirstName = "Extra",
+            LastName = "Athlete",
+            BirthDate = new DateOnly(2014, 1, 1),
+            ParentFullName = "Extra Parent",
+            ParentPhone = "05000000002"
+        };
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Users.Add(extraAthleteUser);
+            db.TrainingGroups.Add(extraGroup);
+            db.AthleteProfiles.Add(extraAthlete);
+            db.GroupAthletes.Add(new GroupAthlete { Group = extraGroup, AthleteProfileId = data.Athlete.Id });
+            db.GroupAthletes.Add(new GroupAthlete { Group = extraGroup, AthleteProfile = extraAthlete });
+            db.TrainingSessionGroups.Add(new TrainingSessionGroup
+            {
+                TrainingSessionId = data.CoachTraining.Id,
+                Group = extraGroup
+            });
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        var roster = await client.GetFromJsonAsync<MobileCoachAttendanceRosterResponse>(
+            $"/api/mobile/coach/trainings/{data.CoachTraining.Id}/attendance-roster");
+
+        Assert.NotNull(roster);
+        Assert.Equal(new[] { data.Group.Id, extraGroup.Id }.Order(), roster!.Training.Groups.Select(x => x.Id).Order());
+        Assert.Equal(new[] { data.Athlete.Id, extraAthlete.Id }.Order(), roster.Athletes.Select(x => x.AthleteProfileId).Order());
     }
 
     [Fact]
@@ -177,22 +225,22 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         var coachTraining = new TrainingSession
         {
             SchoolId = school.Id,
-            Group = group,
             Coach = coach,
             Title = "Coach Training",
             StartsAt = todayStartsAt,
             EndsAt = todayStartsAt.AddHours(1),
-            Recurrence = TrainingRecurrence.None
+            Recurrence = TrainingRecurrence.None,
+            Groups = { new TrainingSessionGroup { Group = group } }
         };
         var otherCoachTraining = new TrainingSession
         {
             SchoolId = school.Id,
-            Group = otherGroup,
             Coach = otherCoach,
             Title = "Other Coach Training",
             StartsAt = todayStartsAt,
             EndsAt = todayStartsAt.AddHours(1),
-            Recurrence = TrainingRecurrence.None
+            Recurrence = TrainingRecurrence.None,
+            Groups = { new TrainingSessionGroup { Group = otherGroup } }
         };
 
         await _factory.SeedAsync(db =>
@@ -207,13 +255,14 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             return Task.CompletedTask;
         });
 
-        return new CoachScenario(coach, coachTraining, otherCoachTraining, athlete, otherCoachAthlete);
+        return new CoachScenario(coach, coachTraining, otherCoachTraining, group, athlete, otherCoachAthlete);
     }
 
     private sealed record CoachScenario(
         AppUser Coach,
         TrainingSession CoachTraining,
         TrainingSession OtherCoachTraining,
+        TrainingGroup Group,
         AthleteProfile Athlete,
         AthleteProfile OtherCoachAthlete);
 }

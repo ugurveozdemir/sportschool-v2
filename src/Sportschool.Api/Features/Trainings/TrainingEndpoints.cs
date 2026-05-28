@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -51,13 +52,20 @@ public static class TrainingEndpoints
                 x.Title,
                 x.StartsAt,
                 x.EndsAt,
-                x.GroupId,
-                x.Group.Name,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
                 x.CoachId,
                 x.Coach.FullName,
                 x.Location,
                 new AttendanceSummary(
-                    x.Group.Athletes.Count(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive),
+                    x.Groups
+                        .SelectMany(group => group.Group.Athletes)
+                        .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
+                        .Select(a => a.AthleteProfileId)
+                        .Distinct()
+                        .Count(),
                     db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id))))
             .ToListAsync(cancellationToken);
         var trainings = trainingRows
@@ -88,6 +96,12 @@ public static class TrainingEndpoints
             return Results.BadRequest();
         }
 
+        var groupIds = NormalizeGroupIds(request.GroupIds);
+        if (groupIds is null)
+        {
+            return Results.BadRequest();
+        }
+
         if (request.Recurrence == TrainingRecurrence.Weekly)
         {
             if (request.RecurrenceEndsOn is null)
@@ -102,11 +116,8 @@ public static class TrainingEndpoints
             }
         }
 
-        var groupExists = await db.TrainingGroups.AnyAsync(
-            x => x.Id == request.GroupId && x.SchoolId == schoolId.Value && x.IsActive,
-            cancellationToken);
-
-        if (!groupExists)
+        var groups = await GetActiveGroupsAsync(groupIds, schoolId.Value, db, cancellationToken);
+        if (groups.Count != groupIds.Length)
         {
             return Results.NotFound();
         }
@@ -120,19 +131,13 @@ public static class TrainingEndpoints
 
             while (occurrenceDate <= request.RecurrenceEndsOn!.Value)
             {
-                sessions.Add(new TrainingSession
-                {
-                    SchoolId = schoolId.Value,
-                    GroupId = request.GroupId,
-                    CoachId = userId.Value,
-                    Title = request.Title.Trim(),
-                    StartsAt = currentStartsAt,
-                    EndsAt = currentEndsAt,
-                    Recurrence = request.Recurrence,
-                    RecurrenceEndsOn = request.RecurrenceEndsOn,
-                    Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
-                    Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
-                });
+                sessions.Add(CreateTrainingSession(
+                    schoolId.Value,
+                    userId.Value,
+                    groupIds,
+                    request,
+                    currentStartsAt,
+                    currentEndsAt));
 
                 currentStartsAt = currentStartsAt.AddDays(7);
                 currentEndsAt = currentEndsAt.AddDays(7);
@@ -146,26 +151,22 @@ public static class TrainingEndpoints
         }
         else
         {
-            sessions.Add(new TrainingSession
-            {
-                SchoolId = schoolId.Value,
-                GroupId = request.GroupId,
-                CoachId = userId.Value,
-                Title = request.Title.Trim(),
-                StartsAt = request.StartsAt,
-                EndsAt = request.EndsAt,
-                Recurrence = request.Recurrence,
-                RecurrenceEndsOn = null,
-                Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
-                Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
-            });
+            sessions.Add(CreateTrainingSession(
+                schoolId.Value,
+                userId.Value,
+                groupIds,
+                request,
+                request.StartsAt,
+                request.EndsAt));
         }
 
         db.TrainingSessions.AddRange(sessions);
         await db.SaveChangesAsync(cancellationToken);
 
         var firstSession = sessions[0];
-        return Results.Created($"/api/school/trainings/{firstSession.Id}", TrainingResponse.From(firstSession));
+        return Results.Created(
+            $"/api/school/trainings/{firstSession.Id}",
+            TrainingResponse.From(firstSession, groups.Select(x => new TrainingGroupSummary(x.Id, x.Name)).ToArray()));
     }
 
     private static async Task<IResult> ListGroupTrainingsAsync(
@@ -190,9 +191,24 @@ public static class TrainingEndpoints
         }
 
         var trainings = await db.TrainingSessions
-            .Where(x => x.GroupId == groupId && x.SchoolId == schoolId.Value && x.IsActive)
+            .Where(x => x.SchoolId == schoolId.Value
+                && x.IsActive
+                && x.Groups.Any(group => group.GroupId == groupId))
             .OrderBy(x => x.StartsAt)
-            .Select(x => TrainingResponse.From(x))
+            .Select(x => new TrainingResponse(
+                x.Id,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
+                x.CoachId,
+                x.Title,
+                x.StartsAt,
+                x.EndsAt,
+                x.Recurrence,
+                x.RecurrenceEndsOn,
+                x.Location,
+                x.Notes))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(trainings);
@@ -217,6 +233,18 @@ public static class TrainingEndpoints
             return Results.BadRequest();
         }
 
+        var groupIds = NormalizeGroupIds(request.GroupIds);
+        if (groupIds is null)
+        {
+            return Results.BadRequest();
+        }
+
+        var groups = await GetActiveGroupsAsync(groupIds, schoolId.Value, db, cancellationToken);
+        if (groups.Count != groupIds.Length)
+        {
+            return Results.NotFound();
+        }
+
         var training = await db.TrainingSessions.FirstOrDefaultAsync(
             x => x.Id == id && x.SchoolId == schoolId.Value && x.IsActive,
             cancellationToken);
@@ -231,6 +259,19 @@ public static class TrainingEndpoints
         training.EndsAt = request.EndsAt;
         training.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
         training.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+
+        var currentGroups = await db.TrainingSessionGroups
+            .Where(x => x.TrainingSessionId == id)
+            .ToListAsync(cancellationToken);
+        db.TrainingSessionGroups.RemoveRange(currentGroups);
+        foreach (var groupId in groupIds)
+        {
+            db.TrainingSessionGroups.Add(new TrainingSessionGroup
+            {
+                TrainingSessionId = id,
+                GroupId = groupId
+            });
+        }
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -263,10 +304,62 @@ public static class TrainingEndpoints
 
         return Results.NoContent();
     }
+
+    private static Guid[]? NormalizeGroupIds(IReadOnlyCollection<Guid> groupIds)
+    {
+        if (groupIds.Count == 0 || groupIds.Any(x => x == Guid.Empty))
+        {
+            return null;
+        }
+
+        var distinctGroupIds = groupIds.Distinct().ToArray();
+        return distinctGroupIds.Length == groupIds.Count ? distinctGroupIds : null;
+    }
+
+    private static Task<List<TrainingGroup>> GetActiveGroupsAsync(
+        IReadOnlyCollection<Guid> groupIds,
+        Guid schoolId,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        return db.TrainingGroups
+            .Where(x => groupIds.Contains(x.Id) && x.SchoolId == schoolId && x.IsActive)
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+    }
+
+    private static TrainingSession CreateTrainingSession(
+        Guid schoolId,
+        Guid coachId,
+        IReadOnlyCollection<Guid> groupIds,
+        CreateTrainingRequest request,
+        DateTimeOffset startsAt,
+        DateTimeOffset endsAt)
+    {
+        var session = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = coachId,
+            Title = request.Title.Trim(),
+            StartsAt = startsAt,
+            EndsAt = endsAt,
+            Recurrence = request.Recurrence,
+            RecurrenceEndsOn = request.Recurrence == TrainingRecurrence.Weekly ? request.RecurrenceEndsOn : null,
+            Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim()
+        };
+
+        foreach (var groupId in groupIds)
+        {
+            session.Groups.Add(new TrainingSessionGroup { GroupId = groupId });
+        }
+
+        return session;
+    }
 }
 
 public sealed record CreateTrainingRequest(
-    Guid GroupId,
+    IReadOnlyCollection<Guid> GroupIds,
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
@@ -277,7 +370,7 @@ public sealed record CreateTrainingRequest(
 
 public sealed record TrainingResponse(
     Guid Id,
-    Guid GroupId,
+    IReadOnlyCollection<TrainingGroupSummary> Groups,
     Guid CoachId,
     string Title,
     DateTimeOffset StartsAt,
@@ -287,11 +380,11 @@ public sealed record TrainingResponse(
     string? Location,
     string? Notes)
 {
-    public static TrainingResponse From(TrainingSession training)
+    public static TrainingResponse From(TrainingSession training, IReadOnlyCollection<TrainingGroupSummary> groups)
     {
         return new TrainingResponse(
             training.Id,
-            training.GroupId,
+            groups,
             training.CoachId,
             training.Title,
             training.StartsAt,
@@ -304,6 +397,7 @@ public sealed record TrainingResponse(
 }
 
 public sealed record UpdateTrainingRequest(
+    IReadOnlyCollection<Guid> GroupIds,
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
@@ -315,11 +409,12 @@ public sealed record TrainingListResponse(
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    Guid GroupId,
-    string GroupName,
+    IReadOnlyCollection<TrainingGroupSummary> Groups,
     Guid CoachId,
     string CoachName,
     string? Location,
     AttendanceSummary AttendanceSummary);
+
+public sealed record TrainingGroupSummary(Guid Id, string Name);
 
 public sealed record AttendanceSummary(int TotalAthletes, int RecordedCount);

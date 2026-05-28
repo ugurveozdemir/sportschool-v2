@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-29
+
+- Changed training sessions from a single group relationship to a multi-group join model with data-preserving migration.
+- Updated training, attendance, dashboard, parent/athlete mobile, and coach mobile backend endpoints to read training groups through `TrainingSessionGroups`.
+- Added API tests for multi-group training creation and distinct coach roster athletes across multiple groups.
+
 ## 2026-05-24
 
 - Changed the Development PlatformOwner seed to `ugur@gmail.com` / `123123`.

@@ -53,10 +53,17 @@ public static class MobileCoachEndpoints
                 x.Title,
                 x.StartsAt,
                 x.EndsAt,
-                x.GroupId,
-                x.Group.Name,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
                 x.Location,
-                x.Group.Athletes.Count(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive),
+                x.Groups
+                    .SelectMany(group => group.Group.Athletes)
+                    .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
+                    .Select(a => a.AthleteProfileId)
+                    .Distinct()
+                    .Count(),
                 db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)))
             .ToListAsync(cancellationToken);
 
@@ -65,7 +72,7 @@ public static class MobileCoachEndpoints
             .OrderBy(x => x.StartsAt)
             .ToList();
 
-        var groupIds = trainingRows.Select(x => x.GroupId).Distinct().ToArray();
+        var groupIds = trainingRows.SelectMany(x => x.Groups.Select(group => group.Id)).Distinct().ToArray();
         var athleteCount = await db.GroupAthletes
             .AsNoTracking()
             .Where(x => groupIds.Contains(x.GroupId)
@@ -95,9 +102,12 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var groups = await db.TrainingSessions
+        var groups = await db.TrainingSessionGroups
             .AsNoTracking()
-            .Where(x => x.SchoolId == context.SchoolId && x.CoachId == context.CoachId && x.IsActive && x.Group.IsActive)
+            .Where(x => x.TrainingSession.SchoolId == context.SchoolId
+                && x.TrainingSession.CoachId == context.CoachId
+                && x.TrainingSession.IsActive
+                && x.Group.IsActive)
             .Select(x => new MobileCoachGroupResponse(
                 x.GroupId,
                 x.Group.Name,
@@ -323,10 +333,17 @@ public static class MobileCoachEndpoints
                 x.Title,
                 x.StartsAt,
                 x.EndsAt,
-                x.GroupId,
-                x.Group.Name,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
                 x.Location,
-                x.Group.Athletes.Count(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive),
+                x.Groups
+                    .SelectMany(group => group.Group.Athletes)
+                    .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
+                    .Select(a => a.AthleteProfileId)
+                    .Distinct()
+                    .Count(),
                 db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)))
             .ToListAsync(cancellationToken);
 
@@ -351,25 +368,46 @@ public static class MobileCoachEndpoints
             return Results.NotFound();
         }
 
-        var athletes = await db.GroupAthletes
+        var groupIds = training.Groups.Select(x => x.Id).ToArray();
+        var athleteRows = await db.GroupAthletes
             .AsNoTracking()
-            .Where(x => x.GroupId == training.GroupId
+            .Where(x => groupIds.Contains(x.GroupId)
                 && x.AthleteProfile.SchoolId == context.SchoolId
                 && x.AthleteProfile.IsActive
                 && x.AthleteProfile.User.IsActive)
-            .OrderBy(x => x.AthleteProfile.LastName)
-            .ThenBy(x => x.AthleteProfile.FirstName)
-            .Select(x => new MobileCoachAttendanceRosterItem(
+            .Select(x => new
+            {
                 x.AthleteProfileId,
                 x.AthleteProfile.FirstName,
                 x.AthleteProfile.LastName,
                 x.AthleteProfile.ParentFullName,
                 x.AthleteProfile.ParentPhone,
-                db.AttendanceRecords
+                Status = db.AttendanceRecords
                     .Where(a => a.TrainingSessionId == trainingId && a.AthleteProfileId == x.AthleteProfileId)
                     .Select(a => (AttendanceStatus?)a.Status)
-                    .FirstOrDefault()))
+                    .FirstOrDefault()
+            })
             .ToListAsync(cancellationToken);
+        var athletes = athleteRows
+            .GroupBy(x => new
+            {
+                x.AthleteProfileId,
+                x.FirstName,
+                x.LastName,
+                x.ParentFullName,
+                x.ParentPhone,
+                x.Status
+            })
+            .Select(x => new MobileCoachAttendanceRosterItem(
+                x.Key.AthleteProfileId,
+                x.Key.FirstName,
+                x.Key.LastName,
+                x.Key.ParentFullName,
+                x.Key.ParentPhone,
+                x.Key.Status))
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName)
+            .ToArray();
 
         return Results.Ok(new MobileCoachAttendanceRosterResponse(training, athletes));
     }
@@ -398,8 +436,9 @@ public static class MobileCoachEndpoints
             return Results.NotFound();
         }
 
+        var groupIds = training.Groups.Select(group => group.Id).ToArray();
         var athleteIsInGroup = await db.GroupAthletes.AnyAsync(
-            x => x.GroupId == training.GroupId
+            x => groupIds.Contains(x.GroupId)
                 && x.AthleteProfileId == request.AthleteProfileId
                 && x.AthleteProfile.SchoolId == context.SchoolId
                 && x.AthleteProfile.IsActive,
@@ -501,17 +540,23 @@ public static class MobileCoachEndpoints
                 x.Title,
                 x.StartsAt,
                 x.EndsAt,
-                x.GroupId,
-                x.Group.Name,
-                x.Location))
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
+                x.Location,
+                x.Notes))
             .FirstOrDefaultAsync(cancellationToken);
     }
 
     private static IQueryable<Guid> CoachGroupIds(CoachContext context, SportschoolDbContext db)
     {
-        return db.TrainingSessions
+        return db.TrainingSessionGroups
             .AsNoTracking()
-            .Where(x => x.SchoolId == context.SchoolId && x.CoachId == context.CoachId && x.IsActive && x.Group.IsActive)
+            .Where(x => x.TrainingSession.SchoolId == context.SchoolId
+                && x.TrainingSession.CoachId == context.CoachId
+                && x.TrainingSession.IsActive
+                && x.Group.IsActive)
             .Select(x => x.GroupId)
             .Distinct();
     }
@@ -584,8 +629,7 @@ public sealed record MobileCoachTrainingItem(
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    Guid GroupId,
-    string GroupName,
+    IReadOnlyCollection<TrainingGroupSummary> Groups,
     string? Location,
     int TotalAthletes,
     int RecordedAttendanceCount);
@@ -599,9 +643,9 @@ public sealed record MobileCoachAttendanceRosterTraining(
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    Guid GroupId,
-    string GroupName,
-    string? Location);
+    IReadOnlyCollection<TrainingGroupSummary> Groups,
+    string? Location,
+    string? Notes);
 
 public sealed record MobileCoachAttendanceRosterItem(
     Guid AthleteProfileId,

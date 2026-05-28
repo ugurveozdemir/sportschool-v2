@@ -1,4 +1,5 @@
 using Sportschool.Api.Features.Schools;
+using Sportschool.Api.Features.Trainings;
 
 namespace Sportschool.Api.Features.Groups;
 
@@ -19,4 +20,6 @@ public sealed class TrainingGroup
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public List<GroupAthlete> Athletes { get; } = [];
+
+    public List<TrainingSessionGroup> TrainingSessions { get; } = [];
 }

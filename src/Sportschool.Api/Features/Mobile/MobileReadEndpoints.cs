@@ -84,11 +84,24 @@ public static class MobileReadEndpoints
         var trainings = await db.TrainingSessions
             .Where(x => x.SchoolId == profile.SchoolId
                 && x.IsActive
-                && groupIds.Contains(x.GroupId)
+                && x.Groups.Any(group => groupIds.Contains(group.GroupId))
                 && x.StartsAt >= start
                 && x.StartsAt < end)
             .OrderBy(x => x.StartsAt)
-            .Select(x => TrainingResponse.From(x))
+            .Select(x => new TrainingResponse(
+                x.Id,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
+                x.CoachId,
+                x.Title,
+                x.StartsAt,
+                x.EndsAt,
+                x.Recurrence,
+                x.RecurrenceEndsOn,
+                x.Location,
+                x.Notes))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(trainings);

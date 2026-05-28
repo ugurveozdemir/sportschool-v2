@@ -103,7 +103,7 @@ public sealed class DataModelTests
     }
 
     [Fact]
-    public void TrainingSessions_AreIndexedBySchoolGroupAndStartTime()
+    public void TrainingSessions_AreIndexedBySchoolAndStartTime()
     {
         using var db = CreateDbContext();
 
@@ -112,11 +112,21 @@ public sealed class DataModelTests
             x.Properties.Select(p => p.Name).SequenceEqual(
             [
                 nameof(TrainingSession.SchoolId),
-                nameof(TrainingSession.GroupId),
                 nameof(TrainingSession.StartsAt)
             ]));
 
         Assert.False(index.IsUnique);
+    }
+
+    [Fact]
+    public void TrainingSessionGroups_UseCompositeKey()
+    {
+        using var db = CreateDbContext();
+
+        var trainingGroup = db.Model.FindEntityType(typeof(TrainingSessionGroup));
+        var keyProperties = trainingGroup!.FindPrimaryKey()!.Properties.Select(x => x.Name);
+
+        Assert.Equal([nameof(TrainingSessionGroup.TrainingSessionId), nameof(TrainingSessionGroup.GroupId)], keyProperties);
     }
 
     [Fact]

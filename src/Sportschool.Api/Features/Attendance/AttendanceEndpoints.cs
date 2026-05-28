@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -76,8 +77,10 @@ public static class AttendanceEndpoints
                 x.Title,
                 x.StartsAt,
                 x.EndsAt,
-                x.GroupId,
-                x.Group.Name))
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray()))
             .FirstOrDefaultAsync(cancellationToken);
 
         if (training is null)
@@ -85,25 +88,46 @@ public static class AttendanceEndpoints
             return Results.NotFound();
         }
 
-        var rows = await db.GroupAthletes
+        var groupIds = training.Groups.Select(x => x.Id).ToArray();
+        var rowData = await db.GroupAthletes
             .AsNoTracking()
-            .Where(x => x.GroupId == training.GroupId
+            .Where(x => groupIds.Contains(x.GroupId)
                 && x.AthleteProfile.SchoolId == schoolId.Value
                 && x.AthleteProfile.IsActive
                 && x.AthleteProfile.User.IsActive)
-            .OrderBy(x => x.AthleteProfile.LastName)
-            .ThenBy(x => x.AthleteProfile.FirstName)
-            .Select(x => new AttendanceRosterItem(
+            .Select(x => new
+            {
                 x.AthleteProfileId,
                 x.AthleteProfile.FirstName,
                 x.AthleteProfile.LastName,
                 x.AthleteProfile.ParentFullName,
                 x.AthleteProfile.ParentPhone,
-                db.AttendanceRecords
+                Status = db.AttendanceRecords
                     .Where(a => a.TrainingSessionId == trainingId && a.AthleteProfileId == x.AthleteProfileId)
                     .Select(a => (AttendanceStatus?)a.Status)
-                    .FirstOrDefault()))
+                    .FirstOrDefault()
+            })
             .ToListAsync(cancellationToken);
+        var rows = rowData
+            .GroupBy(x => new
+            {
+                x.AthleteProfileId,
+                x.FirstName,
+                x.LastName,
+                x.ParentFullName,
+                x.ParentPhone,
+                x.Status
+            })
+            .Select(x => new AttendanceRosterItem(
+                x.Key.AthleteProfileId,
+                x.Key.FirstName,
+                x.Key.LastName,
+                x.Key.ParentFullName,
+                x.Key.ParentPhone,
+                x.Key.Status))
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName)
+            .ToArray();
 
         return Results.Ok(new AttendanceRosterResponse(training, rows));
     }
@@ -127,9 +151,15 @@ public static class AttendanceEndpoints
             return Results.BadRequest();
         }
 
-        var training = await db.TrainingSessions.FirstOrDefaultAsync(
-            x => x.Id == trainingId && x.SchoolId == schoolId.Value && x.IsActive,
-            cancellationToken);
+        var training = await db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.Id == trainingId && x.SchoolId == schoolId.Value && x.IsActive)
+            .Select(x => new
+            {
+                x.Id,
+                GroupIds = x.Groups.Select(group => group.GroupId).ToArray()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (training is null)
         {
@@ -137,7 +167,7 @@ public static class AttendanceEndpoints
         }
 
         var athleteIsInGroup = await db.GroupAthletes.AnyAsync(
-            x => x.GroupId == training.GroupId
+            x => training.GroupIds.Contains(x.GroupId)
                 && x.AthleteProfileId == request.AthleteProfileId
                 && x.AthleteProfile.SchoolId == schoolId.Value
                 && x.AthleteProfile.IsActive,
@@ -249,8 +279,7 @@ public sealed record AttendanceRosterTraining(
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    Guid GroupId,
-    string GroupName);
+    IReadOnlyCollection<TrainingGroupSummary> Groups);
 
 public sealed record AttendanceRosterItem(
     Guid AthleteProfileId,

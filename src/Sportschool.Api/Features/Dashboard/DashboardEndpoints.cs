@@ -55,12 +55,19 @@ public static class DashboardEndpoints
                 x.Title,
                 x.StartsAt,
                 x.EndsAt,
-                x.GroupId,
-                x.Group.Name,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
                 x.CoachId,
                 x.Coach.FullName,
                 x.Location,
-                x.Group.Athletes.Count(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive),
+                x.Groups
+                    .SelectMany(group => group.Group.Athletes)
+                    .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
+                    .Select(a => a.AthleteProfileId)
+                    .Distinct()
+                    .Count(),
                 db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)))
             .ToListAsync(cancellationToken);
         var trainings = trainingRows
@@ -130,8 +137,7 @@ public sealed record DashboardTrainingItem(
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    Guid GroupId,
-    string GroupName,
+    IReadOnlyCollection<TrainingGroupSummary> Groups,
     Guid CoachId,
     string CoachName,
     string? Location,

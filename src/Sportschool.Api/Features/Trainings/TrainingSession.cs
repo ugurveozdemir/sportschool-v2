@@ -12,10 +12,6 @@ public sealed class TrainingSession
 
     public School School { get; set; } = null!;
 
-    public Guid GroupId { get; set; }
-
-    public TrainingGroup Group { get; set; } = null!;
-
     public Guid CoachId { get; set; }
 
     public AppUser Coach { get; set; } = null!;
@@ -37,4 +33,6 @@ public sealed class TrainingSession
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public List<TrainingSessionGroup> Groups { get; } = [];
 }

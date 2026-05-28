@@ -59,7 +59,7 @@ public sealed class DashboardProductEndpointTests
         Assert.NotNull(trainings);
         var training = Assert.Single(trainings);
         Assert.Equal(fixture.TrainingId, training.Id);
-        Assert.Equal("Group A", training.GroupName);
+        Assert.Equal("Group A", Assert.Single(training.Groups).Name);
         Assert.Equal(1, training.AttendanceSummary.TotalAthletes);
 
         var roster = await client.GetFromJsonAsync<AttendanceRosterResponse>(
@@ -173,21 +173,21 @@ public sealed class DashboardProductEndpointTests
                 {
                     Id = trainingId,
                     SchoolId = schoolId,
-                    GroupId = groupId,
                     CoachId = coach.Id,
                     Title = "Training A",
                     StartsAt = new DateTimeOffset(2026, 5, 24, 10, 0, 0, TimeSpan.Zero),
-                    EndsAt = new DateTimeOffset(2026, 5, 24, 11, 0, 0, TimeSpan.Zero)
+                    EndsAt = new DateTimeOffset(2026, 5, 24, 11, 0, 0, TimeSpan.Zero),
+                    Groups = { new TrainingSessionGroup { GroupId = groupId } }
                 },
                 new TrainingSession
                 {
                     Id = otherTrainingId,
                     SchoolId = otherSchoolId,
-                    GroupId = otherGroupId,
                     CoachId = otherCoach.Id,
                     Title = "Training B",
                     StartsAt = new DateTimeOffset(2026, 5, 24, 10, 0, 0, TimeSpan.Zero),
-                    EndsAt = new DateTimeOffset(2026, 5, 24, 11, 0, 0, TimeSpan.Zero)
+                    EndsAt = new DateTimeOffset(2026, 5, 24, 11, 0, 0, TimeSpan.Zero),
+                    Groups = { new TrainingSessionGroup { GroupId = otherGroupId } }
                 });
             db.AttendanceRecords.Add(new AttendanceRecord
             {
