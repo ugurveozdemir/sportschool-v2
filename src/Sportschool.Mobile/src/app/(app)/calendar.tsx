@@ -303,6 +303,9 @@ function TrainingCard({ training, accent, coach, group }: { training: TrainingIt
   );
 }
 
+const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+const minutes = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+
 function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onChangeForm, onClose, onSubmit }: {
   form: TrainingFormState;
   groups: SchoolGroupResponse[];
@@ -313,6 +316,25 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const [timePickerTarget, setTimePickerTarget] = useState<"startTime" | "endTime" | null>(null);
+  const [selectedHour, setSelectedHour] = useState("17");
+  const [selectedMinute, setSelectedMinute] = useState("00");
+
+  function handleOpenTimePicker(target: "startTime" | "endTime") {
+    const currentValue = target === "startTime" ? form.startTime : form.endTime;
+    const [h, m] = currentValue.split(":");
+    setSelectedHour(h || "17");
+    setSelectedMinute(m || "00");
+    setTimePickerTarget(target);
+  }
+
+  function handleConfirmTime() {
+    if (timePickerTarget) {
+      onChangeForm({ [timePickerTarget]: `${selectedHour}:${selectedMinute}` });
+    }
+    setTimePickerTarget(null);
+  }
+
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
       <View style={styles.modalBackdrop}>
@@ -338,16 +360,77 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
               })}
             </View>
             <TextField label="Başlık" value={form.title} onChangeText={(value) => onChangeForm({ title: value })} placeholder="Antrenman başlığı" />
+            
             <View style={styles.timeRow}>
-              <TextField label="Başlangıç" value={form.startTime} onChangeText={(value) => onChangeForm({ startTime: value })} placeholder="17:00" />
-              <TextField label="Bitiş" value={form.endTime} onChangeText={(value) => onChangeForm({ endTime: value })} placeholder="18:30" />
+              <Pressable onPress={() => handleOpenTimePicker("startTime")} style={styles.timePickerButton}>
+                <Text style={styles.timePickerLabel}>Başlangıç</Text>
+                <View style={styles.timePickerBox}>
+                  <MaterialCommunityIcons name="clock-outline" size={18} color={colors.primary} />
+                  <Text style={styles.timePickerValue}>{form.startTime}</Text>
+                </View>
+              </Pressable>
+              <Pressable onPress={() => handleOpenTimePicker("endTime")} style={styles.timePickerButton}>
+                <Text style={styles.timePickerLabel}>Bitiş</Text>
+                <View style={styles.timePickerBox}>
+                  <MaterialCommunityIcons name="clock-outline" size={18} color={colors.primary} />
+                  <Text style={styles.timePickerValue}>{form.endTime}</Text>
+                </View>
+              </Pressable>
             </View>
+
             <TextField label="Konum" value={form.location} onChangeText={(value) => onChangeForm({ location: value })} placeholder="Saha 1" />
             <TextField label="Not" multiline value={form.notes} onChangeText={(value) => onChangeForm({ notes: value })} placeholder="Opsiyonel not" />
             <Button disabled={saving} label={saving ? "Kaydediliyor" : "Kaydet"} onPress={onSubmit} />
           </ScrollView>
         </View>
       </View>
+
+      {timePickerTarget && (
+        <View style={styles.timePickerOverlay}>
+          <View style={styles.timePickerCard}>
+            <Text style={styles.timePickerTitle}>
+              {timePickerTarget === "startTime" ? "Başlangıç Saati" : "Bitiş Saati"}
+            </Text>
+            
+            <View style={styles.pickerColumns}>
+              {/* Saat Sütunu */}
+              <View style={styles.pickerColumn}>
+                <Text style={styles.columnLabel}>Saat</Text>
+                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                  {hours.map((h) => {
+                    const active = h === selectedHour;
+                    return (
+                      <Pressable key={h} onPress={() => setSelectedHour(h)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{h}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Dakika Sütunu */}
+              <View style={styles.pickerColumn}>
+                <Text style={styles.columnLabel}>Dakika</Text>
+                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                  {minutes.map((m) => {
+                    const active = m === selectedMinute;
+                    return (
+                      <Pressable key={m} onPress={() => setSelectedMinute(m)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{m}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={styles.pickerActions}>
+              <Button label="İptal" variant="outline" onPress={() => setTimePickerTarget(null)} />
+              <Button label="Tamam" onPress={handleConfirmTime} />
+            </View>
+          </View>
+        </View>
+      )}
     </Modal>
   );
 }
