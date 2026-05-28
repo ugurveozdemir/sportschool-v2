@@ -439,146 +439,147 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
             <Button disabled={saving} label={saving ? "Kaydediliyor" : "Kaydet"} onPress={onSubmit} />
           </ScrollView>
         </View>
+
+        {/* Time Picker Overlay */}
+        {timePickerTarget && (
+          <View style={styles.timePickerOverlay}>
+            <View style={styles.timePickerCard}>
+              <Text style={styles.timePickerTitle}>
+                {timePickerTarget === "startTime" ? "Başlangıç Saati" : "Bitiş Saati"}
+              </Text>
+              
+              <View style={styles.pickerColumns}>
+                {/* Saat Sütunu */}
+                <View style={styles.pickerColumn}>
+                  <Text style={styles.columnLabel}>Saat</Text>
+                  <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                    {hours.map((h) => {
+                      const active = h === selectedHour;
+                      return (
+                        <Pressable key={h} onPress={() => setSelectedHour(h)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                          <Text style={[styles.optionText, active && styles.optionTextActive]}>{h}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Dakika Sütunu */}
+                <View style={styles.pickerColumn}>
+                  <Text style={styles.columnLabel}>Dakika</Text>
+                  <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                    {minutes.map((m) => {
+                      const active = m === selectedMinute;
+                      return (
+                        <Pressable key={m} onPress={() => setSelectedMinute(m)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                          <Text style={[styles.optionText, active && styles.optionTextActive]}>{m}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              </View>
+
+              <View style={styles.pickerActions}>
+                <Button label="İptal" variant="outline" onPress={() => setTimePickerTarget(null)} />
+                <Button label="Tamam" onPress={handleConfirmTime} />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Group Picker Overlay */}
+        {isGroupPickerVisible && (
+          <View style={styles.timePickerOverlay}>
+            <View style={styles.timePickerCard}>
+              <Text style={styles.timePickerTitle}>Grup Seçin</Text>
+              <ScrollView style={styles.groupListScroll} showsVerticalScrollIndicator={false}>
+                {groups.map((group) => {
+                  const active = group.id === form.groupId;
+                  return (
+                    <Pressable
+                      key={group.id}
+                      onPress={() => {
+                        onChangeForm({ groupId: group.id });
+                        setIsGroupPickerVisible(false);
+                      }}
+                      style={[styles.groupListItem, active && styles.groupListItemActive]}
+                    >
+                      <Text style={[styles.groupListText, active && styles.groupListTextActive]}>{group.name}</Text>
+                      {active && <MaterialCommunityIcons name="check" size={20} color={colors.primary} />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Button label="İptal" variant="outline" onPress={() => setIsGroupPickerVisible(false)} />
+            </View>
+          </View>
+        )}
+
+        {/* Date Picker Overlay */}
+        {isDatePickerVisible && (
+          <View style={styles.timePickerOverlay}>
+            <View style={[styles.timePickerCard, { width: "90%" }]}>
+              <Text style={styles.timePickerTitle}>Tarih Seçin</Text>
+              
+              <View style={styles.pickerColumns}>
+                {/* Gün Sütunu */}
+                <View style={[styles.pickerColumn, { flex: 0.8 }]}>
+                  <Text style={styles.columnLabel}>Gün</Text>
+                  <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                    {days.map((d) => {
+                      const active = d === tempDay;
+                      return (
+                        <Pressable key={d} onPress={() => setTempDay(d)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                          <Text style={[styles.optionText, active && styles.optionTextActive]}>{d}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Ay Sütunu */}
+                <View style={[styles.pickerColumn, { flex: 1.4 }]}>
+                  <Text style={styles.columnLabel}>Ay</Text>
+                  <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                    {monthsTurkish.map((m, index) => {
+                      const active = index === tempMonth;
+                      return (
+                        <Pressable key={m} onPress={() => setTempMonth(index)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                          <Text style={[styles.optionText, active && styles.optionTextActive]}>{m}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Yıl Sütunu */}
+                <View style={[styles.pickerColumn, { flex: 1.2 }]}>
+                  <Text style={styles.columnLabel}>Yıl</Text>
+                  <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                    {years.map((y) => {
+                      const active = y === tempYear;
+                      return (
+                        <Pressable key={y} onPress={() => setTempYear(y)} style={[styles.optionItem, active && styles.optionItemActive]}>
+                          <Text style={[styles.optionText, active && styles.optionTextActive]}>{y}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              </View>
+
+              <View style={styles.pickerActions}>
+                <Button label="İptal" variant="outline" onPress={() => setIsDatePickerVisible(false)} />
+                <Button label="Tamam" onPress={handleConfirmDate} />
+              </View>
+            </View>
+          </View>
+        )}
       </View>
-
-      {/* Time Picker Overlay */}
-      {timePickerTarget && (
-        <View style={styles.timePickerOverlay}>
-          <View style={styles.timePickerCard}>
-            <Text style={styles.timePickerTitle}>
-              {timePickerTarget === "startTime" ? "Başlangıç Saati" : "Bitiş Saati"}
-            </Text>
-            
-            <View style={styles.pickerColumns}>
-              {/* Saat Sütunu */}
-              <View style={styles.pickerColumn}>
-                <Text style={styles.columnLabel}>Saat</Text>
-                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                  {hours.map((h) => {
-                    const active = h === selectedHour;
-                    return (
-                      <Pressable key={h} onPress={() => setSelectedHour(h)} style={[styles.optionItem, active && styles.optionItemActive]}>
-                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{h}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              {/* Dakika Sütunu */}
-              <View style={styles.pickerColumn}>
-                <Text style={styles.columnLabel}>Dakika</Text>
-                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                  {minutes.map((m) => {
-                    const active = m === selectedMinute;
-                    return (
-                      <Pressable key={m} onPress={() => setSelectedMinute(m)} style={[styles.optionItem, active && styles.optionItemActive]}>
-                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{m}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            </View>
-
-            <View style={styles.pickerActions}>
-              <Button label="İptal" variant="outline" onPress={() => setTimePickerTarget(null)} />
-              <Button label="Tamam" onPress={handleConfirmTime} />
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Group Picker Overlay */}
-      {isGroupPickerVisible && (
-        <View style={styles.timePickerOverlay}>
-          <View style={styles.timePickerCard}>
-            <Text style={styles.timePickerTitle}>Grup Seçin</Text>
-            <ScrollView style={styles.groupListScroll} showsVerticalScrollIndicator={false}>
-              {groups.map((group) => {
-                const active = group.id === form.groupId;
-                return (
-                  <Pressable
-                    key={group.id}
-                    onPress={() => {
-                      onChangeForm({ groupId: group.id });
-                      setIsGroupPickerVisible(false);
-                    }}
-                    style={[styles.groupListItem, active && styles.groupListItemActive]}
-                  >
-                    <Text style={[styles.groupListText, active && styles.groupListTextActive]}>{group.name}</Text>
-                    {active && <MaterialCommunityIcons name="check" size={20} color={colors.primary} />}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Button label="İptal" variant="outline" onPress={() => setIsGroupPickerVisible(false)} />
-          </View>
-        </View>
-      )}
-
-      {/* Date Picker Overlay */}
-      {isDatePickerVisible && (
-        <View style={styles.timePickerOverlay}>
-          <View style={[styles.timePickerCard, { width: "90%" }]}>
-            <Text style={styles.timePickerTitle}>Tarih Seçin</Text>
-            
-            <View style={styles.pickerColumns}>
-              {/* Gün Sütunu */}
-              <View style={[styles.pickerColumn, { flex: 0.8 }]}>
-                <Text style={styles.columnLabel}>Gün</Text>
-                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                  {days.map((d) => {
-                    const active = d === tempDay;
-                    return (
-                      <Pressable key={d} onPress={() => setTempDay(d)} style={[styles.optionItem, active && styles.optionItemActive]}>
-                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{d}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              {/* Ay Sütunu */}
-              <View style={[styles.pickerColumn, { flex: 1.4 }]}>
-                <Text style={styles.columnLabel}>Ay</Text>
-                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                  {monthsTurkish.map((m, index) => {
-                    const active = index === tempMonth;
-                    return (
-                      <Pressable key={m} onPress={() => setTempMonth(index)} style={[styles.optionItem, active && styles.optionItemActive]}>
-                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{m}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-
-              {/* Yıl Sütunu */}
-              <View style={[styles.pickerColumn, { flex: 1.2 }]}>
-                <Text style={styles.columnLabel}>Yıl</Text>
-                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                  {years.map((y) => {
-                    const active = y === tempYear;
-                    return (
-                      <Pressable key={y} onPress={() => setTempYear(y)} style={[styles.optionItem, active && styles.optionItemActive]}>
-                        <Text style={[styles.optionText, active && styles.optionTextActive]}>{y}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            </View>
-
-            <View style={styles.pickerActions}>
-              <Button label="İptal" variant="outline" onPress={() => setIsDatePickerVisible(false)} />
-              <Button label="Tamam" onPress={handleConfirmDate} />
-            </View>
-          </View>
-        </View>
-      )}
     </Modal>
   );
+}
 }
 
 function Legend({ color, label }: { color: string; label: string }) {
