@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import { useCoachSummary } from "@/features/coach/api";
+import type { CoachSummaryResponse } from "@/features/coach/types";
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
@@ -10,7 +11,7 @@ import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
-import { formatDate, formatTime } from "@/shared/utils/date";
+import { formatTime } from "@/shared/utils/date";
 import { formatMoney } from "@/shared/utils/money";
 
 export default function HomeScreen() {
@@ -68,7 +69,7 @@ export default function HomeScreen() {
   );
 }
 
-function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName?: string; summary?: { todayTrainings: { title: string; startsAt: string; endsAt: string; groupName: string; location: string | null }[]; groupCount: number; athleteCount: number; missingAttendanceCount: number }; navItems: ReturnType<typeof getMobileNav>; shellTitle: string }) {
+function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName?: string; summary?: CoachSummaryResponse; navItems: ReturnType<typeof getMobileNav>; shellTitle: string }) {
   const nextTraining = summary?.todayTrainings[0];
 
   return (
@@ -84,7 +85,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
       <View style={styles.sectionStack}>
         <SectionTitle title="Bugünkü Etkinlikler" />
         {nextTraining ? (
-          <EventCard accent="secondary" icon="run" kicker={`${formatTime(nextTraining.startsAt)} • ${nextTraining.location ?? "Tesis 1"}`} title={`Antrenman: ${nextTraining.groupName}`} />
+          <EventCard accent="secondary" icon="run" kicker={`${formatTime(nextTraining.startsAt)} • ${nextTraining.location ?? "Tesis 1"}`} title={`Antrenman: ${formatGroupNames(nextTraining.groups)}`} />
         ) : (
           <SurfaceCard>
             <EmptyState title="Bugün antrenman yok" description="Bugün için atanmış antrenman bulunmuyor." />
@@ -127,6 +128,10 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
       </SurfaceCard>
     </ScreenShell>
   );
+}
+
+function formatGroupNames(groups: { name: string }[]) {
+  return groups.length === 0 ? "Grup bilgisi yok" : groups.map((group) => group.name).join(", ");
 }
 
 function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; groupCount: number; attendanceCount: number; unpaidCount: number; latestReport?: { summary: string; createdAt: string; speedScore: number; strengthScore: number; dribblingScore: number; shootingScore: number } }) {

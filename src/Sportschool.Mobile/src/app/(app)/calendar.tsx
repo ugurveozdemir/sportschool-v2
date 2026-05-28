@@ -1,11 +1,12 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import { useSchoolGroups, useCoachTrainings, useCreateCoachTraining } from "@/features/coach/api";
 import type { SchoolGroupResponse, CreateCoachTrainingRequest } from "@/features/coach/types";
-import { useGroups, useTrainings } from "@/features/me/api";
+import { useTrainings } from "@/features/me/api";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
@@ -22,9 +23,8 @@ type TrainingItem = {
   title: string;
   startsAt: string;
   endsAt: string;
-  groupId: string;
+  groups?: { id: string; name: string }[];
   location: string | null;
-  groupName?: string;
   totalAthletes?: number;
 };
 
@@ -55,7 +55,6 @@ export default function CalendarScreen() {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const monthRange = useMemo(() => getMonthRange(visibleMonth), [visibleMonth]);
   const trainingsQuery = useTrainings(!isCoach, monthRange);
-  const groupsQuery = useGroups(!isCoach);
   const coachTrainingsQuery = useCoachTrainings(isCoach, monthRange);
 
   if ((isCoach ? coachTrainingsQuery : trainingsQuery).isLoading) {
@@ -85,7 +84,6 @@ export default function CalendarScreen() {
         />
       ) : (
         <MemberCalendar
-          groupName={(groupId) => groupsQuery.data?.find((group) => group.id === groupId)?.name ?? "A Takımı"}
           markedDates={markedDates}
           selectedDate={selectedDate}
           selectedTrainings={selectedTrainings}
@@ -140,7 +138,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
     }
 
     const request: CreateCoachTrainingRequest = {
-      groupId: form.groupId,
+      groupIds: [form.groupId],
       title: form.title.trim(),
       startsAt: startsAt.toISOString(),
       endsAt: endsAt.toISOString(),
@@ -197,7 +195,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
   );
 }
 
-function MemberCalendar({ groupName, markedDates, selectedDate, selectedTrainings, visibleMonth, onChangeMonth, onSelectDate }: CalendarViewProps & { groupName: (groupId: string) => string }) {
+function MemberCalendar({ markedDates, selectedDate, selectedTrainings, visibleMonth, onChangeMonth, onSelectDate }: CalendarViewProps) {
   return (
     <>
       <View style={styles.headerBlock}>
@@ -211,7 +209,7 @@ function MemberCalendar({ groupName, markedDates, selectedDate, selectedTraining
         onChangeMonth={onChangeMonth}
         onSelectDate={onSelectDate}
       />
-      <ScheduleList title={formatSelectedDate(selectedDate)} subtitle={`${selectedTrainings.length} Etkinlik`} trainings={selectedTrainings} groupName={groupName} />
+      <ScheduleList title={formatSelectedDate(selectedDate)} subtitle={`${selectedTrainings.length} Etkinlik`} trainings={selectedTrainings} />
     </>
   );
 }
@@ -266,7 +264,7 @@ function CalendarPanel({ markedDates, roundedDays, selectedDate, visibleMonth, o
   );
 }
 
-function ScheduleList({ title, subtitle, trainings, coach, groupName, onAddPress }: { title: string; subtitle: string; trainings: TrainingItem[]; coach?: boolean; groupName?: (groupId: string) => string; onAddPress?: () => void }) {
+function ScheduleList({ title, subtitle, trainings, coach, onAddPress }: { title: string; subtitle: string; trainings: TrainingItem[]; coach?: boolean; onAddPress?: () => void }) {
   return (
     <View style={styles.scheduleWrap}>
       <View style={styles.scheduleHeader}>
@@ -285,23 +283,32 @@ function ScheduleList({ title, subtitle, trainings, coach, groupName, onAddPress
           <EmptyState title="Program boş" description="Seçili günde görüntülenecek antrenman bulunmuyor." />
         </SurfaceCard>
       ) : (
-        trainings.map((training, index) => <TrainingCard key={training.id} training={training} accent={index === 0 ? "secondary" : "warning"} coach={coach} group={training.groupName ?? groupName?.(training.groupId) ?? "A Takımı"} />)
+        trainings.map((training, index) => (
+          <TrainingCard
+            key={training.id}
+            training={training}
+            accent={index === 0 ? "secondary" : "warning"}
+            coach={coach}
+          />
+        ))
       )}
     </View>
   );
 }
 
-function TrainingCard({ training, accent, coach, group }: { training: TrainingItem; accent: "secondary" | "warning"; coach?: boolean; group: string }) {
+function TrainingCard({ training, accent, coach }: { training: TrainingItem; accent: "secondary" | "warning"; coach?: boolean }) {
   const accentColor = accent === "secondary" ? colors.secondary : colors.tertiaryFixedDim;
-  return (
-    <SurfaceCard style={styles.trainingCard}>
+  const groupText = formatGroupNames(training.groups);
+  const content = (
+    <>
       <View style={[styles.trainingAccent, { backgroundColor: accentColor }]} />
       <View style={styles.trainingTopRow}>
         <View style={styles.trainingTimeBlock}>
           <Text style={styles.trainingTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
-          <Text style={styles.trainingEnd}>{group}</Text>
+          <Text style={styles.trainingEnd}>{groupText}</Text>
         </View>
         {!coach ? <Pill label="Antrenman" tone={accent === "secondary" ? "success" : "neutral"} icon="soccer" /> : null}
+        {coach ? <MaterialCommunityIcons name="chevron-right" size={22} color={colors.outline} /> : null}
       </View>
       <View style={styles.tagRow}>
         {coach ? <Pill label={training.title.toLowerCase().includes("kondisyon") ? "Kondisyon" : "Antrenman"} tone="neutral" /> : null}
@@ -310,8 +317,26 @@ function TrainingCard({ training, accent, coach, group }: { training: TrainingIt
       <Text style={styles.trainingTitle}>{training.title}</Text>
       <View style={styles.metaRow}>
         <Text style={styles.metaText}>{training.location ?? (coach ? "Konum girilmedi" : "Tesis bilgisi yok")}</Text>
-        <Text style={styles.metaText}>{coach ? `${training.totalAthletes ?? 0} sporcu` : group}</Text>
+        <Text style={styles.metaText}>{coach ? `${training.totalAthletes ?? 0} sporcu` : groupText}</Text>
       </View>
+    </>
+  );
+
+  if (coach) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${training.title} detayını aç`}
+        onPress={() => router.push(`/trainings/${training.id}`)}
+      >
+        <SurfaceCard style={styles.trainingCard}>{content}</SurfaceCard>
+      </Pressable>
+    );
+  }
+
+  return (
+    <SurfaceCard style={styles.trainingCard}>
+      {content}
     </SurfaceCard>
   );
 }
@@ -623,6 +648,14 @@ function buildDateTime(date: Date, time: string) {
 
 function formatSelectedDate(date: Date) {
   return new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", weekday: "long" }).format(date);
+}
+
+function formatGroupNames(groups?: { name: string }[]) {
+  if (!groups || groups.length === 0) {
+    return "Grup bilgisi yok";
+  }
+
+  return groups.map((group) => group.name).join(", ");
 }
 
 function getDateKey(date: Date) {

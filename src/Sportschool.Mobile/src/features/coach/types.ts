@@ -70,20 +70,24 @@ export type CoachAthleteDetailResponse = {
   reports: AthleteReportResponse[];
 };
 
+export type TrainingGroupSummary = {
+  id: string;
+  name: string;
+};
+
 export type CoachTrainingItem = {
   id: string;
   title: string;
   startsAt: string;
   endsAt: string;
-  groupId: string;
-  groupName: string;
+  groups: TrainingGroupSummary[];
   location: string | null;
   totalAthletes: number;
   recordedAttendanceCount: number;
 };
 
 export type CreateCoachTrainingRequest = {
-  groupId: string;
+  groupIds: string[];
   title: string;
   startsAt: string;
   endsAt: string;
@@ -103,9 +107,9 @@ export type CoachAttendanceRosterTraining = {
   title: string;
   startsAt: string;
   endsAt: string;
-  groupId: string;
-  groupName: string;
+  groups: TrainingGroupSummary[];
   location: string | null;
+  notes: string | null;
 };
 
 export type CoachAttendanceRosterItem = {

@@ -19,9 +19,14 @@ export type GroupResponse = {
   isActive: boolean;
 };
 
+export type TrainingGroupSummary = {
+  id: string;
+  name: string;
+};
+
 export type TrainingResponse = {
   id: string;
-  groupId: string;
+  groups: TrainingGroupSummary[];
   coachId: string;
   title: string;
   startsAt: string;

@@ -5,6 +5,7 @@
 - Changed training sessions from a single group relationship to a multi-group join model with data-preserving migration.
 - Updated training, attendance, dashboard, parent/athlete mobile, and coach mobile backend endpoints to read training groups through `TrainingSessionGroups`.
 - Added API tests for multi-group training creation and distinct coach roster athletes across multiple groups.
+- Added coach mobile training detail navigation from the calendar, showing training notes, linked groups, and roster athletes without attendance status.
 
 ## 2026-05-24
 
