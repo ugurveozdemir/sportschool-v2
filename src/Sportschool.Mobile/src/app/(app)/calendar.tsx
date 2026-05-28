@@ -330,6 +330,9 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
   const [timePickerTarget, setTimePickerTarget] = useState<"startTime" | "endTime" | null>(null);
   const [selectedHour, setSelectedHour] = useState("17");
   const [selectedMinute, setSelectedMinute] = useState("00");
+  const [isGroupPickerVisible, setIsGroupPickerVisible] = useState(false);
+
+  const selectedGroupName = groups.find((g) => g.id === form.groupId)?.name;
 
   function handleOpenTimePicker(target: "startTime" | "endTime") {
     const currentValue = target === "startTime" ? form.startTime : form.endTime;
@@ -360,16 +363,18 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.groupOptions}>
-              {groups.map((group) => {
-                const selected = group.id === form.groupId;
-                return (
-                  <Pressable key={group.id} onPress={() => onChangeForm({ groupId: group.id })} style={[styles.groupOption, selected && styles.groupOptionSelected]}>
-                    <Text style={[styles.groupOptionText, selected && styles.groupOptionTextSelected]}>{group.name}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {/* Custom Group Picker */}
+            <Pressable onPress={() => setIsGroupPickerVisible(true)} style={styles.groupPickerButton}>
+              <Text style={styles.groupPickerLabel}>Grup</Text>
+              <View style={styles.groupPickerBox}>
+                <MaterialCommunityIcons name="account-group-outline" size={18} color={colors.primary} />
+                <Text style={[styles.groupPickerValue, !form.groupId && styles.groupPickerPlaceholder]}>
+                  {selectedGroupName || "Grup Seçin..."}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.outline} />
+              </View>
+            </Pressable>
+
             <TextField label="Başlık" value={form.title} onChangeText={(value) => onChangeForm({ title: value })} placeholder="Antrenman başlığı" />
             
             <View style={styles.timeRow}>
@@ -396,6 +401,7 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
         </View>
       </View>
 
+      {/* Time Picker Overlay */}
       {timePickerTarget && (
         <View style={styles.timePickerOverlay}>
           <View style={styles.timePickerCard}>
@@ -439,6 +445,34 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
               <Button label="İptal" variant="outline" onPress={() => setTimePickerTarget(null)} />
               <Button label="Tamam" onPress={handleConfirmTime} />
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* Group Picker Overlay */}
+      {isGroupPickerVisible && (
+        <View style={styles.timePickerOverlay}>
+          <View style={styles.timePickerCard}>
+            <Text style={styles.timePickerTitle}>Grup Seçin</Text>
+            <ScrollView style={styles.groupListScroll} showsVerticalScrollIndicator={false}>
+              {groups.map((group) => {
+                const active = group.id === form.groupId;
+                return (
+                  <Pressable
+                    key={group.id}
+                    onPress={() => {
+                      onChangeForm({ groupId: group.id });
+                      setIsGroupPickerVisible(false);
+                    }}
+                    style={[styles.groupListItem, active && styles.groupListItemActive]}
+                  >
+                    <Text style={[styles.groupListText, active && styles.groupListTextActive]}>{group.name}</Text>
+                    {active && <MaterialCommunityIcons name="check" size={20} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Button label="İptal" variant="outline" onPress={() => setIsGroupPickerVisible(false)} />
           </View>
         </View>
       )}
