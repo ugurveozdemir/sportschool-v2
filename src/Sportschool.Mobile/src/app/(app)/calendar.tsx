@@ -109,15 +109,26 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
       return;
     }
 
-    setForm({ ...initialTrainingForm, groupId: groups[0].id });
+    setForm(initialTrainingForm);
     setIsCreateVisible(true);
   }
 
   function submitTraining() {
+    if (!form.groupId) {
+      Alert.alert("Takvim", "Lütfen antrenman yapılacak grubu seçin.");
+      return;
+    }
+
+    if (!form.title.trim()) {
+      Alert.alert("Takvim", "Lütfen antrenman başlığını doldurun.");
+      return;
+    }
+
     const startsAt = buildDateTime(selectedDate, form.startTime);
     const endsAt = buildDateTime(selectedDate, form.endTime);
-    if (!startsAt || !endsAt || !form.groupId || !form.title.trim()) {
-      Alert.alert("Takvim", "Grup, başlık ve saatleri kontrol et.");
+    
+    if (!startsAt || !endsAt) {
+      Alert.alert("Takvim", "Lütfen saatleri kontrol edin.");
       return;
     }
 
