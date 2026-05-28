@@ -6,11 +6,11 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useSession } from "@/core/sessionProvider";
 import {
   useAddAthleteToGroup,
-  useCoachAthletes,
   useDeleteSchoolGroup,
   useGroupAthletes,
   useRemoveAthleteFromGroup,
   useSchoolGroups,
+  useSchoolAthletes,
   useUpdateSchoolGroup
 } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
@@ -51,7 +51,7 @@ export default function GroupDetailScreen() {
 
 function GroupDetail({ session, group }: { session: ReturnType<typeof useSession>["session"]; group: SchoolGroupResponse }) {
   const groupAthletesQuery = useGroupAthletes(group.id);
-  const allAthletesQuery = useCoachAthletes(true);
+  const allAthletesQuery = useSchoolAthletes(true);
   const addAthlete = useAddAthleteToGroup(group.id);
   const removeAthlete = useRemoveAthleteFromGroup(group.id);
   const updateGroup = useUpdateSchoolGroup(group.id);
@@ -65,7 +65,7 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
 
   const currentAthletes = groupAthletesQuery.data ?? [];
   const currentAthleteIds = new Set(currentAthletes.map((a) => a.id));
-  const availableAthletes = (allAthletesQuery.data ?? []).filter((a) => !currentAthleteIds.has(a.athleteProfileId));
+  const availableAthletes = (allAthletesQuery.data ?? []).filter((a) => !currentAthleteIds.has(a.id));
 
   function toggleSelection(id: string) {
     setSelectedIds((prev) => {
@@ -201,16 +201,16 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
           ) : (
             <>
               {availableAthletes.map((athlete) => {
-                const isSelected = selectedIds.has(athlete.athleteProfileId);
+                const isSelected = selectedIds.has(athlete.id);
                 return (
-                  <Pressable key={athlete.athleteProfileId} onPress={() => toggleSelection(athlete.athleteProfileId)} style={styles.athleteRow}>
+                  <Pressable key={athlete.id} onPress={() => toggleSelection(athlete.id)} style={styles.athleteRow}>
                     <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
                       {isSelected && <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} />}
                     </View>
                     <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
                     <View style={styles.flexOne}>
                       <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
-                      <Text style={styles.athleteMeta}>{athlete.groups.length > 0 ? athlete.groups.join(", ") : "Grup ataması yok"}</Text>
+                      <Text style={styles.athleteMeta}>Veli: {athlete.parentFullName}</Text>
                     </View>
                   </Pressable>
                 );
