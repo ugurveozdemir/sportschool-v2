@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
-import { useCoachGroups, useCoachTrainings, useCreateCoachTraining } from "@/features/coach/api";
-import type { CoachGroupResponse, CreateCoachTrainingRequest } from "@/features/coach/types";
+import { useSchoolGroups, useCoachTrainings, useCreateCoachTraining } from "@/features/coach/api";
+import type { SchoolGroupResponse, CreateCoachTrainingRequest } from "@/features/coach/types";
 import { useGroups, useTrainings } from "@/features/me/api";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -97,7 +97,7 @@ export default function CalendarScreen() {
 }
 
 function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMonth, onChangeMonth, onSelectDate }: CalendarViewProps) {
-  const groupsQuery = useCoachGroups();
+  const groupsQuery = useSchoolGroups();
   const createTraining = useCreateCoachTraining();
   const [isCreateVisible, setIsCreateVisible] = useState(false);
   const [form, setForm] = useState(initialTrainingForm);
@@ -305,7 +305,7 @@ function TrainingCard({ training, accent, coach, group }: { training: TrainingIt
 
 function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onChangeForm, onClose, onSubmit }: {
   form: TrainingFormState;
-  groups: CoachGroupResponse[];
+  groups: SchoolGroupResponse[];
   saving: boolean;
   selectedDate: Date;
   visible: boolean;
