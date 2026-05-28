@@ -187,39 +187,29 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
   );
 }
 
-function TeamRow({ deleting, group, onDelete, onEdit, onManageAthletes }: { deleting: boolean; group: SchoolGroupResponse; onDelete: (group: SchoolGroupResponse) => void; onEdit: (group: SchoolGroupResponse) => void; onManageAthletes: (group: SchoolGroupResponse) => void }) {
+function GroupCard({ group }: { group: SchoolGroupResponse }) {
   return (
-    <SurfaceCard style={styles.teamCard}>
-      <View style={styles.teamLead}>
-        <InitialsAvatar label={groupCode(group.name)} size={54} tone="dark" />
-        <View style={styles.flexOne}>
-          <Text style={styles.teamTitle}>{group.name}</Text>
-          <View style={styles.coachLine}>
-            <MaterialCommunityIcons name="account-outline" size={16} color={colors.onSurfaceVariant} />
-            <Text style={styles.rowMeta}>{group.description ?? "Antrenör açıklaması eklenmemiş"}</Text>
+    <Pressable onPress={() => router.push(`/groups/${group.id}`)}>
+      <SurfaceCard style={styles.groupCard}>
+        <View style={styles.groupCardMain}>
+          <InitialsAvatar label={groupCode(group.name)} size={60} tone="dark" />
+          <View style={styles.flexOne}>
+            <Text style={styles.groupTitle}>{group.name}</Text>
+            <Text style={styles.groupDesc} numberOfLines={2}>
+              {group.description ?? "Grup açıklaması eklenmemiş"}
+            </Text>
           </View>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.outline} />
         </View>
-      </View>
-      <View style={styles.teamFooter}>
-        <Pill label={group.isActive ? "Aktif" : "Pasif"} tone="neutral" icon="account-group-outline" />
-        <View style={styles.actionRow}>
-          <Pressable accessibilityLabel="Sporcuları yönet" onPress={() => onManageAthletes(group)} style={styles.iconAction}>
-            <MaterialCommunityIcons name="account-multiple-outline" size={22} color={colors.secondary} />
-          </Pressable>
-          <Pressable accessibilityLabel="Grubu düzenle" onPress={() => onEdit(group)} style={styles.iconAction}>
-            <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.primary} />
-          </Pressable>
-          <Pressable accessibilityLabel="Grubu sil" disabled={deleting} onPress={() => onDelete(group)} style={styles.iconAction}>
-            <MaterialCommunityIcons name="trash-can-outline" size={22} color={colors.error} />
-          </Pressable>
+        <View style={styles.groupCardFooter}>
+          <Pill label={group.isActive ? "Aktif" : "Pasif"} tone="neutral" icon="account-group-outline" />
         </View>
-      </View>
-    </SurfaceCard>
+      </SurfaceCard>
+    </Pressable>
   );
 }
 
-function GroupFormModal({ editing, form, saving, visible, onChangeForm, onClose, onSubmit }: {
-  editing: boolean;
+function GroupFormModal({ form, saving, visible, onChangeForm, onClose, onSubmit }: {
   form: GroupFormState;
   saving: boolean;
   visible: boolean;
@@ -232,7 +222,7 @@ function GroupFormModal({ editing, form, saving, visible, onChangeForm, onClose,
       <View style={styles.modalBackdrop}>
         <View style={styles.modalCard}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{editing ? "Grubu Düzenle" : "Yeni Grup"}</Text>
+            <Text style={styles.modalTitle}>Yeni Grup</Text>
             <Pressable accessibilityLabel="Kapat" onPress={onClose} style={styles.iconAction}>
               <MaterialCommunityIcons name="close" size={22} color={colors.primary} />
             </Pressable>
@@ -242,144 +232,6 @@ function GroupFormModal({ editing, form, saving, visible, onChangeForm, onClose,
             <TextField label="Açıklama" multiline value={form.description} onChangeText={(value) => onChangeForm({ description: value })} placeholder="Opsiyonel açıklama" />
             <Button disabled={saving} label={saving ? "Kaydediliyor" : "Kaydet"} onPress={onSubmit} />
           </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-function GroupAthletesModal({ group, onClose }: { group: SchoolGroupResponse | null; onClose: () => void }) {
-  const groupAthletesQuery = useGroupAthletes(group?.id);
-  const allAthletesQuery = useCoachAthletes(Boolean(group));
-  const addAthlete = useAddAthleteToGroup(group?.id);
-  const removeAthlete = useRemoveAthleteFromGroup(group?.id);
-  const [showAddView, setShowAddView] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  const currentAthletes = groupAthletesQuery.data ?? [];
-  const currentAthleteIds = new Set(currentAthletes.map((a) => a.id));
-  const availableAthletes = (allAthletesQuery.data ?? []).filter((a) => !currentAthleteIds.has(a.athleteProfileId));
-  const isAdding = addAthlete.isPending;
-
-  function handleClose() {
-    setShowAddView(false);
-    setSelectedIds(new Set());
-    onClose();
-  }
-
-  function toggleSelection(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
-
-  async function addSelected() {
-    for (const id of selectedIds) {
-      try {
-        await addAthlete.mutateAsync(id);
-      } catch {
-        // skip duplicates / failures silently
-      }
-    }
-    setSelectedIds(new Set());
-    setShowAddView(false);
-  }
-
-  function confirmRemove(athleteId: string, name: string) {
-    Alert.alert("Sporcu Çıkar", `${name} sporcusunu bu gruptan çıkarmak istiyor musun?`, [
-      { text: "Vazgeç", style: "cancel" },
-      {
-        text: "Çıkar",
-        style: "destructive",
-        onPress: () => removeAthlete.mutate(athleteId)
-      }
-    ]);
-  }
-
-  return (
-    <Modal animationType="slide" onRequestClose={handleClose} transparent visible={Boolean(group)}>
-      <View style={styles.modalBackdrop}>
-        <View style={[styles.modalCard, styles.athletesModalCard]}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{showAddView ? "Sporcu Ekle" : group?.name ?? "Sporcular"}</Text>
-            <Pressable accessibilityLabel="Kapat" onPress={showAddView ? () => { setShowAddView(false); setSelectedIds(new Set()); } : handleClose} style={styles.iconAction}>
-              <MaterialCommunityIcons name={showAddView ? "arrow-left" : "close"} size={22} color={colors.primary} />
-            </Pressable>
-          </View>
-
-          {showAddView ? (
-            <>
-              <ScrollView contentContainerStyle={styles.athletesList} showsVerticalScrollIndicator={false}>
-                {allAthletesQuery.isLoading ? (
-                  <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
-                ) : availableAthletes.length === 0 ? (
-                  <EmptyState title="Sporcu yok" description="Eklenebilecek sporcu bulunmuyor." />
-                ) : (
-                  availableAthletes.map((athlete) => {
-                    const isSelected = selectedIds.has(athlete.athleteProfileId);
-                    return (
-                      <Pressable key={athlete.athleteProfileId} onPress={() => toggleSelection(athlete.athleteProfileId)} style={styles.athleteRow}>
-                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                          {isSelected && <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} />}
-                        </View>
-                        <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
-                        <View style={styles.flexOne}>
-                          <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
-                          <Text style={styles.rowMeta}>{athlete.groups.length > 0 ? athlete.groups.join(", ") : "Grup ataması yok"}</Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })
-                )}
-              </ScrollView>
-              {selectedIds.size > 0 && (
-                <View style={styles.batchActionBar}>
-                  <Button
-                    disabled={isAdding}
-                    label={isAdding ? "Ekleniyor..." : `${selectedIds.size} Sporcu Ekle`}
-                    onPress={addSelected}
-                  />
-                </View>
-              )}
-            </>
-          ) : (
-            <>
-              <ScrollView contentContainerStyle={styles.athletesList} showsVerticalScrollIndicator={false}>
-                {groupAthletesQuery.isLoading ? (
-                  <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
-                ) : currentAthletes.length === 0 ? (
-                  <EmptyState title="Sporcu yok" description="Bu grupta henüz sporcu bulunmuyor." />
-                ) : (
-                  currentAthletes.map((athlete) => (
-                    <View key={athlete.id} style={styles.athleteRow}>
-                      <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
-                      <View style={styles.flexOne}>
-                        <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
-                        <Text style={styles.rowMeta}>{athlete.parentFullName}</Text>
-                      </View>
-                      <Pressable
-                        accessibilityLabel={`${athlete.firstName} sporcusunu çıkar`}
-                        disabled={removeAthlete.isPending}
-                        onPress={() => confirmRemove(athlete.id, `${athlete.firstName} ${athlete.lastName}`)}
-                        style={styles.removeButton}
-                      >
-                        <MaterialCommunityIcons name="account-minus-outline" size={20} color={colors.error} />
-                      </Pressable>
-                    </View>
-                  ))
-                )}
-              </ScrollView>
-              <View style={styles.batchActionBar}>
-                <Button label="Sporcu Ekle" onPress={() => setShowAddView(true)} />
-              </View>
-            </>
-          )}
         </View>
       </View>
     </Modal>
