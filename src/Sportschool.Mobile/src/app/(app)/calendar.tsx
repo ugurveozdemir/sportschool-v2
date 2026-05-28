@@ -111,7 +111,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
       return;
     }
 
-    setForm(initialTrainingForm);
+    setForm({ ...initialTrainingForm, date: selectedDate });
     setIsCreateVisible(true);
   }
 
@@ -126,8 +126,8 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
       return;
     }
 
-    const startsAt = buildDateTime(selectedDate, form.startTime);
-    const endsAt = buildDateTime(selectedDate, form.endTime);
+    const startsAt = buildDateTime(form.date, form.startTime);
+    const endsAt = buildDateTime(form.date, form.endTime);
     
     if (!startsAt || !endsAt) {
       Alert.alert("Takvim", "Lütfen saatleri kontrol edin.");
