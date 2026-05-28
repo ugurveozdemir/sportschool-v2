@@ -4,6 +4,7 @@ import { queryClient } from "@/core/queryClient";
 import { apiRequest } from "@/shared/api/apiClient";
 import { endpoints } from "@/shared/constants/endpoints";
 import type {
+  AthleteRosterResponse,
   CoachAthleteDetailResponse,
   CoachAthleteListItem,
   CoachAttendanceRosterResponse,
@@ -86,6 +87,7 @@ export function useAddAthleteToGroup(groupId?: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["school", "group-athletes", groupId] });
+      await queryClient.invalidateQueries({ queryKey: ["school", "athletes"] });
       await queryClient.invalidateQueries({ queryKey: ["coach"] });
     }
   });
@@ -101,6 +103,7 @@ export function useRemoveAthleteFromGroup(groupId?: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["school", "group-athletes", groupId] });
+      await queryClient.invalidateQueries({ queryKey: ["school", "athletes"] });
       await queryClient.invalidateQueries({ queryKey: ["coach"] });
     }
   });
@@ -108,6 +111,10 @@ export function useRemoveAthleteFromGroup(groupId?: string) {
 
 export function useCoachAthletes(enabled = true) {
   return useQuery({ enabled, queryKey: ["coach", "athletes"], queryFn: () => apiRequest<CoachAthleteListItem[]>(endpoints.coachAthletes) });
+}
+
+export function useSchoolAthletes(enabled = true) {
+  return useQuery({ enabled, queryKey: ["school", "athletes"], queryFn: () => apiRequest<AthleteRosterResponse[]>(endpoints.schoolAthletes) });
 }
 
 export function useCoachAthlete(athleteProfileId?: string) {
