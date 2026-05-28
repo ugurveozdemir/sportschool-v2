@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
-import { useAddAthleteToGroup, useCoachAthletes, useCreateSchoolGroup, useDeleteSchoolGroup, useGroupAthletes, useRemoveAthleteFromGroup, useSchoolGroups, useUpdateSchoolGroup } from "@/features/coach/api";
+import { useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
 import { useReports } from "@/features/me/api";
 import type { AthleteReportResponse } from "@/features/me/types";
