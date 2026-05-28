@@ -11,6 +11,7 @@ import type {
   CoachSummaryResponse,
   CoachTrainingItem,
   CreateCoachTrainingRequest,
+  GroupAthleteResponse,
   SaveSchoolGroupRequest,
   SaveCoachAthleteReportRequest,
   SaveCoachAttendanceRequest,
@@ -64,6 +65,44 @@ export function useDeleteSchoolGroup() {
   return useMutation({
     mutationFn: (groupId: string) => apiRequest(endpoints.schoolGroup(groupId), { method: "DELETE" }),
     onSuccess: invalidateGroups
+  });
+}
+
+export function useGroupAthletes(groupId?: string) {
+  return useQuery({
+    enabled: Boolean(groupId),
+    queryKey: ["school", "group-athletes", groupId],
+    queryFn: () => apiRequest<GroupAthleteResponse[]>(endpoints.schoolGroupAthletes(groupId!))
+  });
+}
+
+export function useAddAthleteToGroup(groupId?: string) {
+  return useMutation({
+    mutationFn: (athleteProfileId: string) => {
+      if (!groupId) {
+        throw new Error("Group is required.");
+      }
+      return apiRequest(endpoints.schoolGroupAthlete(groupId, athleteProfileId), { method: "POST" });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["school", "group-athletes", groupId] });
+      await queryClient.invalidateQueries({ queryKey: ["coach"] });
+    }
+  });
+}
+
+export function useRemoveAthleteFromGroup(groupId?: string) {
+  return useMutation({
+    mutationFn: (athleteProfileId: string) => {
+      if (!groupId) {
+        throw new Error("Group is required.");
+      }
+      return apiRequest(endpoints.schoolGroupAthlete(groupId, athleteProfileId), { method: "DELETE" });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["school", "group-athletes", groupId] });
+      await queryClient.invalidateQueries({ queryKey: ["coach"] });
+    }
   });
 }
 

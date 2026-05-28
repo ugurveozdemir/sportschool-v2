@@ -29,6 +29,14 @@ export type SaveSchoolGroupRequest = {
   description: string | null;
 };
 
+export type GroupAthleteResponse = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  parentFullName: string;
+  parentPhone: string;
+};
+
 export type CoachAthleteListItem = {
   athleteProfileId: string;
   firstName: string;

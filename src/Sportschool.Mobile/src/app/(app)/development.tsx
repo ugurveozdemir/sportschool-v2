@@ -1,9 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
-import { useCreateSchoolGroup, useDeleteSchoolGroup, useSchoolGroups, useUpdateSchoolGroup } from "@/features/coach/api";
+import { useAddAthleteToGroup, useCoachAthletes, useCreateSchoolGroup, useDeleteSchoolGroup, useGroupAthletes, useRemoveAthleteFromGroup, useSchoolGroups, useUpdateSchoolGroup } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
 import { useReports } from "@/features/me/api";
 import type { AthleteReportResponse } from "@/features/me/types";
@@ -62,6 +62,7 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
   const [editingGroup, setEditingGroup] = useState<SchoolGroupResponse | null>(null);
   const [form, setForm] = useState(emptyGroupForm);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [athletesGroup, setAthletesGroup] = useState<SchoolGroupResponse | null>(null);
   const updateGroup = useUpdateSchoolGroup(editingGroup?.id);
   const isSaving = createGroup.isPending || updateGroup.isPending;
 
@@ -138,7 +139,7 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
             <EmptyState title="Grup yok" description="Henüz aktif grup bulunmuyor." />
           </SurfaceCard>
         ) : (
-          groups.map((group) => <TeamRow key={group.id} deleting={deleteGroup.isPending} group={group} onDelete={confirmDelete} onEdit={openEditForm} />)
+          groups.map((group) => <TeamRow key={group.id} deleting={deleteGroup.isPending} group={group} onDelete={confirmDelete} onEdit={openEditForm} onManageAthletes={setAthletesGroup} />)
         )}
       </View>
       <GroupFormModal
@@ -149,6 +150,10 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
         onChangeForm={(patch) => setForm((current) => ({ ...current, ...patch }))}
         onClose={() => setIsFormVisible(false)}
         onSubmit={submitGroup}
+      />
+      <GroupAthletesModal
+        group={athletesGroup}
+        onClose={() => setAthletesGroup(null)}
       />
     </ScreenShell>
   );
@@ -213,7 +218,7 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
   );
 }
 
-function TeamRow({ deleting, group, onDelete, onEdit }: { deleting: boolean; group: SchoolGroupResponse; onDelete: (group: SchoolGroupResponse) => void; onEdit: (group: SchoolGroupResponse) => void }) {
+function TeamRow({ deleting, group, onDelete, onEdit, onManageAthletes }: { deleting: boolean; group: SchoolGroupResponse; onDelete: (group: SchoolGroupResponse) => void; onEdit: (group: SchoolGroupResponse) => void; onManageAthletes: (group: SchoolGroupResponse) => void }) {
   return (
     <SurfaceCard style={styles.teamCard}>
       <View style={styles.teamLead}>
@@ -229,6 +234,9 @@ function TeamRow({ deleting, group, onDelete, onEdit }: { deleting: boolean; gro
       <View style={styles.teamFooter}>
         <Pill label={group.isActive ? "Aktif" : "Pasif"} tone="neutral" icon="account-group-outline" />
         <View style={styles.actionRow}>
+          <Pressable accessibilityLabel="Sporcuları yönet" onPress={() => onManageAthletes(group)} style={styles.iconAction}>
+            <MaterialCommunityIcons name="account-multiple-outline" size={22} color={colors.secondary} />
+          </Pressable>
           <Pressable accessibilityLabel="Grubu düzenle" onPress={() => onEdit(group)} style={styles.iconAction}>
             <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.primary} />
           </Pressable>
@@ -271,6 +279,144 @@ function GroupFormModal({ editing, form, saving, visible, onChangeForm, onClose,
   );
 }
 
+function GroupAthletesModal({ group, onClose }: { group: SchoolGroupResponse | null; onClose: () => void }) {
+  const groupAthletesQuery = useGroupAthletes(group?.id);
+  const allAthletesQuery = useCoachAthletes(Boolean(group));
+  const addAthlete = useAddAthleteToGroup(group?.id);
+  const removeAthlete = useRemoveAthleteFromGroup(group?.id);
+  const [showAddView, setShowAddView] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const currentAthletes = groupAthletesQuery.data ?? [];
+  const currentAthleteIds = new Set(currentAthletes.map((a) => a.id));
+  const availableAthletes = (allAthletesQuery.data ?? []).filter((a) => !currentAthleteIds.has(a.athleteProfileId));
+  const isAdding = addAthlete.isPending;
+
+  function handleClose() {
+    setShowAddView(false);
+    setSelectedIds(new Set());
+    onClose();
+  }
+
+  function toggleSelection(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function addSelected() {
+    for (const id of selectedIds) {
+      try {
+        await addAthlete.mutateAsync(id);
+      } catch {
+        // skip duplicates / failures silently
+      }
+    }
+    setSelectedIds(new Set());
+    setShowAddView(false);
+  }
+
+  function confirmRemove(athleteId: string, name: string) {
+    Alert.alert("Sporcu Çıkar", `${name} sporcusunu bu gruptan çıkarmak istiyor musun?`, [
+      { text: "Vazgeç", style: "cancel" },
+      {
+        text: "Çıkar",
+        style: "destructive",
+        onPress: () => removeAthlete.mutate(athleteId)
+      }
+    ]);
+  }
+
+  return (
+    <Modal animationType="slide" onRequestClose={handleClose} transparent visible={Boolean(group)}>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalCard, styles.athletesModalCard]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{showAddView ? "Sporcu Ekle" : group?.name ?? "Sporcular"}</Text>
+            <Pressable accessibilityLabel="Kapat" onPress={showAddView ? () => { setShowAddView(false); setSelectedIds(new Set()); } : handleClose} style={styles.iconAction}>
+              <MaterialCommunityIcons name={showAddView ? "arrow-left" : "close"} size={22} color={colors.primary} />
+            </Pressable>
+          </View>
+
+          {showAddView ? (
+            <>
+              <ScrollView contentContainerStyle={styles.athletesList} showsVerticalScrollIndicator={false}>
+                {allAthletesQuery.isLoading ? (
+                  <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
+                ) : availableAthletes.length === 0 ? (
+                  <EmptyState title="Sporcu yok" description="Eklenebilecek sporcu bulunmuyor." />
+                ) : (
+                  availableAthletes.map((athlete) => {
+                    const isSelected = selectedIds.has(athlete.athleteProfileId);
+                    return (
+                      <Pressable key={athlete.athleteProfileId} onPress={() => toggleSelection(athlete.athleteProfileId)} style={styles.athleteRow}>
+                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                          {isSelected && <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} />}
+                        </View>
+                        <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
+                        <View style={styles.flexOne}>
+                          <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
+                          <Text style={styles.rowMeta}>{athlete.groups.length > 0 ? athlete.groups.join(", ") : "Grup ataması yok"}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })
+                )}
+              </ScrollView>
+              {selectedIds.size > 0 && (
+                <View style={styles.batchActionBar}>
+                  <Button
+                    disabled={isAdding}
+                    label={isAdding ? "Ekleniyor..." : `${selectedIds.size} Sporcu Ekle`}
+                    onPress={addSelected}
+                  />
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              <ScrollView contentContainerStyle={styles.athletesList} showsVerticalScrollIndicator={false}>
+                {groupAthletesQuery.isLoading ? (
+                  <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
+                ) : currentAthletes.length === 0 ? (
+                  <EmptyState title="Sporcu yok" description="Bu grupta henüz sporcu bulunmuyor." />
+                ) : (
+                  currentAthletes.map((athlete) => (
+                    <View key={athlete.id} style={styles.athleteRow}>
+                      <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
+                      <View style={styles.flexOne}>
+                        <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
+                        <Text style={styles.rowMeta}>{athlete.parentFullName}</Text>
+                      </View>
+                      <Pressable
+                        accessibilityLabel={`${athlete.firstName} sporcusunu çıkar`}
+                        disabled={removeAthlete.isPending}
+                        onPress={() => confirmRemove(athlete.id, `${athlete.firstName} ${athlete.lastName}`)}
+                        style={styles.removeButton}
+                      >
+                        <MaterialCommunityIcons name="account-minus-outline" size={20} color={colors.error} />
+                      </Pressable>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+              <View style={styles.batchActionBar}>
+                <Button label="Sporcu Ekle" onPress={() => setShowAddView(true)} />
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function LegendDot({ label, color }: { label: string; color: string }) {
   return (
     <View style={styles.legendItem}>
@@ -291,7 +437,14 @@ function groupCode(name: string) {
 
 const styles = StyleSheet.create({
   actionRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  athleteRow: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
+  athleteName: { ...typography.title, color: colors.onSurface, fontSize: 15 },
+  athletesList: { gap: spacing.xs, paddingBottom: spacing.lg },
+  athletesModalCard: { maxHeight: "85%" },
+  batchActionBar: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, paddingTop: spacing.md },
   chartCard: { gap: spacing.md },
+  checkbox: { alignItems: "center", borderColor: colors.outline, borderRadius: radius.sm, borderWidth: 2, height: 24, justifyContent: "center", width: 24 },
+  checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   coachLine: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   commentCard: { gap: spacing.md },
   commentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
@@ -306,6 +459,7 @@ const styles = StyleSheet.create({
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   legendRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, justifyContent: "center" },
   list: { gap: spacing.md },
+  loader: { paddingVertical: spacing.xl },
   metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   metricsRow: { flexDirection: "row", gap: spacing.sm },
   modalBackdrop: { backgroundColor: "rgba(0, 0, 0, 0.32)", flex: 1, justifyContent: "flex-end" },
@@ -315,6 +469,7 @@ const styles = StyleSheet.create({
   modalTitle: { ...typography.headline, color: colors.primary },
   primaryButton: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   primaryButtonText: { ...typography.label, color: colors.onPrimary },
+  removeButton: { alignItems: "center", height: 36, justifyContent: "center", width: 36 },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
   sectionHeading: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginTop: spacing.xs },
