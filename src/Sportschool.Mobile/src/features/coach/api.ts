@@ -16,7 +16,8 @@ import type {
   SaveSchoolGroupRequest,
   SaveCoachAthleteReportRequest,
   SaveCoachAttendanceRequest,
-  SchoolGroupResponse
+  SchoolGroupResponse,
+  UpdateCoachTrainingRequest
 } from "@/features/coach/types";
 
 type TrainingRange = {
@@ -141,6 +142,25 @@ export function useCreateCoachTraining() {
     }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["coach"] });
+    }
+  });
+}
+
+export function useUpdateCoachTraining(trainingId?: string) {
+  return useMutation({
+    mutationFn: (request: UpdateCoachTrainingRequest) => {
+      if (!trainingId) {
+        throw new Error("Training is required.");
+      }
+
+      return apiRequest(endpoints.schoolTraining(trainingId), {
+        method: "PUT",
+        body: request
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["coach"] });
+      await queryClient.invalidateQueries({ queryKey: ["coach", "attendance-roster", trainingId] });
     }
   });
 }

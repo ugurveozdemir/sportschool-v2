@@ -222,7 +222,8 @@ public static class TrainingEndpoints
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
-        if (schoolId is null)
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
         {
             return Results.Forbid();
         }
@@ -250,6 +251,11 @@ public static class TrainingEndpoints
             cancellationToken);
 
         if (training is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (currentUser.IsInRole(UserRole.Coach.ToString()) && training.CoachId != userId.Value)
         {
             return Results.NotFound();
         }
@@ -285,7 +291,8 @@ public static class TrainingEndpoints
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
-        if (schoolId is null)
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
         {
             return Results.Forbid();
         }
@@ -295,6 +302,11 @@ public static class TrainingEndpoints
             cancellationToken);
 
         if (training is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (currentUser.IsInRole(UserRole.Coach.ToString()) && training.CoachId != userId.Value)
         {
             return Results.NotFound();
         }

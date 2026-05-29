@@ -97,6 +97,15 @@ export type CreateCoachTrainingRequest = {
   notes: string | null;
 };
 
+export type UpdateCoachTrainingRequest = {
+  groupIds: string[];
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  location: string | null;
+  notes: string | null;
+};
+
 export type CoachAttendanceRosterResponse = {
   training: CoachAttendanceRosterTraining;
   athletes: CoachAttendanceRosterItem[];

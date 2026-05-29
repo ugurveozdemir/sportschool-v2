@@ -29,7 +29,7 @@ type TrainingItem = {
 };
 
 type TrainingFormState = {
-  groupId: string;
+  groupIds: string[];
   title: string;
   startTime: string;
   endTime: string;
@@ -39,7 +39,7 @@ type TrainingFormState = {
 };
 
 const initialTrainingForm: TrainingFormState = {
-  groupId: "",
+  groupIds: [],
   title: "Antrenman",
   startTime: "17:00",
   endTime: "18:30",
@@ -114,8 +114,8 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
   }
 
   function submitTraining() {
-    if (!form.groupId) {
-      Alert.alert("Takvim", "Lütfen antrenman yapılacak grubu seçin.");
+    if (form.groupIds.length === 0) {
+      Alert.alert("Takvim", "Lütfen antrenman yapılacak en az bir grubu seçin.");
       return;
     }
 
@@ -138,7 +138,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
     }
 
     const request: CreateCoachTrainingRequest = {
-      groupIds: [form.groupId],
+      groupIds: form.groupIds,
       title: form.title.trim(),
       startsAt: startsAt.toISOString(),
       endsAt: endsAt.toISOString(),
@@ -370,7 +370,10 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
   const [tempMonth, setTempMonth] = useState(selectedDate.getMonth());
   const [tempYear, setTempYear] = useState(selectedDate.getFullYear());
 
-  const selectedGroupName = groups.find((g) => g.id === form.groupId)?.name;
+  const selectedGroupNames = groups
+    .filter((group) => form.groupIds.includes(group.id))
+    .map((group) => group.name)
+    .join(", ");
 
   function handleOpenTimePicker(target: "startTime" | "endTime") {
     const currentValue = target === "startTime" ? form.startTime : form.endTime;
@@ -421,8 +424,8 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
               <Text style={styles.groupPickerLabel}>Grup</Text>
               <View style={styles.groupPickerBox}>
                 <MaterialCommunityIcons name="account-group-outline" size={18} color={colors.primary} />
-                <Text style={[styles.groupPickerValue, !form.groupId && styles.groupPickerPlaceholder]}>
-                  {selectedGroupName || "Grup Seçin..."}
+                <Text style={[styles.groupPickerValue, form.groupIds.length === 0 && styles.groupPickerPlaceholder]}>
+                  {selectedGroupNames || "Grupları Seçin..."}
                 </Text>
                 <MaterialCommunityIcons name="chevron-down" size={20} color={colors.outline} />
               </View>
@@ -520,23 +523,27 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
               <Text style={styles.timePickerTitle}>Grup Seçin</Text>
               <ScrollView style={styles.groupListScroll} showsVerticalScrollIndicator={false}>
                 {groups.map((group) => {
-                  const active = group.id === form.groupId;
+                  const active = form.groupIds.includes(group.id);
                   return (
                     <Pressable
                       key={group.id}
                       onPress={() => {
-                        onChangeForm({ groupId: group.id });
-                        setIsGroupPickerVisible(false);
+                        onChangeForm({ groupIds: toggleGroupId(form.groupIds, group.id) });
                       }}
                       style={[styles.groupListItem, active && styles.groupListItemActive]}
                     >
+                      <View style={[styles.checkbox, active && styles.checkboxSelected]}>
+                        {active ? <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} /> : null}
+                      </View>
                       <Text style={[styles.groupListText, active && styles.groupListTextActive]}>{group.name}</Text>
-                      {active && <MaterialCommunityIcons name="check" size={20} color={colors.primary} />}
                     </Pressable>
                   );
                 })}
               </ScrollView>
-              <Button label="İptal" variant="outline" onPress={() => setIsGroupPickerVisible(false)} />
+              <View style={styles.pickerActions}>
+                <Button label="İptal" variant="outline" onPress={() => setIsGroupPickerVisible(false)} />
+                <Button label="Tamam" onPress={() => setIsGroupPickerVisible(false)} />
+              </View>
             </View>
           </View>
         )}
@@ -658,6 +665,10 @@ function formatGroupNames(groups?: { name: string }[]) {
   return groups.map((group) => group.name).join(", ");
 }
 
+function toggleGroupId(groupIds: string[], groupId: string) {
+  return groupIds.includes(groupId) ? groupIds.filter((id) => id !== groupId) : [...groupIds, groupId];
+}
+
 function getDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -692,6 +703,8 @@ const styles = StyleSheet.create({
   calendarArrows: { flexDirection: "row", gap: spacing.sm },
   calendarCard: { gap: spacing.lg, minHeight: 430 },
   calendarHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  checkbox: { alignItems: "center", borderColor: colors.outline, borderRadius: 6, borderWidth: 1, height: 24, justifyContent: "center", width: 24 },
+  checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   circleButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 46, justifyContent: "center", width: 46 },
   closeButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
   coachTitle: { ...typography.headline, color: colors.primary },
@@ -753,7 +766,7 @@ const styles = StyleSheet.create({
   groupPickerValue: { ...typography.bodyLarge, color: colors.onSurface, flex: 1 },
   groupPickerPlaceholder: { color: colors.outline },
   groupListScroll: { maxHeight: 220, marginVertical: spacing.md },
-  groupListItem: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.md },
+  groupListItem: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
   groupListItemActive: { backgroundColor: colors.primaryContainer },
   groupListText: { ...typography.bodyLarge, color: colors.onSurface },
   groupListTextActive: { color: colors.primary, fontFamily: "Inter_700Bold" },

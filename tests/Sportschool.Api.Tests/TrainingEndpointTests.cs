@@ -369,6 +369,50 @@ public sealed class TrainingEndpointTests
         Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task CoachCannotModifyAnotherCoachTrainingInSameSchool()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var trainingId = Guid.NewGuid();
+        var coachA = TestUsers.Create(schoolId, "coach-owner@example.com", "Coach A", "password", UserRole.Coach);
+        var coachB = TestUsers.Create(schoolId, "coach-other-same-school@example.com", "Coach B", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "School A", "same-school"));
+            db.TrainingGroups.Add(new TrainingGroup { Id = groupId, SchoolId = schoolId, Name = "Group A" });
+            db.Users.AddRange(coachA, coachB);
+            db.TrainingSessions.Add(new TrainingSession
+            {
+                Id = trainingId,
+                SchoolId = schoolId,
+                CoachId = coachA.Id,
+                Title = "Coach A Session",
+                StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                Groups = { new TrainingSessionGroup { GroupId = groupId } }
+            });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coachB, UserRole.Coach);
+        var editRequest = new UpdateTrainingRequest(
+            GroupIds: [groupId],
+            Title: "Wrong Coach Update",
+            StartsAt: DateTimeOffset.UtcNow.AddDays(1),
+            EndsAt: DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            Location: null,
+            Notes: null);
+
+        using var editResponse = await client.PutAsJsonAsync($"/api/school/trainings/{trainingId}", editRequest, JsonOptions);
+        using var deleteResponse = await client.DeleteAsync($"/api/school/trainings/{trainingId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, editResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+    }
+
     private static School CreateSchool(Guid id, string name, string code)
     {
         return new School

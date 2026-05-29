@@ -6,6 +6,8 @@
 - Updated training, attendance, dashboard, parent/athlete mobile, and coach mobile backend endpoints to read training groups through `TrainingSessionGroups`.
 - Added API tests for multi-group training creation and distinct coach roster athletes across multiple groups.
 - Added coach mobile training detail navigation from the calendar, showing training notes, linked groups, and roster athletes without attendance status.
+- Added multi-select group checkboxes for coach mobile training creation and editing, with detail-screen edit support for core training fields.
+- Restricted coach training update/delete authorization to the owning coach while keeping SchoolAdmin school-wide access.
 
 ## 2026-05-24
 
