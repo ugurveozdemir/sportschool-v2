@@ -71,7 +71,7 @@ export default function HomeScreen() {
 }
 
 function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName?: string; summary?: CoachSummaryResponse; navItems: ReturnType<typeof getMobileNav>; shellTitle: string }) {
-  const nextTraining = summary?.todayTrainings[0];
+  const todayTrainings = summary?.todayTrainings ?? [];
 
   return (
     <ScreenShell title={shellTitle} navItems={navItems}>
@@ -85,20 +85,22 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
 
       <View style={styles.sectionStack}>
         <SectionTitle title="Bugünkü Etkinlikler" />
-        {nextTraining ? (
-          <EventCard
-            accent="secondary"
-            icon="run"
-            kicker={`${formatTime(nextTraining.startsAt)} • ${nextTraining.location ?? "Tesis 1"}`}
-            title={`Antrenman: ${formatGroupNames(nextTraining.groups)}`}
-            onPress={() => router.push(`/trainings/${nextTraining.id}`)}
-          />
+        {todayTrainings.length > 0 ? (
+          todayTrainings.map((training) => (
+            <EventCard
+              key={training.id}
+              accent="secondary"
+              icon="run"
+              kicker={`${formatTime(training.startsAt)} • ${training.location ?? "Konum girilmedi"}`}
+              title={`Antrenman: ${formatGroupNames(training.groups)}`}
+              onPress={() => router.push(`/trainings/${training.id}`)}
+            />
+          ))
         ) : (
           <SurfaceCard>
             <EmptyState title="Bugün antrenman yok" description="Bugün için atanmış antrenman bulunmuyor." />
           </SurfaceCard>
         )}
-        <EventCard accent="primary" icon="scoreboard-outline" kicker="19:30 • Merkez Stadyum" title="Maç: U16 vs Kartal SK" />
       </View>
 
       <View style={styles.sectionStack}>

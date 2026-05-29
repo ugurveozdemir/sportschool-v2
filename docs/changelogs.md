@@ -7,6 +7,7 @@
 - Added API tests for multi-group training creation and distinct coach roster athletes across multiple groups.
 - Added coach mobile training detail navigation from the calendar, showing training notes, linked groups, and roster athletes without attendance status.
 - Made the coach mobile home screen's today-training card open the same training detail screen as the calendar card.
+- Removed the hard-coded coach home match card and listed every training returned for the current day.
 - Added multi-select group checkboxes for coach mobile training creation and editing, with detail-screen edit support for core training fields.
 - Restricted coach training update/delete authorization to the owning coach while keeping SchoolAdmin school-wide access.
 
