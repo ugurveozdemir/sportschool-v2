@@ -92,7 +92,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
               accent="secondary"
               icon="run"
               kicker={`${formatTime(training.startsAt)} • ${training.location ?? "Konum girilmedi"}`}
-              title={`Antrenman: ${formatGroupNames(training.groups)}`}
+              title={training.title}
               onPress={() => router.push(`/trainings/${training.id}`)}
             />
           ))
@@ -137,10 +137,6 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
       </SurfaceCard>
     </ScreenShell>
   );
-}
-
-function formatGroupNames(groups: { name: string }[]) {
-  return groups.length === 0 ? "Grup bilgisi yok" : groups.map((group) => group.name).join(", ");
 }
 
 function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; groupCount: number; attendanceCount: number; unpaidCount: number; latestReport?: { summary: string; createdAt: string; speedScore: number; strengthScore: number; dribblingScore: number; shootingScore: number } }) {
