@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import { useCoachSummary } from "@/features/coach/api";
@@ -85,7 +86,13 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
       <View style={styles.sectionStack}>
         <SectionTitle title="Bugünkü Etkinlikler" />
         {nextTraining ? (
-          <EventCard accent="secondary" icon="run" kicker={`${formatTime(nextTraining.startsAt)} • ${nextTraining.location ?? "Tesis 1"}`} title={`Antrenman: ${formatGroupNames(nextTraining.groups)}`} />
+          <EventCard
+            accent="secondary"
+            icon="run"
+            kicker={`${formatTime(nextTraining.startsAt)} • ${nextTraining.location ?? "Tesis 1"}`}
+            title={`Antrenman: ${formatGroupNames(nextTraining.groups)}`}
+            onPress={() => router.push(`/trainings/${nextTraining.id}`)}
+          />
         ) : (
           <SurfaceCard>
             <EmptyState title="Bugün antrenman yok" description="Bugün için atanmış antrenman bulunmuyor." />
@@ -277,8 +284,14 @@ function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining,
   );
 }
 
-function EventCard({ accent, icon, kicker, title }: { accent: "primary" | "secondary"; icon: keyof typeof MaterialCommunityIcons.glyphMap; kicker: string; title: string }) {
-  return (
+function EventCard({ accent, icon, kicker, title, onPress }: {
+  accent: "primary" | "secondary";
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  kicker: string;
+  title: string;
+  onPress?: () => void;
+}) {
+  const content = (
     <SurfaceCard accent={accent} style={styles.eventCard}>
       <View style={styles.eventIconCircle}>
         <MaterialCommunityIcons name={icon} size={28} color={accent === "secondary" ? colors.secondary : colors.primary} />
@@ -289,6 +302,16 @@ function EventCard({ accent, icon, kicker, title }: { accent: "primary" | "secon
       </View>
       <MaterialCommunityIcons name="chevron-right" size={30} color={colors.outlineVariant} />
     </SurfaceCard>
+  );
+
+  if (!onPress) {
+    return content;
+  }
+
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title} detayını aç`} onPress={onPress}>
+      {content}
+    </Pressable>
   );
 }
 
