@@ -64,7 +64,8 @@ public static class MobileCoachEndpoints
                     .Select(a => a.AthleteProfileId)
                     .Distinct()
                     .Count(),
-                db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)))
+                db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id),
+                x.Notes))
             .ToListAsync(cancellationToken);
 
         var upcomingTrainings = trainingRows
@@ -344,7 +345,8 @@ public static class MobileCoachEndpoints
                     .Select(a => a.AthleteProfileId)
                     .Distinct()
                     .Count(),
-                db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)))
+                db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id),
+                x.Notes))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(trainingRows);
@@ -632,7 +634,8 @@ public sealed record MobileCoachTrainingItem(
     IReadOnlyCollection<TrainingGroupSummary> Groups,
     string? Location,
     int TotalAthletes,
-    int RecordedAttendanceCount);
+    int RecordedAttendanceCount,
+    string? Notes);
 
 public sealed record MobileCoachAttendanceRosterResponse(
     MobileCoachAttendanceRosterTraining Training,

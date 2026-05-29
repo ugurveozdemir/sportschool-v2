@@ -84,6 +84,7 @@ export type CoachTrainingItem = {
   location: string | null;
   totalAthletes: number;
   recordedAttendanceCount: number;
+  notes: string | null;
 };
 
 export type CreateCoachTrainingRequest = {

@@ -34,6 +34,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         Assert.NotNull(summary);
         var training = Assert.Single(summary!.TodayTrainings);
         Assert.Equal(data.CoachTraining.Id, training.Id);
+        Assert.Equal("Bring cones", training.Notes);
         Assert.Equal(data.Group.Id, Assert.Single(training.Groups).Id);
         Assert.Equal(1, summary.WeekTrainingCount);
         Assert.Equal(1, summary.MissingAttendanceCount);
@@ -229,6 +230,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             Title = "Coach Training",
             StartsAt = todayStartsAt,
             EndsAt = todayStartsAt.AddHours(1),
+            Notes = "Bring cones",
             Recurrence = TrainingRecurrence.None,
             Groups = { new TrainingSessionGroup { Group = group } }
         };

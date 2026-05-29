@@ -93,6 +93,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
               icon="run"
               kicker={`${formatTime(training.startsAt)} • ${training.location ?? "Konum girilmedi"}`}
               title={training.title}
+              description={training.notes?.trim() || undefined}
               onPress={() => router.push(`/trainings/${training.id}`)}
             />
           ))
@@ -282,11 +283,12 @@ function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining,
   );
 }
 
-function EventCard({ accent, icon, kicker, title, onPress }: {
+function EventCard({ accent, icon, kicker, title, description, onPress }: {
   accent: "primary" | "secondary";
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   kicker: string;
   title: string;
+  description?: string;
   onPress?: () => void;
 }) {
   const content = (
@@ -297,6 +299,7 @@ function EventCard({ accent, icon, kicker, title, onPress }: {
       <View style={styles.flexOne}>
         <Text style={[styles.eventKicker, accent === "secondary" && styles.greenText]}>{kicker}</Text>
         <Text style={styles.eventTitle}>{title}</Text>
+        {description ? <Text style={styles.eventDescription}>{description}</Text> : null}
       </View>
       <MaterialCommunityIcons name="chevron-right" size={30} color={colors.outlineVariant} />
     </SurfaceCard>
@@ -429,6 +432,7 @@ const styles = StyleSheet.create({
   errorSmall: { ...typography.label, color: colors.error },
   eventCard: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingLeft: spacing.xl },
   eventIconCircle: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 62, justifyContent: "center", width: 62 },
+  eventDescription: { ...typography.body, color: colors.onSurfaceVariant, marginTop: 3 },
   eventKicker: { ...typography.label, color: colors.primary, textTransform: "uppercase" },
   eventTitle: { ...typography.headline, color: colors.primary },
   flexOne: { flex: 1 },
