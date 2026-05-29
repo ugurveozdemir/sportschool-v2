@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Athletes;
@@ -40,6 +41,20 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         Assert.Equal(1, summary.MissingAttendanceCount);
         Assert.Equal(1, summary.GroupCount);
         Assert.Equal(1, summary.AthleteCount);
+    }
+
+    [Fact]
+    public async Task CoachSummary_JsonIncludesTrainingNotes()
+    {
+        var data = await SeedCoachScenarioAsync();
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        var json = await client.GetStringAsync("/api/mobile/coach/summary");
+        using var document = JsonDocument.Parse(json);
+        var training = document.RootElement.GetProperty("todayTrainings")[0];
+
+        Assert.Equal(data.CoachTraining.Id, training.GetProperty("id").GetGuid());
+        Assert.Equal("Bring cones", training.GetProperty("notes").GetString());
     }
 
     [Fact]
