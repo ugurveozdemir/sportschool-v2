@@ -153,6 +153,7 @@ public static class AthleteReportEndpoints
     }
 
     private static async Task<IResult> ListMyReportsAsync(
+        Guid? athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -164,11 +165,20 @@ public static class AthleteReportEndpoints
             return Results.Forbid();
         }
 
-        var athleteProfile = await db.AthleteProfiles.FirstOrDefaultAsync(
+        var query = db.AthleteProfiles.Where(
             x => x.SchoolId == schoolId.Value
                 && (x.UserId == userId.Value || x.ParentUserId == userId.Value)
-                && x.IsActive,
-            cancellationToken);
+                && x.IsActive);
+
+        if (athleteProfileId is not null)
+        {
+            query = query.Where(x => x.Id == athleteProfileId.Value);
+        }
+
+        var athleteProfile = await query
+            .OrderBy(x => x.FirstName)
+            .ThenBy(x => x.LastName)
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (athleteProfile is null)
         {

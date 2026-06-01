@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { usePayments } from "@/features/me/api";
 import type { PaymentResponse } from "@/features/me/types";
@@ -24,7 +25,8 @@ const coachPaymentRows = [
 export default function PaymentsScreen() {
   const { session } = useSession();
   const isCoach = session?.roles.includes("Coach") ?? false;
-  const paymentsQuery = usePayments(!isCoach);
+  const { selectedAthleteProfileId } = useAthleteSelection();
+  const paymentsQuery = usePayments(!isCoach, selectedAthleteProfileId);
 
   if (!isCoach && paymentsQuery.isLoading) {
     return <LoadingState label="Ödemeler yükleniyor" />;

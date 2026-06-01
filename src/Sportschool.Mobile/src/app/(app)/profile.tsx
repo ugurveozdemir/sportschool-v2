@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { logout } from "@/features/auth/api";
 import { useCoachGroups } from "@/features/coach/api";
@@ -18,8 +19,9 @@ import { formatDate } from "@/shared/utils/date";
 export default function ProfileScreen() {
   const { session, clearSession } = useSession();
   const isCoach = session?.roles.includes("Coach") ?? false;
-  const profileQuery = useProfile(!isCoach);
-  const groupsQuery = useGroups(!isCoach);
+  const { selectedAthleteProfileId } = useAthleteSelection();
+  const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
+  const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
   const coachGroupsQuery = useCoachGroups(isCoach);
   const logoutMutation = useMutation({
     mutationFn: async () => {

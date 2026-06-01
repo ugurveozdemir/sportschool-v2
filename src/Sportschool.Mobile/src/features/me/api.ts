@@ -2,46 +2,57 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@/shared/api/apiClient";
 import { endpoints } from "@/shared/constants/endpoints";
-import type { AttendanceResponse, AthleteReportResponse, GroupResponse, MobileProfileResponse, PaymentResponse, TrainingResponse } from "@/features/me/types";
+import type { AttendanceResponse, AthleteReportResponse, GroupResponse, MobileAthleteResponse, MobileProfileResponse, PaymentResponse, TrainingResponse } from "@/features/me/types";
 
 type TrainingRange = {
   from: string;
   to: string;
 };
 
-export function useProfile(enabled = true) {
-  return useQuery({ enabled, queryKey: ["me", "profile"], queryFn: () => apiRequest<MobileProfileResponse>(endpoints.meProfile) });
+export function useMyAthletes(enabled = true) {
+  return useQuery({ enabled, queryKey: ["me", "athletes"], queryFn: () => apiRequest<MobileAthleteResponse[]>(endpoints.meAthletes) });
 }
 
-export function useGroups(enabled = true) {
-  return useQuery({ enabled, queryKey: ["me", "groups"], queryFn: () => apiRequest<GroupResponse[]>(endpoints.meGroups) });
+export function useProfile(enabled = true, athleteProfileId?: string | null) {
+  return useQuery({ enabled, queryKey: ["me", "profile", athleteProfileId], queryFn: () => apiRequest<MobileProfileResponse>(withAthlete(endpoints.meProfile, athleteProfileId)) });
 }
 
-export function useTrainings(enabled = true, range?: TrainingRange) {
+export function useGroups(enabled = true, athleteProfileId?: string | null) {
+  return useQuery({ enabled, queryKey: ["me", "groups", athleteProfileId], queryFn: () => apiRequest<GroupResponse[]>(withAthlete(endpoints.meGroups, athleteProfileId)) });
+}
+
+export function useTrainings(enabled = true, range?: TrainingRange, athleteProfileId?: string | null) {
   return useQuery({
     enabled,
-    queryKey: ["me", "trainings", range?.from, range?.to],
-    queryFn: () => apiRequest<TrainingResponse[]>(withRange(endpoints.meTrainings, range))
+    queryKey: ["me", "trainings", range?.from, range?.to, athleteProfileId],
+    queryFn: () => apiRequest<TrainingResponse[]>(withParams(endpoints.meTrainings, { athleteProfileId, from: range?.from, to: range?.to }))
   });
 }
 
-export function useAttendance(enabled = true) {
-  return useQuery({ enabled, queryKey: ["me", "attendance"], queryFn: () => apiRequest<AttendanceResponse[]>(endpoints.meAttendance) });
+export function useAttendance(enabled = true, athleteProfileId?: string | null) {
+  return useQuery({ enabled, queryKey: ["me", "attendance", athleteProfileId], queryFn: () => apiRequest<AttendanceResponse[]>(withAthlete(endpoints.meAttendance, athleteProfileId)) });
 }
 
-export function usePayments(enabled = true) {
-  return useQuery({ enabled, queryKey: ["me", "payments"], queryFn: () => apiRequest<PaymentResponse[]>(endpoints.mePayments) });
+export function usePayments(enabled = true, athleteProfileId?: string | null) {
+  return useQuery({ enabled, queryKey: ["me", "payments", athleteProfileId], queryFn: () => apiRequest<PaymentResponse[]>(withAthlete(endpoints.mePayments, athleteProfileId)) });
 }
 
-export function useReports(enabled = true) {
-  return useQuery({ enabled, queryKey: ["me", "athlete-reports"], queryFn: () => apiRequest<AthleteReportResponse[]>(endpoints.meAthleteReports) });
+export function useReports(enabled = true, athleteProfileId?: string | null) {
+  return useQuery({ enabled, queryKey: ["me", "athlete-reports", athleteProfileId], queryFn: () => apiRequest<AthleteReportResponse[]>(withAthlete(endpoints.meAthleteReports, athleteProfileId)) });
 }
 
-function withRange(path: string, range?: TrainingRange) {
-  if (!range) {
-    return path;
+function withAthlete(path: string, athleteProfileId?: string | null) {
+  return withParams(path, { athleteProfileId });
+}
+
+function withParams(path: string, values: Record<string, string | null | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value) {
+      params.set(key, value);
+    }
   }
 
-  const params = new URLSearchParams({ from: range.from, to: range.to });
-  return `${path}?${params.toString()}`;
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }

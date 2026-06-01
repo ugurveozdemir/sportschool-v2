@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useCoachAthletes } from "@/features/coach/api";
 import type { CoachAthleteListItem } from "@/features/coach/types";
@@ -19,8 +20,9 @@ import { getAttendanceLabel } from "@/shared/utils/status";
 export default function AttendanceScreen() {
   const { session } = useSession();
   const isCoach = session?.roles.includes("Coach") ?? false;
-  const attendanceQuery = useAttendance(!isCoach);
-  const trainingsQuery = useTrainings(!isCoach);
+  const { selectedAthleteProfileId } = useAthleteSelection();
+  const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
+  const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);
   const coachAthletesQuery = useCoachAthletes(isCoach);
 
   if (isCoach && coachAthletesQuery.isLoading) {

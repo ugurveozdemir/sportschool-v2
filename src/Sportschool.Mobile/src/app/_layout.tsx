@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { queryClient } from "@/core/queryClient";
+import { AthleteSelectionProvider } from "@/core/athleteSelectionProvider";
 import { SessionProvider } from "@/core/sessionProvider";
 import { colors } from "@/shared/design/colors";
 
@@ -29,8 +30,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
-          <StatusBar style="dark" backgroundColor={colors.background} />
-          <Stack screenOptions={{ headerShown: false }} />
+          <AthleteSelectionProvider>
+            <StatusBar style="dark" backgroundColor={colors.background} />
+            <Stack screenOptions={{ headerShown: false }} />
+          </AthleteSelectionProvider>
         </SessionProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

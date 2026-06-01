@@ -3,6 +3,7 @@ export const endpoints = {
   login: "/api/auth/login",
   refresh: "/api/auth/refresh",
   logout: "/api/auth/logout",
+  meAthletes: "/api/me/athletes",
   meProfile: "/api/me/profile",
   meGroups: "/api/me/groups",
   meTrainings: "/api/me/trainings",

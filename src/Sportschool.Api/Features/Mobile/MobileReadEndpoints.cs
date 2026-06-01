@@ -18,6 +18,7 @@ public static class MobileReadEndpoints
         var group = app.MapGroup("/api/me")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.Parent.ToString(), UserRole.Athlete.ToString()));
 
+        group.MapGet("/athletes", ListAthletesAsync);
         group.MapGet("/profile", GetProfileAsync);
         group.MapGet("/groups", ListGroupsAsync);
         group.MapGet("/trainings", ListTrainingsAsync);
@@ -27,21 +28,37 @@ public static class MobileReadEndpoints
         return group;
     }
 
-    private static async Task<IResult> GetProfileAsync(
+    private static async Task<IResult> ListAthletesAsync(
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        var profile = await FindCurrentAthleteProfileAsync(currentUser, db, cancellationToken);
+        var profiles = await CurrentAthleteProfiles(currentUser, db)
+            .OrderBy(x => x.FirstName)
+            .ThenBy(x => x.LastName)
+            .Select(x => MobileAthleteResponse.From(x))
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(profiles);
+    }
+
+    private static async Task<IResult> GetProfileAsync(
+        Guid? athleteProfileId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
         return profile is null ? Results.NotFound() : Results.Ok(MobileProfileResponse.From(profile));
     }
 
     private static async Task<IResult> ListGroupsAsync(
+        Guid? athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        var profile = await FindCurrentAthleteProfileAsync(currentUser, db, cancellationToken);
+        var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
         if (profile is null)
         {
             return Results.NotFound();
@@ -57,13 +74,14 @@ public static class MobileReadEndpoints
     }
 
     private static async Task<IResult> ListTrainingsAsync(
+        Guid? athleteProfileId,
         DateTimeOffset? from,
         DateTimeOffset? to,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        var profile = await FindCurrentAthleteProfileAsync(currentUser, db, cancellationToken);
+        var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
         if (profile is null)
         {
             return Results.NotFound();
@@ -108,11 +126,12 @@ public static class MobileReadEndpoints
     }
 
     private static async Task<IResult> ListAttendanceAsync(
+        Guid? athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        var profile = await FindCurrentAthleteProfileAsync(currentUser, db, cancellationToken);
+        var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
         if (profile is null)
         {
             return Results.NotFound();
@@ -128,11 +147,12 @@ public static class MobileReadEndpoints
     }
 
     private static async Task<IResult> ListPaymentsAsync(
+        Guid? athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        var profile = await FindCurrentAthleteProfileAsync(currentUser, db, cancellationToken);
+        var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
         if (profile is null)
         {
             return Results.NotFound();
@@ -150,22 +170,54 @@ public static class MobileReadEndpoints
     }
 
     private static Task<Athletes.AthleteProfile?> FindCurrentAthleteProfileAsync(
+        Guid? athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
+    {
+        var query = CurrentAthleteProfiles(currentUser, db);
+        if (athleteProfileId is not null)
+        {
+            query = query.Where(x => x.Id == athleteProfileId.Value);
+        }
+
+        return query
+            .OrderBy(x => x.FirstName)
+            .ThenBy(x => x.LastName)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static IQueryable<Athletes.AthleteProfile> CurrentAthleteProfiles(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
         var userId = CurrentUser.GetUserId(currentUser);
         if (schoolId is null || userId is null)
         {
-            return Task.FromResult<Athletes.AthleteProfile?>(null);
+            return db.AthleteProfiles.Where(x => false);
         }
 
-        return db.AthleteProfiles.FirstOrDefaultAsync(
+        return db.AthleteProfiles.Where(
             x => x.SchoolId == schoolId.Value
                 && (x.UserId == userId.Value || x.ParentUserId == userId.Value)
-                && x.IsActive,
-            cancellationToken);
+                && x.IsActive);
+    }
+}
+
+public sealed record MobileAthleteResponse(
+    Guid Id,
+    string FirstName,
+    string LastName,
+    DateOnly BirthDate)
+{
+    public static MobileAthleteResponse From(Athletes.AthleteProfile profile)
+    {
+        return new MobileAthleteResponse(
+            profile.Id,
+            profile.FirstName,
+            profile.LastName,
+            profile.BirthDate);
     }
 }
 

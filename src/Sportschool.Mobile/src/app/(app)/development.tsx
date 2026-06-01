@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
@@ -39,7 +40,8 @@ const emptyGroupForm: GroupFormState = {
 export default function DevelopmentScreen() {
   const { session } = useSession();
   const isCoach = session?.roles.includes("Coach") ?? false;
-  const reportsQuery = useReports(!isCoach);
+  const { selectedAthleteProfileId } = useAthleteSelection();
+  const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const schoolGroupsQuery = useSchoolGroups(isCoach);
 
   if (isCoach && schoolGroupsQuery.isLoading) {

@@ -1,5 +1,12 @@
 import type { AttendanceStatus, PaymentStatus, TrainingRecurrence } from "@/shared/constants/domain";
 
+export type MobileAthleteResponse = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+};
+
 export type MobileProfileResponse = {
   id: string;
   userId: string;

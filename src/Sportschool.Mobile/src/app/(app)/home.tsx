@@ -2,12 +2,14 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useMemberAnnouncements } from "@/features/announcements/api";
 import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary } from "@/features/coach/api";
 import type { CoachSummaryResponse } from "@/features/coach/types";
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
+import type { MobileAthleteResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
@@ -23,13 +25,14 @@ export default function HomeScreen() {
   const isParent = session?.roles.includes("Parent") ?? false;
   const navItems = getMobileNav(session);
   const shellTitle = getShellTitle(session);
+  const { athletes, selectedAthleteProfileId, setSelectedAthleteProfileId } = useAthleteSelection();
 
-  const profileQuery = useProfile(!isCoach);
-  const trainingsQuery = useTrainings(!isCoach);
-  const groupsQuery = useGroups(!isCoach);
-  const attendanceQuery = useAttendance(!isCoach);
-  const paymentsQuery = usePayments(!isCoach);
-  const reportsQuery = useReports(!isCoach);
+  const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
+  const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);
+  const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
+  const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
+  const paymentsQuery = usePayments(!isCoach, selectedAthleteProfileId);
+  const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const announcementsQuery = useMemberAnnouncements(!isCoach, true);
   const coachSummaryQuery = useCoachSummary(isCoach);
 
@@ -51,8 +54,11 @@ export default function HomeScreen() {
       <ParentHome
         navItems={navItems}
         shellTitle={shellTitle}
-        parentName={session?.fullName?.split(" ")[0] ?? "Mehmet"}
-        childName={profile?.firstName ?? "Emre"}
+        parentName={session?.fullName?.split(" ")[0] ?? "Veli"}
+        childName={profile?.firstName ?? "Sporcu"}
+        athletes={athletes}
+        selectedAthleteProfileId={selectedAthleteProfileId}
+        onSelectAthlete={setSelectedAthleteProfileId}
         nextTraining={nextTraining}
         unpaidTotal={unpaidTotal}
         announcements={announcements.slice(0, 2)}
@@ -202,22 +208,26 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
   );
 }
 
-function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining, unpaidTotal, announcements, reportScore }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; unpaidTotal: number; announcements: AnnouncementResponse[]; reportScore: number }) {
+function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, unpaidTotal, announcements, reportScore }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; unpaidTotal: number; announcements: AnnouncementResponse[]; reportScore: number }) {
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={childName.slice(0, 1)} size={42} tone="light" />}>
       <View style={styles.headerBlockSmallGap}>
         <Text style={styles.parentTitle}>Günaydın, {parentName}</Text>
         <Text style={styles.subtitle}>Bugün {nextTraining ? "1 antrenman" : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
-        <View style={styles.childSwitch}>
-          <View style={styles.childSwitchActive}>
-            <InitialsAvatar label={childName.slice(0, 1)} size={24} tone="dark" />
-            <Text style={styles.childSwitchActiveText}>{childName} (U12)</Text>
+        {athletes.length > 1 ? (
+          <View style={styles.childSwitch}>
+            {athletes.map((athlete) => {
+              const isSelected = athlete.id === selectedAthleteProfileId;
+              const name = `${athlete.firstName} ${athlete.lastName}`;
+              return (
+                <Pressable key={athlete.id} onPress={() => onSelectAthlete(athlete.id)} style={isSelected ? styles.childSwitchActive : styles.childSwitchInactive}>
+                  <InitialsAvatar label={athlete.firstName.slice(0, 1)} size={24} tone={isSelected ? "dark" : "light"} />
+                  <Text style={isSelected ? styles.childSwitchActiveText : styles.childSwitchText} numberOfLines={1}>{name}</Text>
+                </Pressable>
+              );
+            })}
           </View>
-          <View style={styles.childSwitchInactive}>
-            <InitialsAvatar label="K" size={24} tone="light" />
-            <Text style={styles.childSwitchText}>Kerem (U15)</Text>
-          </View>
-        </View>
+        ) : null}
       </View>
 
       <SurfaceCard style={styles.parentTrainingCard}>

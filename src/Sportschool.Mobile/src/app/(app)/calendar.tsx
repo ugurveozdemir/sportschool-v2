@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useSchoolGroups, useCoachTrainings, useCreateCoachTraining } from "@/features/coach/api";
 import type { SchoolGroupResponse, CreateCoachTrainingRequest } from "@/features/coach/types";
@@ -54,7 +55,8 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const monthRange = useMemo(() => getMonthRange(visibleMonth), [visibleMonth]);
-  const trainingsQuery = useTrainings(!isCoach, monthRange);
+  const { selectedAthleteProfileId } = useAthleteSelection();
+  const trainingsQuery = useTrainings(!isCoach, monthRange, selectedAthleteProfileId);
   const coachTrainingsQuery = useCoachTrainings(isCoach, monthRange);
 
   if ((isCoach ? coachTrainingsQuery : trainingsQuery).isLoading) {

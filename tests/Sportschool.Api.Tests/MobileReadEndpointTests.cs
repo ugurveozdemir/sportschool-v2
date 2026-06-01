@@ -60,6 +60,60 @@ public sealed class MobileReadEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task Athletes_ListsParentLinkedAthleteProfiles()
+    {
+        var school = new School
+        {
+            Name = "Selection School",
+            Code = "selection",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode("selection")
+        };
+        var parent = TestUsers.Create(school.Id, "selection-parent@example.com", "Selection Parent", "password", UserRole.Parent);
+        var athleteA = TestUsers.Create(school.Id, "selection-athlete-a@example.com", "Ada Yilmaz", "password", UserRole.Athlete);
+        var athleteB = TestUsers.Create(school.Id, "selection-athlete-b@example.com", "Bora Demir", "password", UserRole.Athlete);
+        var profileA = new AthleteProfile
+        {
+            SchoolId = school.Id,
+            User = athleteA,
+            Parent = parent,
+            FirstName = "Ada",
+            LastName = "Yilmaz",
+            BirthDate = new DateOnly(2012, 5, 10),
+            ParentFullName = "Selection Parent",
+            ParentPhone = "+905551112233"
+        };
+        var profileB = new AthleteProfile
+        {
+            SchoolId = school.Id,
+            User = athleteB,
+            Parent = parent,
+            FirstName = "Bora",
+            LastName = "Demir",
+            BirthDate = new DateOnly(2014, 3, 7),
+            ParentFullName = "Selection Parent",
+            ParentPhone = "+905551112233"
+        };
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.Add(school);
+            db.Users.AddRange(parent, athleteA, athleteB);
+            db.AthleteProfiles.AddRange(profileA, profileB);
+
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateAuthenticatedClient(parent, UserRole.Parent);
+
+        var athletes = await client.GetFromJsonAsync<List<MobileAthleteResponse>>("/api/me/athletes");
+        var selectedProfile = await client.GetFromJsonAsync<MobileProfileResponse>($"/api/me/profile?athleteProfileId={profileB.Id}");
+
+        Assert.Equal(["Ada", "Bora"], athletes!.Select(x => x.FirstName).ToArray());
+        Assert.NotNull(selectedProfile);
+        Assert.Equal("Bora", selectedProfile.FirstName);
+    }
+
+    [Fact]
     public async Task AthleteReports_AllowsParentLinkedToAthleteProfile()
     {
         var school = new School
@@ -111,6 +165,8 @@ public sealed class MobileReadEndpointTests : IClassFixture<TestAppFactory>
         var report = Assert.Single(reports!);
         Assert.Equal(profile.Id, report.AthleteProfileId);
     }
+
+    private sealed record MobileAthleteResponse(Guid Id, string FirstName, string LastName);
 
     private sealed record MobileProfileResponse(string FirstName, string LastName);
 
