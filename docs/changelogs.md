@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-01
+
+- Added announcement publishing APIs for Coach/SchoolAdmin users, with school isolation, optional expiry, seven-day new status, and coach-owned edit restrictions.
+- Added parent/athlete announcement reading APIs that can return all active announcements or only current non-expired announcements.
+- Added mobile announcement list and publishing UI, wired parent home announcements to live API data, and linked notification/quick-action entry points to the new page.
+
 ## 2026-05-29
 
 - Changed training sessions from a single group relationship to a multi-group join model with data-preserving migration.

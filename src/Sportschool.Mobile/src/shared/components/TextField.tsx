@@ -9,11 +9,11 @@ type TextFieldProps = TextInputProps & {
   error?: string;
 };
 
-export function TextField({ label, error, ...props }: TextFieldProps) {
+export function TextField({ label, error, style, ...props }: TextFieldProps) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput placeholderTextColor={colors.outline} style={[styles.input, error && styles.inputError]} {...props} />
+      <TextInput placeholderTextColor={colors.outline} style={[styles.input, error && styles.inputError, style]} {...props} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );

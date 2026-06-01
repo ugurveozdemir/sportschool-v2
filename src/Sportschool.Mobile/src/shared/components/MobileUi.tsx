@@ -44,7 +44,7 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
         <Pressable accessibilityLabel="Profil" onPress={() => router.push("/profile")} style={styles.iconButton}>
           <MaterialCommunityIcons name="account-outline" size={26} color={colors.primary} />
         </Pressable>
-        <Pressable accessibilityLabel="Bildirimler" style={styles.iconButton}>
+        <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.iconButton}>
           <MaterialCommunityIcons name="bell-outline" size={26} color={colors.primary} />
           <View style={styles.notificationDot} />
         </Pressable>

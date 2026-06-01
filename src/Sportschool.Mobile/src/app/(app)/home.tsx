@@ -3,6 +3,8 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
+import { useMemberAnnouncements } from "@/features/announcements/api";
+import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary } from "@/features/coach/api";
 import type { CoachSummaryResponse } from "@/features/coach/types";
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
@@ -28,6 +30,7 @@ export default function HomeScreen() {
   const attendanceQuery = useAttendance(!isCoach);
   const paymentsQuery = usePayments(!isCoach);
   const reportsQuery = useReports(!isCoach);
+  const announcementsQuery = useMemberAnnouncements(!isCoach, true);
   const coachSummaryQuery = useCoachSummary(isCoach);
 
   if (isCoach) {
@@ -38,6 +41,7 @@ export default function HomeScreen() {
   const trainings = trainingsQuery.data ?? [];
   const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now()) ?? trainings[0];
   const payments = paymentsQuery.data ?? [];
+  const announcements = announcementsQuery.data ?? [];
   const unpaidCount = payments.filter((payment) => payment.effectiveStatus !== "Paid").length;
   const unpaidTotal = payments.reduce((sum, payment) => sum + (payment.effectiveStatus === "Paid" ? 0 : payment.balance), 0);
   const latestReport = reportsQuery.data?.[0];
@@ -51,6 +55,7 @@ export default function HomeScreen() {
         childName={profile?.firstName ?? "Emre"}
         nextTraining={nextTraining}
         unpaidTotal={unpaidTotal}
+        announcements={announcements.slice(0, 2)}
         reportScore={latestReport ? averageScore([latestReport.speedScore, latestReport.strengthScore, latestReport.dribblingScore, latestReport.shootingScore]) : 8.4}
       />
     );
@@ -64,6 +69,7 @@ export default function HomeScreen() {
       nextTraining={nextTraining}
       groupCount={groupsQuery.data?.length ?? 0}
       attendanceCount={attendanceQuery.data?.length ?? 0}
+      announcementCount={announcements.length}
       unpaidCount={unpaidCount}
       latestReport={latestReport}
     />
@@ -109,7 +115,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
         <View style={styles.quickGrid}>
           <QuickAction label="Yoklama Al" icon="clipboard-check-outline" primary />
           <QuickAction label="Ödeme Kaydet" icon="cash-multiple" />
-          <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" />
+          <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" onPress={() => router.push("/announcements")} />
         </View>
       </View>
 
@@ -140,7 +146,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
   );
 }
 
-function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; groupCount: number; attendanceCount: number; unpaidCount: number; latestReport?: { summary: string; createdAt: string; speedScore: number; strengthScore: number; dribblingScore: number; shootingScore: number } }) {
+function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, announcementCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; groupCount: number; attendanceCount: number; announcementCount: number; unpaidCount: number; latestReport?: { summary: string; createdAt: string; speedScore: number; strengthScore: number; dribblingScore: number; shootingScore: number } }) {
   const speed = latestReport?.speedScore ?? 85;
   const technique = latestReport?.dribblingScore ?? 72;
   const condition = latestReport?.strengthScore ?? 92;
@@ -159,7 +165,7 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
         <View style={styles.quickGrid}>
           <QuickAction label="Yoklama\nDurumum" icon="account-check-outline" />
           <QuickAction label="Beslenme\nProgramı" icon="silverware-fork-knife" />
-          <QuickAction label="Duyurular" icon="bullhorn-outline" badge />
+          <QuickAction label="Duyurular" icon="bullhorn-outline" badge={announcementCount > 0} onPress={() => router.push("/announcements")} />
         </View>
       </View>
 
@@ -196,12 +202,12 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
   );
 }
 
-function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining, unpaidTotal, reportScore }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; unpaidTotal: number; reportScore: number }) {
+function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining, unpaidTotal, announcements, reportScore }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; unpaidTotal: number; announcements: AnnouncementResponse[]; reportScore: number }) {
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={childName.slice(0, 1)} size={42} tone="light" />}>
       <View style={styles.headerBlockSmallGap}>
         <Text style={styles.parentTitle}>Günaydın, {parentName}</Text>
-        <Text style={styles.subtitle}>Bugün 1 antrenman ve 1 yeni duyuru var.</Text>
+        <Text style={styles.subtitle}>Bugün {nextTraining ? "1 antrenman" : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
         <View style={styles.childSwitch}>
           <View style={styles.childSwitchActive}>
             <InitialsAvatar label={childName.slice(0, 1)} size={24} tone="dark" />
@@ -251,12 +257,27 @@ function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining,
       </View>
 
       <SurfaceCard style={styles.noPaddingCard}>
-        <View style={styles.cardInsetHeader}>
-          <Text style={styles.parentCardTitle}>Kulüp Duyuruları</Text>
-          <Text style={styles.linkText}>Tümünü Gör</Text>
-        </View>
-        <AnnouncementItem dotColor={colors.secondary} title="Kış Dönemi Ekipman Siparişleri" text="Soğuk hava şartlarına uygun antrenman ekipmanları için sipariş formu açılmıştır." date="2 saat önce" />
-        <AnnouncementItem dotColor={colors.outlineVariant} title="Hafta Sonu Turnuva Programı" text="U12 ve U15 kategorilerindeki hafta sonu hazırlık turnuvası fikstürü yayınlandı." date="Dün" />
+          <View style={styles.cardInsetHeader}>
+            <Text style={styles.parentCardTitle}>Kulüp Duyuruları</Text>
+            <Pressable onPress={() => router.push("/announcements")}>
+              <Text style={styles.linkText}>Tümünü Gör</Text>
+            </Pressable>
+          </View>
+        {announcements.length > 0 ? (
+          announcements.map((announcement) => (
+            <AnnouncementItem
+              date={announcement.expiresAt ? `Bitiş: ${new Date(announcement.expiresAt).toLocaleDateString("tr-TR")}` : "Süresiz"}
+              dotColor={announcement.isNew ? colors.secondary : colors.outlineVariant}
+              key={announcement.id}
+              text={announcement.content}
+              title={announcement.title}
+            />
+          ))
+        ) : (
+          <View style={styles.emptyAnnouncement}>
+            <Text style={styles.rowMeta}>Güncel duyuru bulunmuyor.</Text>
+          </View>
+        )}
       </SurfaceCard>
 
       <SurfaceCard style={styles.sectionStack}>
@@ -316,15 +337,25 @@ function EventCard({ accent, icon, kicker, title, description, onPress }: {
   );
 }
 
-function QuickAction({ label, icon, primary, badge }: { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; primary?: boolean; badge?: boolean }) {
-  return (
-    <View style={[styles.quickAction, primary && styles.quickActionPrimary]}>
+function QuickAction({ label, icon, primary, badge, onPress }: { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; primary?: boolean; badge?: boolean; onPress?: () => void }) {
+  const content = (
+    <>
       {badge ? <View style={styles.smallRedDot} /> : null}
       <View style={[styles.quickIconCircle, primary && styles.quickIconPrimary]}>
         <MaterialCommunityIcons name={icon} size={26} color={primary ? colors.onPrimary : colors.primary} />
       </View>
       <Text style={[styles.quickText, primary && styles.quickTextPrimary]}>{label}</Text>
-    </View>
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={[styles.quickAction, primary && styles.quickActionPrimary]}>{content}</View>;
+  }
+
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.quickAction, primary && styles.quickActionPrimary]}>
+      {content}
+    </Pressable>
   );
 }
 
@@ -430,6 +461,7 @@ const styles = StyleSheet.create({
   debtBox: { alignItems: "center", backgroundColor: "rgba(255,218,214,0.35)", borderColor: colors.errorContainer, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
   displayTitle: { ...typography.display, color: colors.primary },
   errorSmall: { ...typography.label, color: colors.error },
+  emptyAnnouncement: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, padding: spacing.lg },
   eventCard: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingLeft: spacing.xl },
   eventIconCircle: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 62, justifyContent: "center", width: 62 },
   eventDescription: { ...typography.body, color: colors.onSurfaceVariant, marginTop: 3 },
