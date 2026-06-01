@@ -141,11 +141,13 @@ public static class AthleteReportEndpoints
             return Results.NotFound();
         }
 
-        var reports = await db.AthleteReports
+        var reportRows = await db.AthleteReports
             .Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == athleteProfileId)
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => AthleteReportResponse.From(x))
             .ToListAsync(cancellationToken);
+        var reports = reportRows
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(AthleteReportResponse.From)
+            .ToList();
 
         return Results.Ok(reports);
     }
@@ -163,7 +165,9 @@ public static class AthleteReportEndpoints
         }
 
         var athleteProfile = await db.AthleteProfiles.FirstOrDefaultAsync(
-            x => x.SchoolId == schoolId.Value && x.UserId == userId.Value && x.IsActive,
+            x => x.SchoolId == schoolId.Value
+                && (x.UserId == userId.Value || x.ParentUserId == userId.Value)
+                && x.IsActive,
             cancellationToken);
 
         if (athleteProfile is null)
@@ -171,11 +175,13 @@ public static class AthleteReportEndpoints
             return Results.NotFound();
         }
 
-        var reports = await db.AthleteReports
+        var reportRows = await db.AthleteReports
             .Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == athleteProfile.Id)
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => AthleteReportResponse.From(x))
             .ToListAsync(cancellationToken);
+        var reports = reportRows
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(AthleteReportResponse.From)
+            .ToList();
 
         return Results.Ok(reports);
     }
