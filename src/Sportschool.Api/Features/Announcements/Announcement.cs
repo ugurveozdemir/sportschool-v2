@@ -15,11 +15,17 @@ public sealed class Announcement
 
     public required string Content { get; set; }
 
-    public UserRole? TargetRole { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+
+    public AppUser? CreatedBy { get; set; }
 
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset PublishedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset? ExpiresAt { get; set; }
 
     public DateTimeOffset? UpdatedAt { get; set; }
 }

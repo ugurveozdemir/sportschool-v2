@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Announcements;
 using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Auth;
@@ -82,6 +83,7 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
     .WithName("GetHealth");
 app.MapMethods("/favicon.ico", [HttpMethods.Get, HttpMethods.Head], () => Results.Redirect("/dashboard/favicon.svg"));
 app.MapAuthEndpoints();
+app.MapAnnouncementEndpoints();
 app.MapAthleteApplicationEndpoints();
 app.MapGroupEndpoints();
 app.MapMobileCoachEndpoints();

@@ -312,12 +312,16 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             announcement.HasKey(x => x.Id);
             announcement.Property(x => x.Title).HasMaxLength(160).IsRequired();
             announcement.Property(x => x.Content).HasMaxLength(2000).IsRequired();
-            announcement.Property(x => x.TargetRole).HasConversion<string>().HasMaxLength(40);
-            announcement.HasIndex(x => new { x.SchoolId, x.IsActive, x.CreatedAt });
+            announcement.HasIndex(x => new { x.SchoolId, x.IsActive, x.PublishedAt });
 
             announcement.HasOne(x => x.School)
                 .WithMany()
                 .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            announcement.HasOne(x => x.CreatedBy)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
