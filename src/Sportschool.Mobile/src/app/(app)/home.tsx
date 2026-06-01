@@ -114,8 +114,8 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
         <SectionTitle title="Hızlı Aksiyonlar" />
         <View style={styles.quickGrid}>
           <QuickAction label="Yoklama Al" icon="clipboard-check-outline" primary />
-          <QuickAction label="Ödeme Kaydet" icon="cash-multiple" />
-          <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" onPress={() => router.push("/announcements")} />
+          <QuickAction label="Ödeme Kaydet" icon="cash-multiple" tone="green" />
+          <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" tone="dark" onPress={() => router.push("/announcements")} />
         </View>
       </View>
 
@@ -337,23 +337,24 @@ function EventCard({ accent, icon, kicker, title, description, onPress }: {
   );
 }
 
-function QuickAction({ label, icon, primary, badge, onPress }: { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; primary?: boolean; badge?: boolean; onPress?: () => void }) {
+function QuickAction({ label, icon, primary, badge, tone, onPress }: { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; primary?: boolean; badge?: boolean; tone?: "green" | "dark"; onPress?: () => void }) {
+  const highlighted = primary || tone;
   const content = (
     <>
       {badge ? <View style={styles.smallRedDot} /> : null}
-      <View style={[styles.quickIconCircle, primary && styles.quickIconPrimary]}>
-        <MaterialCommunityIcons name={icon} size={26} color={primary ? colors.onPrimary : colors.primary} />
+      <View style={[styles.quickIconCircle, highlighted && styles.quickIconHighlight]}>
+        <MaterialCommunityIcons name={icon} size={26} color={highlighted ? colors.onPrimary : colors.primary} />
       </View>
-      <Text style={[styles.quickText, primary && styles.quickTextPrimary]}>{label}</Text>
+      <Text style={[styles.quickText, highlighted && styles.quickTextPrimary]}>{label}</Text>
     </>
   );
 
   if (!onPress) {
-    return <View style={[styles.quickAction, primary && styles.quickActionPrimary]}>{content}</View>;
+    return <View style={[styles.quickAction, primary && styles.quickActionPrimary, tone === "green" && styles.quickActionGreen, tone === "dark" && styles.quickActionDark]}>{content}</View>;
   }
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.quickAction, primary && styles.quickActionPrimary]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.quickAction, primary && styles.quickActionPrimary, tone === "green" && styles.quickActionGreen, tone === "dark" && styles.quickActionDark]}>
       {content}
     </Pressable>
   );
@@ -501,10 +502,12 @@ const styles = StyleSheet.create({
   progressTrack: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: radius.full, height: 7, overflow: "hidden" },
   progressWrap: { gap: 4 },
   quickAction: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radius.lg, borderWidth: 1, flex: 1, gap: spacing.sm, minHeight: 130, justifyContent: "center", padding: spacing.sm },
+  quickActionDark: { backgroundColor: "#2f343d", borderColor: "#2f343d" },
+  quickActionGreen: { backgroundColor: "#00472d", borderColor: "#00472d" },
   quickActionPrimary: { backgroundColor: colors.primary },
   quickGrid: { flexDirection: "row", gap: spacing.md },
   quickIconCircle: { alignItems: "center", backgroundColor: colors.primaryFixed, borderRadius: radius.full, height: 54, justifyContent: "center", width: 54 },
-  quickIconPrimary: { backgroundColor: colors.primary },
+  quickIconHighlight: { backgroundColor: "rgba(255,255,255,0.16)" },
   quickText: { ...typography.label, color: colors.primary, fontSize: 14, lineHeight: 18, textAlign: "center" },
   quickTextPrimary: { color: colors.onPrimary },
   rightText: { alignItems: "flex-end" },
