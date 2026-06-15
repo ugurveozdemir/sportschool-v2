@@ -14,6 +14,7 @@ mobile_project/
 
 # Local agent instructions
 AGENTS.md
+CLAUDE.md
 
 # Local API usage examples
 docs/api-usage-examples.local.md
@@ -492,3 +493,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+.commandcode/
+.antigravitycli/
