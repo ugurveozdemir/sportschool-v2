@@ -7,7 +7,8 @@ import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { logout } from "@/features/auth/api";
 import { useCoachGroups } from "@/features/coach/api";
-import { useGroups, useProfile } from "@/features/me/api";
+import { useGroups, useProfile, useReports } from "@/features/me/api";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { CircularScore, InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
@@ -22,6 +23,7 @@ export default function ProfileScreen() {
   const { selectedAthleteProfileId } = useAthleteSelection();
   const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
+  const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const coachGroupsQuery = useCoachGroups(isCoach);
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -43,6 +45,7 @@ export default function ProfileScreen() {
   const profile = profileQuery.data;
   const displayName = isCoach ? session?.fullName : profile ? `${profile.firstName} ${profile.lastName}` : session?.fullName;
   const groups = isCoach ? coachGroupsQuery.data ?? [] : groupsQuery.data ?? [];
+  const latestReport = reportsQuery.data?.[0];
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
@@ -57,16 +60,22 @@ export default function ProfileScreen() {
         <Text style={styles.teamName}>{isCoach ? "Akademi Eğitmeni" : groups[0]?.name ?? "Akademi Oyuncusu"}</Text>
         <View style={styles.pillRow}>
           <Pill label={isCoach ? "Aktif Eğitmen" : "Aktif Oyuncu"} tone="success" />
-          <Pill label={isCoach ? `${groups.length} Grup` : "#10 Orta Saha"} tone="neutral" />
+          {isCoach ? <Pill label={`${groups.length} Grup`} tone="neutral" /> : null}
         </View>
       </View>
 
       {!isCoach ? (
-        <View style={styles.scoreGrid}>
-          <CircularScore value={85} label="Hız" />
-          <CircularScore value={92} label="Teknik" />
-          <CircularScore value={78} label="Kondisyon" color={colors.primary} />
-        </View>
+        latestReport ? (
+          <View style={styles.scoreGrid}>
+            <CircularScore value={latestReport.speedScore * 10} label="Hız" />
+            <CircularScore value={latestReport.dribblingScore * 10} label="Teknik" />
+            <CircularScore value={latestReport.strengthScore * 10} label="Kondisyon" color={colors.primary} />
+          </View>
+        ) : (
+          <SurfaceCard>
+            <EmptyState title="Rapor yok" description="Henüz yayınlanmış gelişim raporu bulunmuyor." />
+          </SurfaceCard>
+        )
       ) : null}
 
       <SurfaceCard style={styles.card}>
@@ -91,15 +100,6 @@ export default function ProfileScreen() {
         ))}
       </SurfaceCard>
 
-      {!isCoach ? (
-        <SurfaceCard style={styles.card}>
-          <SectionTitle title="Durum Özeti" />
-          <StatusRow icon="cash-check" label="Son Ödeme" value="Yapıldı" badge="Güncel" />
-          <StatusRow icon="calendar-remove-outline" label="Devamsızlık Oranı" value="%5" badge="İyi" />
-          <StatusRow icon="medical-bag" label="Sağlık Durumu" value="Antrenmana Hazır" badge="Aktif" />
-        </SurfaceCard>
-      ) : null}
-
       <SurfaceCard style={styles.settingsCard}>
         <SectionTitle title="Ayarlar" />
         <SettingRow icon="account-outline" label="Kişisel Bilgiler" />
@@ -120,23 +120,6 @@ function Info({ label, value }: { label: string; value: string }) {
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-}
-
-function StatusRow({ icon, label, value, badge }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: string; badge: string }) {
-  return (
-    <View style={styles.statusRow}>
-      <View style={styles.groupLead}>
-        <View style={styles.statusIcon}>
-          <MaterialCommunityIcons name={icon} size={22} color={colors.primary} />
-        </View>
-        <View>
-          <Text style={styles.infoLabel}>{label}</Text>
-          <Text style={styles.statusValue}>{value}</Text>
-        </View>
-      </View>
-      <Pill label={badge} tone="success" />
     </View>
   );
 }
@@ -179,9 +162,6 @@ const styles = StyleSheet.create({
   settingRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.md },
   settingsCard: { gap: spacing.md },
   settingText: { ...typography.bodyLarge, color: colors.onSurface },
-  statusIcon: { alignItems: "center", backgroundColor: colors.primaryFixed, borderRadius: radius.md, height: 42, justifyContent: "center", width: 42 },
-  statusRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
-  statusValue: { ...typography.title, color: colors.primary },
   teamName: { ...typography.title, color: colors.onSurfaceVariant, textAlign: "center" },
   verifiedBadge: { alignItems: "center", backgroundColor: colors.secondaryContainer, borderColor: colors.surface, borderRadius: radius.full, borderWidth: 2, bottom: 4, height: 34, justifyContent: "center", position: "absolute", right: 4, width: 34 }
 });

@@ -9,15 +9,14 @@ import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary } from "@/features/coach/api";
 import type { CoachSummaryResponse } from "@/features/coach/types";
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
-import type { MobileAthleteResponse } from "@/features/me/types";
+import type { AthleteReportResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
-import { formatTime } from "@/shared/utils/date";
-import { formatMoney } from "@/shared/utils/money";
+import { formatRelativeDay, formatTime, isSameDay } from "@/shared/utils/date";
 
 export default function HomeScreen() {
   const { session } = useSession();
@@ -43,11 +42,13 @@ export default function HomeScreen() {
   const profile = profileQuery.data;
   const trainings = trainingsQuery.data ?? [];
   const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now()) ?? trainings[0];
+  const todayTrainingCount = trainings.filter((training) => isSameDay(training.startsAt)).length;
   const payments = paymentsQuery.data ?? [];
   const announcements = announcementsQuery.data ?? [];
   const unpaidCount = payments.filter((payment) => payment.effectiveStatus !== "Paid").length;
-  const unpaidTotal = payments.reduce((sum, payment) => sum + (payment.effectiveStatus === "Paid" ? 0 : payment.balance), 0);
-  const latestReport = reportsQuery.data?.[0];
+  const reports = reportsQuery.data ?? [];
+  const latestReport = reports[0];
+  const previousReport = reports[1];
 
   if (isParent) {
     return (
@@ -60,9 +61,10 @@ export default function HomeScreen() {
         selectedAthleteProfileId={selectedAthleteProfileId}
         onSelectAthlete={setSelectedAthleteProfileId}
         nextTraining={nextTraining}
-        unpaidTotal={unpaidTotal}
+        todayTrainingCount={todayTrainingCount}
         announcements={announcements.slice(0, 2)}
-        reportScore={latestReport ? averageScore([latestReport.speedScore, latestReport.strengthScore, latestReport.dribblingScore, latestReport.shootingScore]) : 8.4}
+        latestReport={latestReport}
+        previousReport={previousReport}
       />
     );
   }
@@ -152,11 +154,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
   );
 }
 
-function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, announcementCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; groupCount: number; attendanceCount: number; announcementCount: number; unpaidCount: number; latestReport?: { summary: string; createdAt: string; speedScore: number; strengthScore: number; dribblingScore: number; shootingScore: number } }) {
-  const speed = latestReport?.speedScore ?? 85;
-  const technique = latestReport?.dribblingScore ?? 72;
-  const condition = latestReport?.strengthScore ?? 92;
-
+function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, announcementCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: TrainingResponse; groupCount: number; attendanceCount: number; announcementCount: number; unpaidCount: number; latestReport?: AthleteReportResponse }) {
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={firstName.slice(0, 1)} size={42} tone="dark" />}>
       <View style={styles.headerBlock}>
@@ -164,7 +162,13 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
         <Text style={styles.subtitle}>Performansına odaklan, sınırlarını zorla.</Text>
       </View>
 
-      <HeroTrainingCard title={nextTraining?.title ?? "Taktik ve Çift Kale Maç"} location={nextTraining?.location ?? "Saha 1"} group="A Takımı" time={nextTraining ? formatTime(nextTraining.startsAt) : "17:00"} />
+      {nextTraining ? (
+        <HeroTrainingCard training={nextTraining} />
+      ) : (
+        <SurfaceCard>
+          <EmptyState title="Planlanmış antrenman yok" description="Yaklaşan bir antrenman bulunmuyor." />
+        </SurfaceCard>
+      )}
 
       <View style={styles.sectionStack}>
         <SectionTitle title="Hızlı İşlemler" />
@@ -181,22 +185,19 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
             <MaterialCommunityIcons name="chart-line" size={28} color={colors.secondary} />
             <Text style={styles.cardTitle}>Gelişim Özeti</Text>
           </View>
-          <Text style={styles.linkText}>Detaylar</Text>
+          <Pressable onPress={() => router.push("/development")}>
+            <Text style={styles.linkText}>Detaylar</Text>
+          </Pressable>
         </View>
-        <View style={styles.scoreRow}>
-          <CircularScore label="Hız" value={speed} color={colors.secondary} />
-          <CircularScore label="Teknik" value={technique} color={colors.primary} />
-          <CircularScore label="Kondisyon" value={condition} color={colors.secondaryFixedDim} />
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.sectionStack}>
-        <View style={styles.iconTitleRow}>
-          <MaterialCommunityIcons name="calendar-month-outline" size={28} color={colors.primary} />
-          <Text style={styles.cardTitle}>Yaklaşan Maçlar</Text>
-        </View>
-        <MatchRow initials="GS" name="Galatasaray U19" date="12 Kas, 14:00" />
-        <MatchRow initials="BJK" name="Beşiktaş U19" date="19 Kas, 15:30" />
+        {latestReport ? (
+          <View style={styles.scoreRow}>
+            <CircularScore label="Hız" value={latestReport.speedScore * 10} color={colors.secondary} />
+            <CircularScore label="Teknik" value={latestReport.dribblingScore * 10} color={colors.primary} />
+            <CircularScore label="Kondisyon" value={latestReport.strengthScore * 10} color={colors.secondaryFixedDim} />
+          </View>
+        ) : (
+          <EmptyState title="Rapor yok" description="Henüz yayınlanmış gelişim raporu bulunmuyor." />
+        )}
       </SurfaceCard>
 
       <View style={styles.metricsRow}>
@@ -208,12 +209,16 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
   );
 }
 
-function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, unpaidTotal, announcements, reportScore }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: { title: string; startsAt: string; endsAt: string; location: string | null }; unpaidTotal: number; announcements: AnnouncementResponse[]; reportScore: number }) {
+function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, todayTrainingCount, announcements, latestReport, previousReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; latestReport?: AthleteReportResponse; previousReport?: AthleteReportResponse }) {
+  const nextTrainingGroup = nextTraining ? trainingGroupName(nextTraining) : null;
+  const score = latestReport ? round1(averageScore([latestReport.speedScore, latestReport.strengthScore, latestReport.dribblingScore, latestReport.shootingScore])) : null;
+  const previousScore = previousReport ? round1(averageScore([previousReport.speedScore, previousReport.strengthScore, previousReport.dribblingScore, previousReport.shootingScore])) : null;
+  const trend = score !== null && previousScore !== null ? round1(score - previousScore) : null;
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={childName.slice(0, 1)} size={42} tone="light" />}>
       <View style={styles.headerBlockSmallGap}>
         <Text style={styles.parentTitle}>Günaydın, {parentName}</Text>
-        <Text style={styles.subtitle}>Bugün {nextTraining ? "1 antrenman" : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
+        <Text style={styles.subtitle}>Bugün {todayTrainingCount > 0 ? `${todayTrainingCount} antrenman` : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
         {athletes.length > 1 ? (
           <View style={styles.childSwitch}>
             {athletes.map((athlete) => {
@@ -236,34 +241,51 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
             <MaterialCommunityIcons name="soccer" size={24} color={colors.secondary} />
             <Text style={styles.parentCardTitle}>Sıradaki Antrenman</Text>
           </View>
-          <Pill label="Bugün" tone="success" />
+          {nextTraining ? (
+            <Pill label={formatRelativeDay(nextTraining.startsAt)} tone={isSameDay(nextTraining.startsAt) ? "success" : "neutral"} />
+          ) : null}
         </View>
-        <Text style={styles.smallMeta}>U12 A Takımı • {nextTraining?.title ?? "Taktik & Kondisyon"}</Text>
-        <View style={styles.parentInfoBox}>
-          <InitialsAvatar label="◷" size={48} tone="dark" />
-          <View>
-            <Text style={styles.kickerDark}>Zaman</Text>
-            <Text style={styles.infoTitle}>{nextTraining ? `${formatTime(nextTraining.startsAt)} - ${formatTime(nextTraining.endsAt)}` : "17:30 - 19:00"}</Text>
-          </View>
-        </View>
-        <View style={styles.parentInfoBox}>
-          <InitialsAvatar label="⌖" size={48} tone="light" />
-          <View>
-            <Text style={styles.kickerDark}>Tesis</Text>
-            <Text style={styles.infoTitle}>{nextTraining?.location ?? "Merkez Kampüs Saha 2"}</Text>
-          </View>
-        </View>
+        {nextTraining ? (
+          <>
+            <Text style={styles.smallMeta}>{[nextTrainingGroup, nextTraining.title].filter(Boolean).join(" • ")}</Text>
+            <View style={styles.parentInfoBox}>
+              <InitialsAvatar label="◷" size={48} tone="dark" />
+              <View>
+                <Text style={styles.kickerDark}>Zaman</Text>
+                <Text style={styles.infoTitle}>{formatRelativeDay(nextTraining.startsAt)} • {formatTime(nextTraining.startsAt)} - {formatTime(nextTraining.endsAt)}</Text>
+              </View>
+            </View>
+            {nextTraining.location ? (
+              <View style={styles.parentInfoBox}>
+                <InitialsAvatar label="⌖" size={48} tone="light" />
+                <View>
+                  <Text style={styles.kickerDark}>Tesis</Text>
+                  <Text style={styles.infoTitle}>{nextTraining.location}</Text>
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <EmptyState title="Planlanmış antrenman yok" description="Yaklaşan bir antrenman bulunmuyor." />
+        )}
       </SurfaceCard>
 
       <View style={styles.darkScoreCard}>
         <Text style={styles.darkCardTitle}>Gelişim Özeti</Text>
-        <Text style={styles.darkSubtitle}>Son 30 günlük performans</Text>
-        <View style={styles.scoreInline}>
-          <Text style={styles.largeWhite}>{reportScore.toFixed(1)}</Text>
-          <Text style={styles.greenText}>↗ 0.3 puan</Text>
-        </View>
-        <Progress label="Devamlılık" value={95} />
-        <Progress label="Teknik Kapasite" value={82} light />
+        {latestReport && score !== null ? (
+          <>
+            <Text style={styles.darkSubtitle}>Genel performans puanı</Text>
+            <View style={styles.scoreInline}>
+              <Text style={styles.largeWhite}>{score.toFixed(1)}</Text>
+              {trend !== null && trend > 0 ? <Text style={styles.greenText}>↗ {trend.toFixed(1)} puan</Text> : null}
+              {trend !== null && trend < 0 ? <Text style={styles.redText}>↘ {Math.abs(trend).toFixed(1)} puan</Text> : null}
+            </View>
+            <Progress label="Hız" value={latestReport.speedScore * 10} />
+            <Progress label="Teknik" value={latestReport.dribblingScore * 10} light />
+          </>
+        ) : (
+          <Text style={styles.darkSubtitle}>Henüz gelişim raporu bulunmuyor.</Text>
+        )}
       </View>
 
       <SurfaceCard style={styles.noPaddingCard}>
@@ -292,23 +314,7 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
 
       <SurfaceCard style={styles.sectionStack}>
         <Text style={styles.parentCardTitle}>Finansal Durum</Text>
-        <View style={styles.debtBox}>
-          <InitialsAvatar label="!" size={42} tone="red" />
-          <View style={styles.flexOne}>
-            <Text style={styles.infoTitle}>Kasım Ayı Aidatı</Text>
-            <Text style={styles.smallMeta}>Son Ödeme: 05 Kasım 2023</Text>
-          </View>
-          <View style={styles.rightText}>
-            <Text style={styles.infoTitle}>{formatMoney(unpaidTotal || 1250)}</Text>
-            <Text style={styles.errorSmall}>Gecikmede</Text>
-          </View>
-        </View>
-        <View style={styles.payButton}>
-          <Text style={styles.payButtonText}>Şimdi Öde</Text>
-        </View>
-        <View style={styles.outlineButton}>
-          <Text style={styles.outlineButtonText}>Geçmiş Ödemeler</Text>
-        </View>
+        <EmptyState title="Çok yakında" description="Finansal takip özelliği üzerinde çalışıyoruz." />
       </SurfaceCard>
     </ScreenShell>
   );
@@ -383,20 +389,8 @@ function PaymentRow({ initials, name, detail, amount }: { initials: string; name
   );
 }
 
-function MatchRow({ initials, name, date }: { initials: string; name: string; date: string }) {
-  return (
-    <View style={styles.matchRow}>
-      <InitialsAvatar label={initials} size={54} />
-      <View style={styles.flexOne}>
-        <Text style={styles.matchTitle}>{name}</Text>
-        <Text style={styles.rowMeta}>{date}</Text>
-      </View>
-      <MaterialCommunityIcons name="chevron-right" size={30} color={colors.outlineVariant} />
-    </View>
-  );
-}
-
-function HeroTrainingCard({ title, location, group, time }: { title: string; location: string; group: string; time: string }) {
+function HeroTrainingCard({ training }: { training: TrainingResponse }) {
+  const groupName = trainingGroupName(training);
   return (
     <View style={styles.heroCard}>
       <MaterialCommunityIcons name="soccer" size={190} color="rgba(255,255,255,0.09)" style={styles.heroIcon} />
@@ -404,18 +398,18 @@ function HeroTrainingCard({ title, location, group, time }: { title: string; loc
         <MaterialCommunityIcons name="clock-outline" size={20} color={colors.secondaryContainer} />
         <Text style={styles.heroKicker}>Sıradaki Antrenman</Text>
       </View>
-      <Text style={styles.heroTitle}>{title}</Text>
+      <Text style={styles.heroTitle}>{training.title}</Text>
       <View style={styles.metaRow}>
-        <Text style={styles.heroText}>⌖ {location}</Text>
-        <Text style={styles.heroText}>♟ {group}</Text>
-      </View>
-      <View style={styles.countdownBox}>
-        <Text style={styles.heroText}>Başlamasına</Text>
-        <Text style={styles.countdown}>02:15</Text>
-        <Text style={styles.heroText}>{time}</Text>
+        <Text style={styles.heroText}>◷ {formatRelativeDay(training.startsAt)} • {formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
+        {training.location ? <Text style={styles.heroText}>⌖ {training.location}</Text> : null}
+        {groupName ? <Text style={styles.heroText}>♟ {groupName}</Text> : null}
       </View>
     </View>
   );
+}
+
+function trainingGroupName(training: TrainingResponse) {
+  return training.groups.map((group) => group.name).join(", ") || null;
 }
 
 function Progress({ label, value, light }: { label: string; value: number; light?: boolean }) {
@@ -449,6 +443,10 @@ function averageScore(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function round1(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
 const styles = StyleSheet.create({
   amountRed: { ...typography.title, color: colors.error },
   announcementDot: { borderRadius: 4, height: 8, marginTop: 7, width: 8 },
@@ -462,16 +460,12 @@ const styles = StyleSheet.create({
   childSwitchActiveText: { ...typography.label, color: colors.onPrimary },
   childSwitchInactive: { alignItems: "center", flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.sm },
   childSwitchText: { ...typography.label, color: colors.onSurfaceVariant },
-  countdown: { ...typography.headline, color: colors.secondaryContainer },
-  countdownBox: { alignItems: "center", alignSelf: "flex-start", backgroundColor: "rgba(215,226,255,0.15)", borderColor: "rgba(215,226,255,0.2)", borderRadius: radius.md, borderWidth: 1, gap: 2, marginTop: spacing.lg, minWidth: 132, padding: spacing.md },
   darkCardTitle: { ...typography.title, color: colors.onPrimary },
   darkScoreCard: { backgroundColor: colors.primary, borderRadius: radius.lg, gap: spacing.sm, padding: spacing.lg },
   darkSubtitle: { ...typography.body, color: colors.primaryFixedDim },
   dateSmall: { ...typography.label, color: colors.outline, marginTop: spacing.sm },
   dateText: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginBottom: 4 },
-  debtBox: { alignItems: "center", backgroundColor: "rgba(255,218,214,0.35)", borderColor: colors.errorContainer, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
   displayTitle: { ...typography.display, color: colors.primary },
-  errorSmall: { ...typography.label, color: colors.error },
   emptyAnnouncement: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, padding: spacing.lg },
   eventCard: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingLeft: spacing.xl },
   eventIconCircle: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 62, justifyContent: "center", width: 62 },
@@ -492,20 +486,14 @@ const styles = StyleSheet.create({
   kickerDark: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   largeWhite: { ...typography.display, color: colors.onPrimary, fontSize: 48, lineHeight: 56 },
   linkText: { ...typography.label, color: colors.primary },
-  matchRow: { alignItems: "center", borderColor: colors.borderSoft, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
-  matchTitle: { ...typography.title, color: colors.primary },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
   metricsRow: { flexDirection: "row", gap: spacing.md },
   mutedBold: { ...typography.title, color: colors.outline },
   noPaddingCard: { padding: 0 },
-  outlineButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
-  outlineButtonText: { ...typography.title, color: colors.primary },
   parentCardTitle: { ...typography.title, color: colors.primary },
   parentInfoBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceContainerHigh, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
   parentTitle: { ...typography.headline, color: colors.primary },
   parentTrainingCard: { backgroundColor: "rgba(232,255,243,0.45)", gap: spacing.md },
-  payButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.md },
-  payButtonText: { ...typography.title, color: colors.onPrimary },
   paymentRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   progressFill: { borderRadius: radius.full, height: "100%" },
   progressLabel: { ...typography.label, color: colors.onPrimary },
@@ -520,7 +508,7 @@ const styles = StyleSheet.create({
   quickIconHighlight: { backgroundColor: "rgba(255,255,255,0.16)" },
   quickText: { ...typography.label, color: colors.primary, fontSize: 14, lineHeight: 18, textAlign: "center" },
   quickTextPrimary: { color: colors.onPrimary },
-  rightText: { alignItems: "flex-end" },
+  redText: { color: colors.errorContainer },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
   rowTitle: { ...typography.bodyLarge, color: colors.primary },
   scoreInline: { alignItems: "flex-end", flexDirection: "row", gap: spacing.sm },
