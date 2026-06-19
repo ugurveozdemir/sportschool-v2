@@ -1,0 +1,28 @@
+# Build context hygiene — keep the image build fast and reproducible.
+
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# Node / dashboard
+**/node_modules/
+src/Sportschool.Api/wwwroot/dashboard/
+
+# Mobile app is not part of the API image
+src/Sportschool.Mobile/
+
+# Reference projects (not part of the build)
+reference_project/
+mobile_project/
+
+# Local/dev cruft
+.git/
+.vs/
+.vscode/
+.idea/
+**/*.user
+docker-compose.yml
+Dockerfile
+.dockerignore
+**/.env
+**/.env.*
