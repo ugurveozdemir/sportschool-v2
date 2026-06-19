@@ -6,7 +6,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from "r
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
+import { useUnreadAnnouncementCount } from "@/features/announcements/api";
 import { AkademiLogo } from "@/shared/components/AkademiLogo";
+import { useSession } from "@/core/sessionProvider";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
@@ -36,6 +38,11 @@ export function ScreenShell({ children, title, avatar, navItems, contentStyle }:
 }
 
 export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode }) {
+  const { session } = useSession();
+  const isMember = !session?.roles.includes("Coach") && !session?.roles.includes("SchoolAdmin");
+  const unreadQuery = useUnreadAnnouncementCount(isMember);
+  const hasUnread = isMember && (unreadQuery.data?.count ?? 0) > 0;
+
   return (
     <View style={styles.topBar}>
       <View style={styles.topLead}>{avatar ?? <AkademiLogo size={30} />}</View>
@@ -46,7 +53,7 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
         </Pressable>
         <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.iconButton}>
           <MaterialCommunityIcons name="bell-outline" size={26} color={colors.primary} />
-          <View style={styles.notificationDot} />
+          {hasUnread ? <View style={styles.notificationDot} /> : null}
         </Pressable>
       </View>
     </View>

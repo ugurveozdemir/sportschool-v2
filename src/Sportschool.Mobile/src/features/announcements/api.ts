@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/core/queryClient";
 import { apiRequest } from "@/shared/api/apiClient";
 import { endpoints } from "@/shared/constants/endpoints";
-import type { AnnouncementResponse, SaveAnnouncementRequest } from "@/features/announcements/types";
+import type { AnnouncementResponse, SaveAnnouncementRequest, UnreadCountResponse } from "@/features/announcements/types";
 
 export function useMemberAnnouncements(enabled = true, currentOnly = false) {
   return useQuery({
@@ -61,6 +61,23 @@ function withCurrentOnly(path: string, currentOnly: boolean) {
 
   const params = new URLSearchParams({ currentOnly: "true" });
   return `${path}?${params.toString()}`;
+}
+
+export function useUnreadAnnouncementCount(enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: ["me", "announcements", "unread-count"],
+    queryFn: () => apiRequest<UnreadCountResponse>(endpoints.meAnnouncementsUnreadCount)
+  });
+}
+
+export function useMarkAnnouncementsRead() {
+  return useMutation({
+    mutationFn: () => apiRequest<void>(endpoints.meAnnouncementsRead, { method: "POST" }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["me", "announcements", "unread-count"] });
+    }
+  });
 }
 
 async function invalidateAnnouncements() {

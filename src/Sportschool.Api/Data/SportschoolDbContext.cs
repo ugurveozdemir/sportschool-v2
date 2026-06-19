@@ -45,6 +45,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
 
     public DbSet<Announcement> Announcements => Set<Announcement>();
 
+    public DbSet<AnnouncementRead> AnnouncementReads => Set<AnnouncementRead>();
+
     public DbSet<MatchSession> MatchSessions => Set<MatchSession>();
 
     public DbSet<MatchSquad> MatchSquads => Set<MatchSquad>();
@@ -322,6 +324,22 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             announcement.HasOne(x => x.CreatedBy)
                 .WithMany()
                 .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AnnouncementRead>(read =>
+        {
+            read.HasKey(x => new { x.AnnouncementId, x.UserId });
+            read.HasIndex(x => x.UserId);
+
+            read.HasOne(x => x.Announcement)
+                .WithMany()
+                .HasForeignKey(x => x.AnnouncementId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            read.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

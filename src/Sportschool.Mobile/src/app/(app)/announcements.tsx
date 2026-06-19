@@ -1,11 +1,12 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import {
   useCreateAnnouncement,
   useDeleteAnnouncement,
+  useMarkAnnouncementsRead,
   useMemberAnnouncements,
   useSchoolAnnouncements,
   useUpdateAnnouncement
@@ -43,10 +44,18 @@ export default function AnnouncementsScreen() {
   const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementResponse | null>(null);
   const updateAnnouncement = useUpdateAnnouncement(editingAnnouncement?.id);
   const deleteAnnouncement = useDeleteAnnouncement();
+  const markRead = useMarkAnnouncementsRead();
   const [form, setForm] = useState(initialForm);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const announcementsQuery = canManage ? schoolAnnouncementsQuery : memberAnnouncementsQuery;
   const announcements = announcementsQuery.data ?? [];
+
+  useEffect(() => {
+    if (!canManage) {
+      markRead.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canManage]);
 
   if (announcementsQuery.isLoading) {
     return <LoadingState label="Duyurular yükleniyor" />;

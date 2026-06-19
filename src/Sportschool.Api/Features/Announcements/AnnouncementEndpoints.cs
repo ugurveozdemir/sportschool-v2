@@ -24,6 +24,8 @@ public static class AnnouncementEndpoints
             .RequireAuthorization(policy => policy.RequireRole(UserRole.Parent.ToString(), UserRole.Athlete.ToString()));
 
         mobileGroup.MapGet("", ListMobileAnnouncementsAsync);
+        mobileGroup.MapGet("/unread-count", GetUnreadCountAsync);
+        mobileGroup.MapPost("/read", MarkAllReadAsync);
 
         return app;
     }
@@ -85,6 +87,87 @@ public static class AnnouncementEndpoints
             .ToList();
 
         return Results.Ok(announcements);
+    }
+
+    private static async Task<IResult> GetUnreadCountAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var activeRows = await db.Announcements
+            .AsNoTracking()
+            .Where(a => a.SchoolId == schoolId.Value && a.IsActive)
+            .Select(a => new { a.Id, a.ExpiresAt })
+            .ToListAsync(cancellationToken);
+
+        var activeIds = activeRows
+            .Where(a => a.ExpiresAt == null || a.ExpiresAt > now)
+            .Select(a => a.Id)
+            .ToHashSet();
+
+        var readIds = await db.AnnouncementReads
+            .AsNoTracking()
+            .Where(r => r.UserId == userId.Value)
+            .Select(r => r.AnnouncementId)
+            .ToListAsync(cancellationToken);
+
+        var count = activeIds.Count(id => !readIds.Contains(id));
+
+        return Results.Ok(new UnreadCountResponse(count));
+    }
+
+    private static async Task<IResult> MarkAllReadAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var allIds = await db.Announcements
+            .AsNoTracking()
+            .Where(a => a.SchoolId == schoolId.Value && a.IsActive)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken);
+
+        var alreadyReadIds = await db.AnnouncementReads
+            .AsNoTracking()
+            .Where(r => r.UserId == userId.Value)
+            .Select(r => r.AnnouncementId)
+            .ToListAsync(cancellationToken);
+
+        var readSet = new HashSet<Guid>(alreadyReadIds);
+        var unreadIds = allIds.Where(id => !readSet.Contains(id)).ToList();
+
+        foreach (var id in unreadIds)
+        {
+            db.AnnouncementReads.Add(new AnnouncementRead
+            {
+                AnnouncementId = id,
+                UserId = userId.Value,
+                ReadAt = now
+            });
+        }
+
+        if (unreadIds.Count > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return Results.NoContent();
     }
 
     private static async Task<IResult> CreateAnnouncementAsync(
@@ -217,6 +300,8 @@ public static class AnnouncementEndpoints
 }
 
 public sealed record SaveAnnouncementRequest(string Title, string Content, DateTimeOffset? ExpiresAt);
+
+public sealed record UnreadCountResponse(int Count);
 
 public sealed record AnnouncementResponse(
     Guid Id,

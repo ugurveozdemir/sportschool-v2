@@ -87,6 +87,81 @@ public sealed class AnnouncementEndpointTests
     }
 
     [Fact]
+    public async Task UnreadCount_ReturnsActiveUnexpiredAnnouncementsForMember()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedAnnouncementScenarioAsync(factory);
+        using var client = factory.CreateAuthenticatedClient(fixture.Parent, UserRole.Parent);
+
+        var response = await client.GetFromJsonAsync<UnreadCountResponse>("/api/me/announcements/unread-count");
+
+        Assert.NotNull(response);
+        Assert.Equal(1, response!.Count);
+    }
+
+    [Fact]
+    public async Task MarkRead_ThenUnreadCountIsZero()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedAnnouncementScenarioAsync(factory);
+        using var client = factory.CreateAuthenticatedClient(fixture.Parent, UserRole.Parent);
+
+        using var readResponse = await client.PostAsync("/api/me/announcements/read", null);
+        Assert.Equal(HttpStatusCode.NoContent, readResponse.StatusCode);
+
+        var countResponse = await client.GetFromJsonAsync<UnreadCountResponse>("/api/me/announcements/unread-count");
+        Assert.NotNull(countResponse);
+        Assert.Equal(0, countResponse!.Count);
+    }
+
+    [Fact]
+    public async Task MarkRead_IsPerUser_OtherUserStillSeesUnread()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedAnnouncementScenarioAsync(factory);
+        var secondParent = TestUsers.Create(fixture.School.Id, $"parent2-{Guid.NewGuid():N}@example.com", "Second Parent", "password", UserRole.Parent);
+        await factory.SeedAsync(db => { db.Users.Add(secondParent); return Task.CompletedTask; });
+
+        using var parentAClient = factory.CreateAuthenticatedClient(fixture.Parent, UserRole.Parent);
+        using var parentBClient = factory.CreateAuthenticatedClient(secondParent, UserRole.Parent);
+
+        using var _ = await parentAClient.PostAsync("/api/me/announcements/read", null);
+
+        var countB = await parentBClient.GetFromJsonAsync<UnreadCountResponse>("/api/me/announcements/unread-count");
+        Assert.NotNull(countB);
+        Assert.Equal(1, countB!.Count);
+    }
+
+    [Fact]
+    public async Task MarkRead_IsIdempotent()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedAnnouncementScenarioAsync(factory);
+        using var client = factory.CreateAuthenticatedClient(fixture.Parent, UserRole.Parent);
+
+        using var first = await client.PostAsync("/api/me/announcements/read", null);
+        using var second = await client.PostAsync("/api/me/announcements/read", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, second.StatusCode);
+        var count = await client.GetFromJsonAsync<UnreadCountResponse>("/api/me/announcements/unread-count");
+        Assert.Equal(0, count!.Count);
+    }
+
+    [Fact]
+    public async Task UnreadCount_OnlyCountsOwnSchool()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedAnnouncementScenarioAsync(factory);
+        using var client = factory.CreateAuthenticatedClient(fixture.OtherParent, UserRole.Parent);
+
+        var response = await client.GetFromJsonAsync<UnreadCountResponse>("/api/me/announcements/unread-count");
+
+        Assert.NotNull(response);
+        Assert.Equal(1, response!.Count);
+    }
+
+    [Fact]
     public async Task SchoolAdminCanDeactivateAnySchoolAnnouncement()
     {
         await using var factory = new TestAppFactory();

@@ -15,3 +15,7 @@ export type SaveAnnouncementRequest = {
   content: string;
   expiresAt: string | null;
 };
+
+export type UnreadCountResponse = {
+  count: number;
+};

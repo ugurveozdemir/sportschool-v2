@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
-import { useMemberAnnouncements } from "@/features/announcements/api";
+import { useMemberAnnouncements, useUnreadAnnouncementCount } from "@/features/announcements/api";
 import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary } from "@/features/coach/api";
 import type { CoachSummaryResponse } from "@/features/coach/types";
@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const paymentsQuery = usePayments(!isCoach, selectedAthleteProfileId);
   const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const announcementsQuery = useMemberAnnouncements(!isCoach, true);
+  const unreadCountQuery = useUnreadAnnouncementCount(!isCoach);
   const coachSummaryQuery = useCoachSummary(isCoach);
 
   if (isCoach) {
@@ -77,7 +78,7 @@ export default function HomeScreen() {
       nextTraining={nextTraining}
       groupCount={groupsQuery.data?.length ?? 0}
       attendanceCount={attendanceQuery.data?.length ?? 0}
-      announcementCount={announcements.length}
+      announcementCount={unreadCountQuery.data?.count ?? 0}
       unpaidCount={unpaidCount}
       latestReport={latestReport}
     />

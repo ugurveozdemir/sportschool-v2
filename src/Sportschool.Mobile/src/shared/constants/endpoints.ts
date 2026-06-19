@@ -10,6 +10,8 @@ export const endpoints = {
   meAttendance: "/api/me/attendance",
   mePayments: "/api/me/payments",
   meAnnouncements: "/api/me/announcements",
+  meAnnouncementsUnreadCount: "/api/me/announcements/unread-count",
+  meAnnouncementsRead: "/api/me/announcements/read",
   meAthleteReports: "/api/me/athlete-reports",
   schoolAnnouncements: "/api/school/announcements",
   schoolAnnouncement: (announcementId: string) => `/api/school/announcements/${announcementId}`,
