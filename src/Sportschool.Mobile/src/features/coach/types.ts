@@ -1,4 +1,4 @@
-import type { AttendanceStatus } from "@/shared/constants/domain";
+import type { AttendanceStatus, PaymentStatus } from "@/shared/constants/domain";
 import type { AthleteReportResponse } from "@/features/me/types";
 
 export type CoachSummaryResponse = {
@@ -134,6 +134,29 @@ export type CoachAttendanceRosterItem = {
 export type SaveCoachAttendanceRequest = {
   athleteProfileId: string;
   status: AttendanceStatus;
+};
+
+export type SchoolMonthlyPaymentResponse = {
+  athleteProfileId: string;
+  athleteName: string;
+  parentFullName: string;
+  parentPhone: string;
+  year: number;
+  month: number;
+  paymentId: string | null;
+  amount: number | null;
+  amountPaid: number | null;
+  balance: number | null;
+  status: PaymentStatus | null;
+  effectiveStatus: PaymentStatus;
+  paidOn: string | null;
+};
+
+export type SavePaymentRequest = {
+  amount: number;
+  amountPaid: number | null;
+  status: PaymentStatus;
+  paidOn: string | null;
 };
 
 export type SaveCoachAthleteReportRequest = {

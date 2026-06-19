@@ -16,7 +16,9 @@ import type {
   SaveSchoolGroupRequest,
   SaveCoachAthleteReportRequest,
   SaveCoachAttendanceRequest,
+  SavePaymentRequest,
   SchoolGroupResponse,
+  SchoolMonthlyPaymentResponse,
   UpdateCoachTrainingRequest
 } from "@/features/coach/types";
 
@@ -206,6 +208,27 @@ export function useCreateCoachAthleteReport(athleteProfileId?: string) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["coach", "athletes"] });
       await queryClient.invalidateQueries({ queryKey: ["coach", "athlete", athleteProfileId] });
+    }
+  });
+}
+
+export function useSchoolMonthlyPayments(year: number, month: number, enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: ["school", "payments", year, month],
+    queryFn: () => apiRequest<SchoolMonthlyPaymentResponse[]>(`${endpoints.schoolPayments}?year=${year}&month=${month}`)
+  });
+}
+
+export function useUpsertSchoolPayment(year: number, month: number) {
+  return useMutation({
+    mutationFn: ({ athleteProfileId, request }: { athleteProfileId: string; request: SavePaymentRequest }) =>
+      apiRequest(endpoints.schoolAthletePayment(athleteProfileId, year, month), {
+        method: "PUT",
+        body: request
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["school", "payments"] });
     }
   });
 }
