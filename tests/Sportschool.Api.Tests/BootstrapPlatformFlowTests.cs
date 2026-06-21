@@ -69,6 +69,10 @@ public sealed class BootstrapPlatformFlowTests : IAsyncLifetime
         var hasSchoolAdminRole = await _factory.QueryAsync(db =>
             db.UserRoles.AnyAsync(x => x.UserId == admin.Id && x.Role == UserRole.SchoolAdmin));
         Assert.True(hasSchoolAdminRole);
+
+        var hasCoachRole = await _factory.QueryAsync(db =>
+            db.UserRoles.AnyAsync(x => x.UserId == admin.Id && x.Role == UserRole.Coach));
+        Assert.True(hasCoachRole);
     }
 
     public Task InitializeAsync()

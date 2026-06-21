@@ -155,11 +155,8 @@ public static class PlatformEndpoints
             PasswordHash = passwordHasher.Hash(temporaryPassword)
         };
 
-        user.Roles.Add(new UserRoleAssignment
-        {
-            User = user,
-            Role = UserRole.SchoolAdmin
-        });
+        user.Roles.Add(new UserRoleAssignment { User = user, Role = UserRole.SchoolAdmin });
+        user.Roles.Add(new UserRoleAssignment { User = user, Role = UserRole.Coach });
 
         db.Users.Add(user);
         await db.SaveChangesAsync(cancellationToken);
