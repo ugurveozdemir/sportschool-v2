@@ -92,6 +92,72 @@ public sealed class PlatformListEndpointTests
         Assert.Equal("Izmir Basketbol", izmSchool.Name);
     }
 
+    [Fact]
+    public async Task PlatformOwnerCanRemoveSchoolAdmin()
+    {
+        await using var factory = new TestAppFactory();
+        var platformOwner = TestUsers.Create(null, "platform-remove@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-remove@example.com", "Admin Remove", "password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Remove Tenant", "remove-tenant", isActive: true));
+            db.Users.AddRange(platformOwner, admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+
+        using var response = await client.DeleteAsync($"/api/platform/schools/{schoolId}/admins/{admin.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var admins = await client.GetFromJsonAsync<List<PlatformSchoolAdminResponse>>($"/api/platform/schools/{schoolId}/admins");
+        Assert.Empty(admins!);
+    }
+
+    [Fact]
+    public async Task RemoveSchoolAdmin_ReturnsNotFoundForMissingAdmin()
+    {
+        await using var factory = new TestAppFactory();
+        var platformOwner = TestUsers.Create(null, "platform-remove-missing@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolId = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Remove Tenant", "remove-missing", isActive: true));
+            db.Users.Add(platformOwner);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+
+        using var response = await client.DeleteAsync($"/api/platform/schools/{schoolId}/admins/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RemoveSchoolAdmin_ForbiddenForNonPlatformOwner()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-forbidden@example.com", "Admin Forbidden", "password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Forbidden Tenant", "forbidden-tenant", isActive: true));
+            db.Users.Add(admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        using var response = await client.DeleteAsync($"/api/platform/schools/{schoolId}/admins/{admin.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private static School CreateSchool(Guid id, string name, string code, bool isActive)
     {
         return new School

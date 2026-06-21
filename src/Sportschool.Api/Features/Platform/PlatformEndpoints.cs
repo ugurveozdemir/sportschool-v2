@@ -19,6 +19,7 @@ public static class PlatformEndpoints
         group.MapDelete("/schools/{schoolId:guid}", DeactivateSchoolAsync);
         group.MapGet("/schools/{schoolId:guid}/admins", ListSchoolAdminsAsync);
         group.MapPost("/schools/{schoolId:guid}/admins", CreateSchoolAdminAsync);
+        group.MapDelete("/schools/{schoolId:guid}/admins/{adminId:guid}", RemoveSchoolAdminAsync);
 
         return group;
     }
@@ -189,6 +190,39 @@ public static class PlatformEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(admins.Select(PlatformSchoolAdminResponse.From));
+    }
+
+    private static async Task<IResult> RemoveSchoolAdminAsync(
+        Guid schoolId,
+        Guid adminId,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var admin = await db.Users
+            .Include(x => x.Roles)
+            .Include(x => x.RefreshTokens)
+            .FirstOrDefaultAsync(
+                x => x.Id == adminId
+                    && x.SchoolId == schoolId
+                    && x.IsActive
+                    && x.Roles.Any(role => role.Role == UserRole.SchoolAdmin),
+                cancellationToken);
+
+        if (admin is null)
+        {
+            return Results.NotFound();
+        }
+
+        admin.IsActive = false;
+        var revokedAt = DateTimeOffset.UtcNow;
+        foreach (var refreshToken in admin.RefreshTokens.Where(x => x.IsActive))
+        {
+            refreshToken.RevokedAt = revokedAt;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
     }
 }
 
