@@ -1,11 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useSession } from "@/core/sessionProvider";
-import { useCoachAttendanceRoster, useSchoolGroups, useUpdateCoachTraining } from "@/features/coach/api";
-import type { CoachAttendanceRosterTraining, SchoolGroupResponse, UpdateCoachTrainingRequest } from "@/features/coach/types";
+import { useCoachAttendanceRoster, useSaveCoachAttendanceBatch, useSchoolGroups, useUpdateCoachTraining } from "@/features/coach/api";
+import type { SaveCoachAttendanceItem } from "@/features/coach/api";
+import type { CoachAttendanceRosterItem, CoachAttendanceRosterTraining, SchoolGroupResponse, UpdateCoachTrainingRequest } from "@/features/coach/types";
+import type { AttendanceStatus } from "@/shared/constants/domain";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
@@ -24,7 +26,40 @@ export default function TrainingDetailScreen() {
   const rosterQuery = useCoachAttendanceRoster(isCoach ? trainingId : undefined);
   const groupsQuery = useSchoolGroups(isCoach);
   const updateTraining = useUpdateCoachTraining(isCoach ? trainingId : undefined);
+  const saveAttendance = useSaveCoachAttendanceBatch(isCoach ? trainingId : undefined);
   const [isEditVisible, setIsEditVisible] = useState(false);
+  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+
+  const rosterAthletes = rosterQuery.data?.athletes;
+  useEffect(() => {
+    if (!rosterAthletes) {
+      return;
+    }
+    setStatuses(Object.fromEntries(rosterAthletes.map((athlete) => [athlete.athleteProfileId, athlete.status ?? "Present"])));
+  }, [rosterAthletes]);
+
+  const submitAttendance = () => {
+    const athletes = rosterQuery.data?.athletes ?? [];
+    const items = athletes.reduce<SaveCoachAttendanceItem[]>((pending, athlete) => {
+      const target = statuses[athlete.athleteProfileId] ?? "Present";
+      if (athlete.status === null) {
+        pending.push({ athleteProfileId: athlete.athleteProfileId, status: target, existing: false });
+      } else if (athlete.status !== target) {
+        pending.push({ athleteProfileId: athlete.athleteProfileId, status: target, existing: true });
+      }
+      return pending;
+    }, []);
+
+    if (items.length === 0) {
+      Alert.alert("Yoklama", "Kaydedilecek bir değişiklik yok.");
+      return;
+    }
+
+    saveAttendance.mutate(items, {
+      onSuccess: () => Alert.alert("Yoklama", "Yoklama kaydedildi."),
+      onError: () => Alert.alert("Yoklama", "Yoklama kaydedilemedi. Lütfen tekrar deneyin.")
+    });
+  };
 
   if (!isCoach) {
     return (
@@ -107,21 +142,28 @@ export default function TrainingDetailScreen() {
       </SurfaceCard>
 
       <SurfaceCard style={styles.card}>
-        <SectionTitle title="Oyuncular" />
+        <SectionTitle title="Yoklama" />
         {athletes.length === 0 ? (
           <EmptyState title="Oyuncu yok" description="Bu antrenmana bağlı gruplarda aktif oyuncu bulunmuyor." />
         ) : (
-          <View style={styles.athleteList}>
-            {athletes.map((athlete) => (
-              <View key={athlete.athleteProfileId} style={styles.athleteRow}>
-                <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={42} tone="dark" />
-                <View style={styles.flexOne}>
-                  <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
-                  <Text style={styles.athleteMeta}>Veli: {athlete.parentFullName}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+          <>
+            <Text style={styles.mutedText}>{"Herkes varsayılan \"Geldi\" işaretli. Sadece istisnaları değiştir ve kaydet."}</Text>
+            <View style={styles.athleteList}>
+              {athletes.map((athlete) => (
+                <AttendanceRow
+                  key={athlete.athleteProfileId}
+                  athlete={athlete}
+                  status={statuses[athlete.athleteProfileId] ?? "Present"}
+                  onChange={(status) => setStatuses((current) => ({ ...current, [athlete.athleteProfileId]: status }))}
+                />
+              ))}
+            </View>
+            <Button
+              disabled={saveAttendance.isPending}
+              label={saveAttendance.isPending ? "Kaydediliyor" : "Yoklamayı Kaydet"}
+              onPress={submitAttendance}
+            />
+          </>
         )}
       </SurfaceCard>
 
@@ -142,6 +184,47 @@ export default function TrainingDetailScreen() {
         }}
       />
     </ScreenShell>
+  );
+}
+
+const ATTENDANCE_OPTIONS: { status: AttendanceStatus; label: string }[] = [
+  { status: "Present", label: "Geldi" },
+  { status: "Absent", label: "Gelmedi" },
+  { status: "Late", label: "Geç" },
+  { status: "Excused", label: "İzinli" }
+];
+
+function AttendanceRow({ athlete, status, onChange }: {
+  athlete: CoachAttendanceRosterItem;
+  status: AttendanceStatus;
+  onChange: (status: AttendanceStatus) => void;
+}) {
+  return (
+    <View style={styles.attendanceRow}>
+      <View style={styles.attendanceHeader}>
+        <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={42} tone="dark" />
+        <View style={styles.flexOne}>
+          <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
+          <Text style={styles.athleteMeta}>Veli: {athlete.parentFullName}</Text>
+        </View>
+      </View>
+      <View style={styles.statusGroup}>
+        {ATTENDANCE_OPTIONS.map((option) => {
+          const selected = option.status === status;
+          return (
+            <Pressable
+              key={option.status}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              onPress={() => onChange(option.status)}
+              style={[styles.statusChip, selected && styles.statusChipSelected]}
+            >
+              <Text style={[styles.statusChipText, selected && styles.statusChipTextSelected]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -297,7 +380,8 @@ const styles = StyleSheet.create({
   athleteList: { gap: spacing.sm },
   athleteMeta: { ...typography.body, color: colors.onSurfaceVariant },
   athleteName: { ...typography.bodyLarge, color: colors.primary, fontFamily: "Inter_700Bold" },
-  athleteRow: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
+  attendanceHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  attendanceRow: { borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, gap: spacing.sm, paddingVertical: spacing.md },
   backButton: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
   bodyText: { ...typography.bodyLarge, color: colors.onSurface, lineHeight: 24 },
   card: { gap: spacing.md },
@@ -327,6 +411,11 @@ const styles = StyleSheet.create({
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   primaryText: { ...typography.bodyLarge, color: colors.primary },
   sectionLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
+  statusChip: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, flexGrow: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
+  statusChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  statusChipText: { ...typography.label, color: colors.onSurfaceVariant },
+  statusChipTextSelected: { color: colors.onPrimary },
+  statusGroup: { flexDirection: "row", gap: spacing.xs },
   summaryCard: { gap: spacing.lg },
   summaryIcon: { alignItems: "center", backgroundColor: "rgba(104,253,179,0.22)", borderRadius: radius.lg, height: 52, justifyContent: "center", width: 52 },
   summaryTop: { alignItems: "center", flexDirection: "row", gap: spacing.md },

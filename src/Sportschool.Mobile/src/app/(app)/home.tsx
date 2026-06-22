@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
@@ -122,7 +122,19 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
       <View style={styles.sectionStack}>
         <SectionTitle title="Hızlı Aksiyonlar" />
         <View style={styles.quickGrid}>
-          <QuickAction label="Yoklama Al" icon="clipboard-check-outline" primary />
+          <QuickAction
+            label="Yoklama Al"
+            icon="clipboard-check-outline"
+            primary
+            onPress={() => {
+              const target = todayTrainings[0];
+              if (target) {
+                router.push(`/trainings/${target.id}`);
+              } else {
+                Alert.alert("Yoklama", "Bugün için planlanmış antrenman bulunmuyor.");
+              }
+            }}
+          />
           <QuickAction label="Ödeme Kaydet" icon="cash-multiple" tone="green" onPress={() => router.push("/payments")} />
           <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" tone="dark" onPress={() => router.push("/announcements")} />
         </View>

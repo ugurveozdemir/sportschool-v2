@@ -175,18 +175,23 @@ export function useCoachAttendanceRoster(trainingId?: string) {
   });
 }
 
-export function useSaveCoachAttendance(trainingId?: string) {
+export type SaveCoachAttendanceItem = SaveCoachAttendanceRequest & { existing: boolean };
+
+export function useSaveCoachAttendanceBatch(trainingId?: string) {
   return useMutation({
-    mutationFn: (request: SaveCoachAttendanceRequest & { existing: boolean }) => {
-      const { existing, ...body } = request;
+    mutationFn: async (items: SaveCoachAttendanceItem[]) => {
       if (!trainingId) {
         throw new Error("Training is required.");
       }
-      const path = existing ? endpoints.coachAttendanceItem(trainingId, body.athleteProfileId) : endpoints.coachAttendance(trainingId);
-      return apiRequest(path, {
-        method: existing ? "PUT" : "POST",
-        body
-      });
+
+      await Promise.all(
+        items.map(({ existing, ...body }) =>
+          apiRequest(
+            existing ? endpoints.coachAttendanceItem(trainingId, body.athleteProfileId) : endpoints.coachAttendance(trainingId),
+            { method: existing ? "PUT" : "POST", body }
+          )
+        )
+      );
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["coach"] });

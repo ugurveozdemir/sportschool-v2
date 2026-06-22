@@ -2,6 +2,10 @@
 
 ## 2026-06-23
 
+- Added coach attendance taking on the mobile training detail screen: each athlete in the training's groups gets Present/Absent/Late/Excused controls defaulting to Present, saved in one batch against the existing per-training attendance endpoints.
+- Wired the coach home "Yoklama Al" quick action to open the current day's training (or warn when none is scheduled).
+- Removed the hard-coded "Bekleyen Ödemeler" and "Eksik Oyuncular" mock cards from the coach home screen.
+
 - Removed school selection from the mobile login screen; login now resolves the caller's school automatically from the account by matching email, role, and password across schools, signing in only when exactly one account matches.
 - Dropped the unused `SchoolCode` login field, the mobile school picker, and the `listLoginSchools` client helper, while keeping the public `/api/auth/schools` endpoint.
 - Replaced the auto-generated temporary password when a PlatformOwner creates a school admin with a required password the owner chooses (minimum 8 characters).
