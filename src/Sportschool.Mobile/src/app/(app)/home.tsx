@@ -123,7 +123,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
         <SectionTitle title="Hızlı Aksiyonlar" />
         <View style={styles.quickGrid}>
           <QuickAction label="Yoklama Al" icon="clipboard-check-outline" primary />
-          <QuickAction label="Ödeme Kaydet" icon="cash-multiple" tone="green" />
+          <QuickAction label="Ödeme Kaydet" icon="cash-multiple" tone="green" onPress={() => router.push("/payments")} />
           <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" tone="dark" onPress={() => router.push("/announcements")} />
         </View>
       </View>
