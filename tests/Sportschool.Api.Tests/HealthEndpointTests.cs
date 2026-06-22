@@ -1,13 +1,13 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Sportschool.Api.Tests.Infrastructure;
 
 namespace Sportschool.Api.Tests;
 
-public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class HealthEndpointTests : IClassFixture<TestAppFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestAppFactory _factory;
 
-    public HealthEndpointTests(WebApplicationFactory<Program> factory)
+    public HealthEndpointTests(TestAppFactory factory)
     {
         _factory = factory;
     }

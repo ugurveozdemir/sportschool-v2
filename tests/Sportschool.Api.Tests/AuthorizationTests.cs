@@ -1,14 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Sportschool.Api.Tests.Infrastructure;
 
 namespace Sportschool.Api.Tests;
 
-public sealed class AuthorizationTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class AuthorizationTests : IClassFixture<TestAppFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestAppFactory _factory;
 
-    public AuthorizationTests(WebApplicationFactory<Program> factory)
+    public AuthorizationTests(TestAppFactory factory)
     {
         _factory = factory;
     }
