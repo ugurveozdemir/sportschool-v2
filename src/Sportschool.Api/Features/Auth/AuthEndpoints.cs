@@ -51,12 +51,20 @@ public static class AuthEndpoints
 
         var role = request.Mode.ToUserRole();
         var normalizedEmail = TextNormalizer.NormalizeEmail(request.Email);
-        var user = await FindLoginUserAsync(db, request, role, normalizedEmail, cancellationToken);
+        var candidates = await FindLoginCandidatesAsync(db, role, normalizedEmail, cancellationToken);
 
-        if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
+        // The same email can exist across several schools (email is unique per school),
+        // so the password is what resolves which account — and therefore which school — to sign in.
+        var matches = candidates
+            .Where(candidate => passwordHasher.Verify(request.Password, candidate.PasswordHash))
+            .ToList();
+
+        if (matches.Count != 1)
         {
             return Results.Unauthorized();
         }
+
+        var user = matches[0];
 
         var accessToken = jwtTokenService.CreateAccessToken(user, role);
         var refreshToken = refreshTokenService.CreateToken(user.Id, role, request.DeviceName);
@@ -172,9 +180,8 @@ public static class AuthEndpoints
         return Results.NoContent();
     }
 
-    private static Task<AppUser?> FindLoginUserAsync(
+    private static Task<List<AppUser>> FindLoginCandidatesAsync(
         SportschoolDbContext db,
-        LoginRequest request,
         UserRole role,
         string normalizedEmail,
         CancellationToken cancellationToken)
@@ -182,27 +189,16 @@ public static class AuthEndpoints
         var users = db.Users
             .Include(x => x.Roles)
             .Include(x => x.School)
-            .Where(x => x.IsActive && x.NormalizedEmail == normalizedEmail);
+            .Where(x => x.IsActive
+                && x.NormalizedEmail == normalizedEmail
+                && x.Roles.Any(roleAssignment => roleAssignment.Role == role));
 
-        if (role == UserRole.PlatformOwner)
-        {
-            return users.FirstOrDefaultAsync(
-                x => x.SchoolId == null && x.Roles.Any(roleAssignment => roleAssignment.Role == role),
-                cancellationToken);
-        }
+        // PlatformOwner accounts are school-less and globally unique by email;
+        // every other role is scoped to an active school.
+        users = role == UserRole.PlatformOwner
+            ? users.Where(x => x.SchoolId == null)
+            : users.Where(x => x.School != null && x.School.IsActive);
 
-        if (string.IsNullOrWhiteSpace(request.SchoolCode))
-        {
-            return Task.FromResult<AppUser?>(null);
-        }
-
-        var normalizedSchoolCode = TextNormalizer.NormalizeSchoolCode(request.SchoolCode);
-
-        return users.FirstOrDefaultAsync(
-            x => x.School != null
-                && x.School.IsActive
-                && x.School.NormalizedCode == normalizedSchoolCode
-                && x.Roles.Any(roleAssignment => roleAssignment.Role == role),
-            cancellationToken);
+        return users.ToListAsync(cancellationToken);
     }
 }

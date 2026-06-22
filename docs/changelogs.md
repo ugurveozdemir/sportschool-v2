@@ -2,6 +2,8 @@
 
 ## 2026-06-23
 
+- Removed school selection from the mobile login screen; login now resolves the caller's school automatically from the account by matching email, role, and password across schools, signing in only when exactly one account matches.
+- Dropped the unused `SchoolCode` login field, the mobile school picker, and the `listLoginSchools` client helper, while keeping the public `/api/auth/schools` endpoint.
 - Replaced the auto-generated temporary password when a PlatformOwner creates a school admin with a required password the owner chooses (minimum 8 characters).
 - Added a PlatformOwner endpoint to change a school admin's password at any time, which revokes the admin's active refresh tokens so open sessions must re-authenticate.
 - Added a dashboard "Şifre değiştir" action per school admin and a password field to the create-admin dialog, removing the one-time temporary-password panel.

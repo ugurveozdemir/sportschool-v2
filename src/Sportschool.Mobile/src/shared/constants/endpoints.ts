@@ -1,5 +1,4 @@
 export const endpoints = {
-  loginSchools: "/api/auth/schools",
   login: "/api/auth/login",
   refresh: "/api/auth/refresh",
   logout: "/api/auth/logout",

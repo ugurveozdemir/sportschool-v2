@@ -57,7 +57,7 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
-    public async Task Login_AllowsCoachModeForSchoolCoach()
+    public async Task Login_ResolvesSchoolFromAccount_WithoutSchoolCode()
     {
         var suffix = Guid.NewGuid().ToString("N");
         var school = new School
@@ -79,7 +79,6 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
 
         using var response = await client.PostAsJsonAsync("/api/auth/login", new
         {
-            schoolCode = school.Code,
             email = coach.Email,
             password = "coach-password",
             mode = LoginMode.Coach,
@@ -90,6 +89,90 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
         Assert.NotNull(auth);
         Assert.Contains(UserRole.Coach, auth!.Roles);
+        Assert.Equal(school.Id, auth.SchoolId);
+    }
+
+    [Fact]
+    public async Task Login_SameEmailInTwoSchools_ResolvesByPassword()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var email = $"shared-{suffix}@example.com";
+        var schoolA = new School
+        {
+            Name = $"School A {suffix}",
+            Code = $"school-a-{suffix}",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode($"school-a-{suffix}")
+        };
+        var schoolB = new School
+        {
+            Name = $"School B {suffix}",
+            Code = $"school-b-{suffix}",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode($"school-b-{suffix}")
+        };
+        var coachA = TestUsers.Create(schoolA.Id, email, "Coach A", "password-a", UserRole.Coach);
+        var coachB = TestUsers.Create(schoolB.Id, email, "Coach B", "password-b", UserRole.Coach);
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.AddRange(schoolA, schoolB);
+            db.Users.AddRange(coachA, coachB);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email,
+            password = "password-b",
+            mode = LoginMode.Coach,
+            deviceName = "test"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+        Assert.NotNull(auth);
+        Assert.Equal(schoolB.Id, auth!.SchoolId);
+    }
+
+    [Fact]
+    public async Task Login_SameEmailAndPasswordInTwoSchools_IsUnauthorized()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var email = $"ambiguous-{suffix}@example.com";
+        var schoolA = new School
+        {
+            Name = $"Ambiguous A {suffix}",
+            Code = $"ambiguous-a-{suffix}",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode($"ambiguous-a-{suffix}")
+        };
+        var schoolB = new School
+        {
+            Name = $"Ambiguous B {suffix}",
+            Code = $"ambiguous-b-{suffix}",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode($"ambiguous-b-{suffix}")
+        };
+        var coachA = TestUsers.Create(schoolA.Id, email, "Coach A", "same-password", UserRole.Coach);
+        var coachB = TestUsers.Create(schoolB.Id, email, "Coach B", "same-password", UserRole.Coach);
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.AddRange(schoolA, schoolB);
+            db.Users.AddRange(coachA, coachB);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email,
+            password = "same-password",
+            mode = LoginMode.Coach,
+            deviceName = "test"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]

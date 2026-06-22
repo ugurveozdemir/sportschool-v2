@@ -13,7 +13,6 @@ public enum LoginMode
 }
 
 public sealed record LoginRequest(
-    string? SchoolCode,
     string Email,
     string Password,
     LoginMode Mode,
