@@ -128,16 +128,6 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
         </View>
       </View>
 
-      <SurfaceCard style={styles.sectionStack}>
-        <View style={styles.iconTitleRow}>
-          <MaterialCommunityIcons name="account-off-outline" size={30} color={colors.outline} />
-          <Text style={styles.cardTitle}>Eksik Oyuncular</Text>
-        </View>
-        <View style={styles.chipRow}>
-          <Pill label="A. Öztürk (Sakat)" tone="danger" />
-          <Pill label="B. Şahin (İzinli)" tone="warning" />
-        </View>
-      </SurfaceCard>
     </ScreenShell>
   );
 }
@@ -428,7 +418,6 @@ const styles = StyleSheet.create({
   cardHeaderRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   cardInsetHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", padding: spacing.lg },
   cardTitle: { ...typography.headline, color: colors.primary },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   childSwitch: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, borderRadius: radius.full, borderWidth: 1, flexDirection: "row", padding: 4 },
   childSwitchActive: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.sm },
   childSwitchActiveText: { ...typography.label, color: colors.onPrimary },
