@@ -129,19 +129,6 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
       </View>
 
       <SurfaceCard style={styles.sectionStack}>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.iconTitleRow}>
-            <MaterialCommunityIcons name="alert-outline" size={30} color={colors.error} />
-            <Text style={styles.cardTitle}>Bekleyen Ödemeler</Text>
-          </View>
-          <Text style={styles.mutedBold}>Tümü</Text>
-        </View>
-        <PaymentRow initials="CK" name="Caner Kaya" detail="Eylül Aidatı" amount="₺1.500" />
-        <View style={styles.separator} />
-        <PaymentRow initials="MY" name="Mert Yılmaz" detail="Eylül Aidatı" amount="₺1.500" />
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.sectionStack}>
         <View style={styles.iconTitleRow}>
           <MaterialCommunityIcons name="account-off-outline" size={30} color={colors.outline} />
           <Text style={styles.cardTitle}>Eksik Oyuncular</Text>
@@ -377,19 +364,6 @@ function QuickAction({ label, icon, primary, badge, tone, onPress }: { label: st
   );
 }
 
-function PaymentRow({ initials, name, detail, amount }: { initials: string; name: string; detail: string; amount: string }) {
-  return (
-    <View style={styles.paymentRow}>
-      <InitialsAvatar label={initials} />
-      <View style={styles.flexOne}>
-        <Text style={styles.rowTitle}>{name}</Text>
-        <Text style={styles.rowMeta}>{detail}</Text>
-      </View>
-      <Text style={styles.amountRed}>{amount}</Text>
-    </View>
-  );
-}
-
 function HeroTrainingCard({ training }: { training: TrainingResponse }) {
   const groupName = trainingGroupName(training);
   return (
@@ -449,7 +423,6 @@ function round1(value: number) {
 }
 
 const styles = StyleSheet.create({
-  amountRed: { ...typography.title, color: colors.error },
   announcementDot: { borderRadius: 4, height: 8, marginTop: 7, width: 8 },
   announcementItem: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.lg },
   cardHeaderRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
@@ -495,7 +468,6 @@ const styles = StyleSheet.create({
   parentInfoBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceContainerHigh, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
   parentTitle: { ...typography.headline, color: colors.primary },
   parentTrainingCard: { backgroundColor: "rgba(232,255,243,0.45)", gap: spacing.md },
-  paymentRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   progressFill: { borderRadius: radius.full, height: "100%" },
   progressLabel: { ...typography.label, color: colors.onPrimary },
   progressTrack: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: radius.full, height: 7, overflow: "hidden" },
