@@ -1,7 +1,6 @@
 import { apiRequest } from "../../shared/api/apiClient";
 import { endpoints } from "../../shared/constants/endpoints";
 import type {
-  CreatedSchoolAdmin,
   CreateSchoolAdminInput,
   CreateSchoolInput,
   School,
@@ -28,10 +27,21 @@ export function listSchoolAdmins(schoolId: string): Promise<SchoolAdmin[]> {
 export function createSchoolAdmin(
   schoolId: string,
   input: CreateSchoolAdminInput
-): Promise<CreatedSchoolAdmin> {
-  return apiRequest<CreatedSchoolAdmin>(endpoints.platformSchoolAdmins(schoolId), {
+): Promise<SchoolAdmin> {
+  return apiRequest<SchoolAdmin>(endpoints.platformSchoolAdmins(schoolId), {
     method: "POST",
     body: input
+  });
+}
+
+export function updateSchoolAdminPassword(
+  schoolId: string,
+  adminId: string,
+  password: string
+): Promise<void> {
+  return apiRequest<void>(endpoints.platformSchoolAdminPassword(schoolId, adminId), {
+    method: "PUT",
+    body: { password }
   });
 }
 

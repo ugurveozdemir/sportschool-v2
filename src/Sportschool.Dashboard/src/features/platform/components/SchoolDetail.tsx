@@ -3,11 +3,13 @@ import { useState } from "react";
 import { ConfirmDialog } from "../../../shared/components/ConfirmDialog";
 import { listSchoolAdmins, removeSchoolAdmin } from "../platformApi";
 import type { SchoolAdmin } from "../types";
+import { ChangeAdminPasswordDialog } from "./ChangeAdminPasswordDialog";
 import { CreateAdminDialog } from "./CreateAdminDialog";
 
 export function SchoolDetail({ schoolId, schoolName }: { schoolId: string; schoolName: string }) {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [pendingPassword, setPendingPassword] = useState<SchoolAdmin | null>(null);
   const [pendingRemove, setPendingRemove] = useState<SchoolAdmin | null>(null);
 
   const adminsQuery = useQuery({
@@ -67,19 +69,35 @@ export function SchoolDetail({ schoolId, schoolName }: { schoolId: string; schoo
                 <p className="truncate text-sm font-medium text-slate-900">{admin.fullName}</p>
                 <p className="truncate text-xs text-slate-500">{admin.email}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setPendingRemove(admin)}
-                className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-red-300 hover:text-red-600"
-              >
-                Çıkar
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPendingPassword(admin)}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600"
+                >
+                  Şifre değiştir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingRemove(admin)}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-red-300 hover:text-red-600"
+                >
+                  Çıkar
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       </div>
 
       {showCreate && <CreateAdminDialog schoolId={schoolId} onClose={() => setShowCreate(false)} />}
+
+      {pendingPassword && (
+        <ChangeAdminPasswordDialog
+          admin={pendingPassword}
+          onClose={() => setPendingPassword(null)}
+        />
+      )}
 
       {pendingRemove && (
         <ConfirmDialog

@@ -158,6 +158,119 @@ public sealed class PlatformListEndpointTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PlatformOwnerCanChangeSchoolAdminPassword()
+    {
+        await using var factory = new TestAppFactory();
+        var platformOwner = TestUsers.Create(null, "platform-pw@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-pw@example.com", "Admin Pw", "old-password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Pw Tenant", "pw-tenant", isActive: true));
+            db.Users.AddRange(platformOwner, admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+
+        using var response = await client.PutAsJsonAsync(
+            $"/api/platform/schools/{schoolId}/admins/{admin.Id}/password",
+            new { password = "new-password" });
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        using var oldLogin = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            schoolCode = "pw-tenant",
+            email = "admin-pw@example.com",
+            password = "old-password",
+            mode = "SchoolAdmin",
+            deviceName = "test"
+        });
+        Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
+
+        using var newLogin = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            schoolCode = "pw-tenant",
+            email = "admin-pw@example.com",
+            password = "new-password",
+            mode = "SchoolAdmin",
+            deviceName = "test"
+        });
+        Assert.Equal(HttpStatusCode.OK, newLogin.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangeSchoolAdminPassword_ShortPassword_ReturnsBadRequest()
+    {
+        await using var factory = new TestAppFactory();
+        var platformOwner = TestUsers.Create(null, "platform-pw-short@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-pw-short@example.com", "Admin Pw Short", "old-password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Pw Short Tenant", "pw-short", isActive: true));
+            db.Users.AddRange(platformOwner, admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+
+        using var response = await client.PutAsJsonAsync(
+            $"/api/platform/schools/{schoolId}/admins/{admin.Id}/password",
+            new { password = "short" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangeSchoolAdminPassword_ReturnsNotFoundForMissingAdmin()
+    {
+        await using var factory = new TestAppFactory();
+        var platformOwner = TestUsers.Create(null, "platform-pw-missing@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolId = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Pw Missing Tenant", "pw-missing", isActive: true));
+            db.Users.Add(platformOwner);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+
+        using var response = await client.PutAsJsonAsync(
+            $"/api/platform/schools/{schoolId}/admins/{Guid.NewGuid()}/password",
+            new { password = "new-password" });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangeSchoolAdminPassword_ForbiddenForNonPlatformOwner()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-pw-forbidden@example.com", "Admin Pw Forbidden", "old-password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Pw Forbidden Tenant", "pw-forbidden", isActive: true));
+            db.Users.Add(admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        using var response = await client.PutAsJsonAsync(
+            $"/api/platform/schools/{schoolId}/admins/{admin.Id}/password",
+            new { password = "new-password" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private static School CreateSchool(Guid id, string name, string code, bool isActive)
     {
         return new School

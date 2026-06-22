@@ -59,15 +59,25 @@ public sealed class BootstrapPlatformFlowTests : IAsyncLifetime
         using var adminResponse = await client.PostAsJsonAsync($"/api/platform/schools/{school!.Id}/admins", new
         {
             email = "admin@example.com",
-            fullName = "School Admin"
+            fullName = "School Admin",
+            password = "admin-password"
         });
         Assert.Equal(HttpStatusCode.Created, adminResponse.StatusCode);
-        var admin = await adminResponse.Content.ReadFromJsonAsync<SchoolAdminResponse>(JsonOptions);
+        var admin = await adminResponse.Content.ReadFromJsonAsync<PlatformSchoolAdminResponse>(JsonOptions);
         Assert.NotNull(admin);
-        Assert.Equal(12, admin!.TemporaryPassword.Length);
+
+        using var adminLoginResponse = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            schoolCode = "demo",
+            email = "admin@example.com",
+            password = "admin-password",
+            mode = "SchoolAdmin",
+            deviceName = "integration-test"
+        });
+        Assert.Equal(HttpStatusCode.OK, adminLoginResponse.StatusCode);
 
         var hasSchoolAdminRole = await _factory.QueryAsync(db =>
-            db.UserRoles.AnyAsync(x => x.UserId == admin.Id && x.Role == UserRole.SchoolAdmin));
+            db.UserRoles.AnyAsync(x => x.UserId == admin!.Id && x.Role == UserRole.SchoolAdmin));
         Assert.True(hasSchoolAdminRole);
 
         var hasCoachRole = await _factory.QueryAsync(db =>

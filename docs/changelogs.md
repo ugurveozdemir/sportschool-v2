@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-23
+
+- Replaced the auto-generated temporary password when a PlatformOwner creates a school admin with a required password the owner chooses (minimum 8 characters).
+- Added a PlatformOwner endpoint to change a school admin's password at any time, which revokes the admin's active refresh tokens so open sessions must re-authenticate.
+- Added a dashboard "Şifre değiştir" action per school admin and a password field to the create-admin dialog, removing the one-time temporary-password panel.
+
 ## 2026-06-01
 
 - Added parent-linked athlete selection for mobile member reads and fixed parent access to athlete reports.

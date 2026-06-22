@@ -6,5 +6,7 @@ export const endpoints = {
   platformSchool: (schoolId: string) => `/api/platform/schools/${schoolId}`,
   platformSchoolAdmins: (schoolId: string) => `/api/platform/schools/${schoolId}/admins`,
   platformSchoolAdmin: (schoolId: string, adminId: string) =>
-    `/api/platform/schools/${schoolId}/admins/${adminId}`
+    `/api/platform/schools/${schoolId}/admins/${adminId}`,
+  platformSchoolAdminPassword: (schoolId: string, adminId: string) =>
+    `/api/platform/schools/${schoolId}/admins/${adminId}/password`
 } as const;

@@ -8,6 +8,8 @@ namespace Sportschool.Api.Features.Platform;
 
 public static class PlatformEndpoints
 {
+    private const int MinimumPasswordLength = 8;
+
     public static RouteGroupBuilder MapPlatformEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/platform")
@@ -19,6 +21,7 @@ public static class PlatformEndpoints
         group.MapDelete("/schools/{schoolId:guid}", DeactivateSchoolAsync);
         group.MapGet("/schools/{schoolId:guid}/admins", ListSchoolAdminsAsync);
         group.MapPost("/schools/{schoolId:guid}/admins", CreateSchoolAdminAsync);
+        group.MapPut("/schools/{schoolId:guid}/admins/{adminId:guid}/password", UpdateSchoolAdminPasswordAsync);
         group.MapDelete("/schools/{schoolId:guid}/admins/{adminId:guid}", RemoveSchoolAdminAsync);
 
         return group;
@@ -121,10 +124,12 @@ public static class PlatformEndpoints
         CreateSchoolAdminRequest request,
         SportschoolDbContext db,
         PasswordHasher passwordHasher,
-        TemporaryPasswordGenerator passwordGenerator,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.FullName))
+        if (string.IsNullOrWhiteSpace(request.Email)
+            || string.IsNullOrWhiteSpace(request.FullName)
+            || string.IsNullOrWhiteSpace(request.Password)
+            || request.Password.Length < MinimumPasswordLength)
         {
             return Results.BadRequest();
         }
@@ -145,14 +150,13 @@ public static class PlatformEndpoints
             return Results.Conflict();
         }
 
-        var temporaryPassword = passwordGenerator.Create();
         var user = new AppUser
         {
             SchoolId = schoolId,
             Email = request.Email.Trim(),
             NormalizedEmail = normalizedEmail,
             FullName = request.FullName.Trim(),
-            PasswordHash = passwordHasher.Hash(temporaryPassword)
+            PasswordHash = passwordHasher.Hash(request.Password)
         };
 
         user.Roles.Add(new UserRoleAssignment { User = user, Role = UserRole.SchoolAdmin });
@@ -163,7 +167,47 @@ public static class PlatformEndpoints
 
         return Results.Created(
             $"/api/platform/schools/{schoolId}/admins/{user.Id}",
-            SchoolAdminResponse.From(user, temporaryPassword));
+            PlatformSchoolAdminResponse.From(user));
+    }
+
+    private static async Task<IResult> UpdateSchoolAdminPasswordAsync(
+        Guid schoolId,
+        Guid adminId,
+        UpdateSchoolAdminPasswordRequest request,
+        SportschoolDbContext db,
+        PasswordHasher passwordHasher,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < MinimumPasswordLength)
+        {
+            return Results.BadRequest();
+        }
+
+        var admin = await db.Users
+            .Include(x => x.Roles)
+            .Include(x => x.RefreshTokens)
+            .FirstOrDefaultAsync(
+                x => x.Id == adminId
+                    && x.SchoolId == schoolId
+                    && x.IsActive
+                    && x.Roles.Any(role => role.Role == UserRole.SchoolAdmin),
+                cancellationToken);
+
+        if (admin is null)
+        {
+            return Results.NotFound();
+        }
+
+        admin.PasswordHash = passwordHasher.Hash(request.Password);
+        var revokedAt = DateTimeOffset.UtcNow;
+        foreach (var refreshToken in admin.RefreshTokens.Where(x => x.IsActive))
+        {
+            refreshToken.RevokedAt = revokedAt;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
     }
 
     private static async Task<IResult> ListSchoolAdminsAsync(
@@ -234,15 +278,9 @@ public sealed record SchoolResponse(Guid Id, string Name, string Code, bool IsAc
     }
 }
 
-public sealed record CreateSchoolAdminRequest(string Email, string FullName);
+public sealed record CreateSchoolAdminRequest(string Email, string FullName, string Password);
 
-public sealed record SchoolAdminResponse(Guid Id, Guid SchoolId, string Email, string FullName, string TemporaryPassword)
-{
-    public static SchoolAdminResponse From(AppUser user, string temporaryPassword)
-    {
-        return new SchoolAdminResponse(user.Id, user.SchoolId!.Value, user.Email, user.FullName, temporaryPassword);
-    }
-}
+public sealed record UpdateSchoolAdminPasswordRequest(string Password);
 
 public sealed record PlatformSchoolAdminResponse(Guid Id, Guid SchoolId, string Email, string FullName)
 {
