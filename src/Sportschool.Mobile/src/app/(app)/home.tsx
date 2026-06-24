@@ -92,7 +92,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
     <ScreenShell title={shellTitle} navItems={navItems}>
       <View style={styles.welcomeRow}>
         <View>
-          <Text style={styles.dateText}>24 Ekim Perşembe</Text>
+          <Text style={styles.dateText}>{new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", weekday: "long" }).format(new Date())}</Text>
           <Text style={styles.displayTitle}>Merhaba, {sessionName?.split(" ")[0] ?? "Koç"}</Text>
         </View>
         <InitialsAvatar label="KÇ" size={54} tone="dark" />
