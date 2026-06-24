@@ -18,6 +18,7 @@ public sealed class TestAppFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting("Application:TimeZone", "UTC");
         builder.ConfigureServices(services =>
         {
             _connection.Open();

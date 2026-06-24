@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Reports;
@@ -32,6 +33,7 @@ public static class MobileCoachEndpoints
     private static async Task<IResult> GetSummaryAsync(
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -40,8 +42,7 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var todayStart = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var todayStart = LocalDayRange.StartOfToday(timeZone);
         var todayEnd = todayStart.AddDays(1);
         var weekEnd = todayStart.AddDays(7);
 
@@ -305,6 +306,7 @@ public static class MobileCoachEndpoints
         DateTimeOffset? to,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -313,8 +315,7 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var start = from ?? new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var start = from ?? LocalDayRange.StartOfToday(timeZone);
         var end = to ?? start.AddDays(14);
         if (end <= start)
         {

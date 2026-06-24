@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Users;
@@ -28,6 +29,7 @@ public static class TrainingEndpoints
         DateTimeOffset? to,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -36,8 +38,7 @@ public static class TrainingEndpoints
             return Results.Forbid();
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var start = from ?? new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var start = from ?? LocalDayRange.StartOfToday(timeZone);
         var end = to ?? start.AddDays(7);
         if (end <= start)
         {

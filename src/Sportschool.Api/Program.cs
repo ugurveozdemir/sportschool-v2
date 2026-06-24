@@ -40,6 +40,8 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddDbContext<SportschoolDbContext>(options =>
         options.UseNpgsql(connectionString));
 }
+var applicationTimeZoneId = builder.Configuration["Application:TimeZone"] ?? "Europe/Istanbul";
+builder.Services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(applicationTimeZoneId));
 builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();

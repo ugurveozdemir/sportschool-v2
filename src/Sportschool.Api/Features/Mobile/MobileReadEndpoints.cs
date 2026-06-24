@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Groups;
@@ -79,6 +80,7 @@ public static class MobileReadEndpoints
         DateTimeOffset? to,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
@@ -87,8 +89,7 @@ public static class MobileReadEndpoints
             return Results.NotFound();
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var start = from ?? new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var start = from ?? LocalDayRange.StartOfToday(timeZone);
         var end = to ?? start.AddDays(30);
         if (end <= start)
         {

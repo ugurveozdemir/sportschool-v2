@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Trainings;
@@ -25,6 +26,7 @@ public static class DashboardEndpoints
         DateTimeOffset? to,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -33,19 +35,19 @@ public static class DashboardEndpoints
             return Results.Forbid();
         }
 
-        var now = DateTimeOffset.UtcNow;
-        var start = from ?? new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var localNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, timeZone);
+        var todayStart = LocalDayRange.StartOfToday(timeZone);
+        var start = from ?? todayStart;
         var end = to ?? start.AddDays(7);
         if (end <= start)
         {
             return Results.BadRequest();
         }
 
-        var todayStart = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
         var todayEnd = todayStart.AddDays(1);
-        var paymentYear = now.Year;
-        var paymentMonth = now.Month;
-        var paymentToday = DateOnly.FromDateTime(now.UtcDateTime);
+        var paymentYear = localNow.Year;
+        var paymentMonth = localNow.Month;
+        var paymentToday = DateOnly.FromDateTime(localNow.DateTime);
 
         var trainingRows = await db.TrainingSessions
             .AsNoTracking()

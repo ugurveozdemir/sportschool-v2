@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-24
+
+- Fixed "today" being computed in UTC on the server, which hid same-day trainings from the coach mobile home (and dashboard summary) for users ahead of UTC. Day boundaries now use a configurable application time zone (`Application:TimeZone`, default `Europe/Istanbul`), matching the local-time logic the mobile clients already use.
+- Applied the local-day boundary to every server-side "today" fallback (coach summary, dashboard summary, and the coach/athlete/school training list endpoints) via a shared `LocalDayRange` helper, with unit tests for the timezone math; tests pin the zone to UTC to stay deterministic.
+
 ## 2026-06-23
 
 - Added coach attendance taking on the mobile training detail screen: each athlete in the training's groups gets Present/Absent/Late/Excused controls defaulting to Present, saved in one batch against the existing per-training attendance endpoints.
