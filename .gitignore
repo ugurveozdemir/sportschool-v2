@@ -19,6 +19,9 @@ CLAUDE.md
 # Local API usage examples
 docs/api-usage-examples.local.md
 
+# Local feature planning notes
+MEDIA_FEATURE_PLAN.md
+
 # User-specific files
 *.rsuser
 *.suo
