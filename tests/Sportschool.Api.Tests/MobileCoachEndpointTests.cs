@@ -25,7 +25,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
-    public async Task CoachSummary_ReturnsOnlyCurrentCoachTrainings()
+    public async Task CoachSummary_ReturnsOwnTrainingsAndSchoolWideGroupCounts()
     {
         var data = await SeedCoachScenarioAsync();
         using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
@@ -33,14 +33,16 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         var summary = await client.GetFromJsonAsync<MobileCoachSummaryResponse>("/api/mobile/coach/summary");
 
         Assert.NotNull(summary);
+        // Today's trainings only shows trainings belonging to this coach
         var training = Assert.Single(summary!.TodayTrainings);
         Assert.Equal(data.CoachTraining.Id, training.Id);
         Assert.Equal("Bring cones", training.Notes);
         Assert.Equal(data.Group.Id, Assert.Single(training.Groups).Id);
         Assert.Equal(1, summary.WeekTrainingCount);
         Assert.Equal(1, summary.MissingAttendanceCount);
-        Assert.Equal(1, summary.GroupCount);
-        Assert.Equal(1, summary.AthleteCount);
+        // Groups and athletes are school-wide, not limited to this coach's trainings
+        Assert.Equal(2, summary.GroupCount);
+        Assert.Equal(2, summary.AthleteCount);
     }
 
     [Fact]
@@ -136,7 +138,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
-    public async Task CoachAthletes_ReturnsOnlyCurrentCoachGroupAthletes()
+    public async Task CoachAthletes_ReturnsAllSchoolAthletes()
     {
         var data = await SeedCoachScenarioAsync();
         using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
@@ -144,9 +146,10 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         var athletes = await client.GetFromJsonAsync<MobileCoachAthleteListItem[]>("/api/mobile/coach/athletes");
 
         Assert.NotNull(athletes);
-        var athlete = Assert.Single(athletes!);
-        Assert.Equal(data.Athlete.Id, athlete.AthleteProfileId);
-        Assert.Equal("Mobile", athlete.FirstName);
+        // All athletes in the school are visible, not just those in this coach's training groups
+        Assert.Equal(2, athletes!.Length);
+        Assert.Contains(athletes, a => a.AthleteProfileId == data.Athlete.Id);
+        Assert.Contains(athletes, a => a.AthleteProfileId == data.OtherCoachAthlete.Id);
     }
 
     [Fact]
@@ -174,7 +177,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
-    public async Task CoachCannotCreateReportForAnotherCoachAthlete()
+    public async Task CoachCanCreateReportForAnySchoolAthlete()
     {
         var data = await SeedCoachScenarioAsync();
         using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
@@ -182,15 +185,16 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         using var response = await client.PostAsJsonAsync($"/api/mobile/coach/athletes/{data.OtherCoachAthlete.Id}/reports", new
         {
             athleteProfileId = data.OtherCoachAthlete.Id,
-            summary = "Geçersiz erişim.",
-            improvementAreas = "Geçersiz erişim.",
+            summary = "Teknik açıdan gelişme var.",
+            improvementAreas = "Topsuz koşu ve ilk kontrol.",
             speedScore = 8m,
             strengthScore = 8m,
             dribblingScore = 8m,
             shootingScore = 8m
         });
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        // Any coach in the school can create reports for any school athlete
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     private async Task<CoachScenario> SeedCoachScenarioAsync()

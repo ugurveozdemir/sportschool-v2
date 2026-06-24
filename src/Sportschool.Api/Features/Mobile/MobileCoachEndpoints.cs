@@ -74,10 +74,10 @@ public static class MobileCoachEndpoints
             .OrderBy(x => x.StartsAt)
             .ToList();
 
-        var groupIds = trainingRows.SelectMany(x => x.Groups.Select(group => group.Id)).Distinct().ToArray();
+        var schoolGroupIds = await SchoolGroupIds(context, db).ToArrayAsync(cancellationToken);
         var athleteCount = await db.GroupAthletes
             .AsNoTracking()
-            .Where(x => groupIds.Contains(x.GroupId)
+            .Where(x => schoolGroupIds.Contains(x.GroupId)
                 && x.AthleteProfile.SchoolId == context.SchoolId
                 && x.AthleteProfile.IsActive
                 && x.AthleteProfile.User.IsActive)
@@ -89,7 +89,7 @@ public static class MobileCoachEndpoints
             upcomingTrainings.Where(x => x.StartsAt >= todayStart && x.StartsAt < todayEnd).ToArray(),
             upcomingTrainings.Count,
             upcomingTrainings.Count(x => x.TotalAthletes > x.RecordedAttendanceCount),
-            groupIds.Length,
+            schoolGroupIds.Length,
             athleteCount));
     }
 
@@ -104,18 +104,14 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var groups = await db.TrainingSessionGroups
+        var groups = await db.TrainingGroups
             .AsNoTracking()
-            .Where(x => x.TrainingSession.SchoolId == context.SchoolId
-                && x.TrainingSession.CoachId == context.CoachId
-                && x.TrainingSession.IsActive
-                && x.Group.IsActive)
+            .Where(x => x.SchoolId == context.SchoolId && x.IsActive)
             .Select(x => new MobileCoachGroupResponse(
-                x.GroupId,
-                x.Group.Name,
-                x.Group.Description,
-                x.Group.Athletes.Count(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)))
-            .Distinct()
+                x.Id,
+                x.Name,
+                x.Description,
+                x.Athletes.Count(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)))
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
 
@@ -133,7 +129,7 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var coachGroupIds = CoachGroupIds(context, db);
+        var coachGroupIds = SchoolGroupIds(context, db);
         var athleteRows = await db.GroupAthletes
             .AsNoTracking()
             .Where(x => coachGroupIds.Contains(x.GroupId)
@@ -229,7 +225,7 @@ public static class MobileCoachEndpoints
             })
             .FirstAsync(cancellationToken);
 
-        var coachGroupIds = CoachGroupIds(context, db);
+        var coachGroupIds = SchoolGroupIds(context, db);
         var groups = await db.GroupAthletes
             .AsNoTracking()
             .Where(x => x.AthleteProfileId == athleteProfileId && coachGroupIds.Contains(x.GroupId))
@@ -552,16 +548,12 @@ public static class MobileCoachEndpoints
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private static IQueryable<Guid> CoachGroupIds(CoachContext context, SportschoolDbContext db)
+    private static IQueryable<Guid> SchoolGroupIds(CoachContext context, SportschoolDbContext db)
     {
-        return db.TrainingSessionGroups
+        return db.TrainingGroups
             .AsNoTracking()
-            .Where(x => x.TrainingSession.SchoolId == context.SchoolId
-                && x.TrainingSession.CoachId == context.CoachId
-                && x.TrainingSession.IsActive
-                && x.Group.IsActive)
-            .Select(x => x.GroupId)
-            .Distinct();
+            .Where(x => x.SchoolId == context.SchoolId && x.IsActive)
+            .Select(x => x.Id);
     }
 
     private static Task<bool> CoachCanAccessAthleteAsync(
@@ -570,13 +562,11 @@ public static class MobileCoachEndpoints
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        var coachGroupIds = CoachGroupIds(context, db);
-        return db.GroupAthletes.AnyAsync(
-            x => x.AthleteProfileId == athleteProfileId
-                && coachGroupIds.Contains(x.GroupId)
-                && x.AthleteProfile.SchoolId == context.SchoolId
-                && x.AthleteProfile.IsActive
-                && x.AthleteProfile.User.IsActive,
+        return db.AthleteProfiles.AnyAsync(
+            x => x.Id == athleteProfileId
+                && x.SchoolId == context.SchoolId
+                && x.IsActive
+                && x.User.IsActive,
             cancellationToken);
     }
 
