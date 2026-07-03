@@ -163,10 +163,6 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
     <>
       <View style={styles.headerBlock}>
         <Text style={styles.coachTitle}>Antrenman Takvimi</Text>
-        <View style={styles.segmented}>
-          <View style={styles.segmentedActive}><Text style={styles.segmentedActiveText}>Aylık</Text></View>
-          <View style={styles.segmentedInactive}><Text style={styles.segmentedInactiveText}>Haftalık</Text></View>
-        </View>
       </View>
       <CalendarPanel
         markedDates={markedDates}
@@ -738,11 +734,6 @@ const styles = StyleSheet.create({
   scheduleHeader: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" },
   scheduleTitle: { ...typography.headline, color: colors.primary },
   scheduleWrap: { gap: spacing.md },
-  segmented: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, flexDirection: "row", padding: 4 },
-  segmentedActive: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, flex: 1, padding: spacing.md },
-  segmentedActiveText: { ...typography.label, color: colors.onPrimary },
-  segmentedInactive: { alignItems: "center", flex: 1, padding: spacing.md },
-  segmentedInactiveText: { ...typography.label, color: colors.onSurfaceVariant },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   tagRow: { flexDirection: "row", gap: spacing.sm },
   timeRow: { flexDirection: "row", gap: spacing.md },
