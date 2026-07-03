@@ -61,6 +61,7 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             school.Property(x => x.Name).HasMaxLength(160).IsRequired();
             school.Property(x => x.Code).HasMaxLength(40).IsRequired();
             school.Property(x => x.NormalizedCode).HasMaxLength(40).IsRequired();
+            school.Property(x => x.DefaultMonthlyFee).HasPrecision(12, 2);
             school.HasIndex(x => x.NormalizedCode).IsUnique();
         });
 
@@ -142,6 +143,7 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             athlete.Property(x => x.LastName).HasMaxLength(80).IsRequired();
             athlete.Property(x => x.ParentFullName).HasMaxLength(160).IsRequired();
             athlete.Property(x => x.ParentPhone).HasMaxLength(40).IsRequired();
+            athlete.Property(x => x.MonthlyFeeOverride).HasPrecision(12, 2);
             athlete.HasIndex(x => new { x.SchoolId, x.UserId }).IsUnique();
 
             athlete.HasOne(x => x.School)

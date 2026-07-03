@@ -31,5 +31,11 @@ public sealed class AthleteProfile
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Per-athlete monthly fee that overrides the school-wide default. Null means the athlete
+    /// is billed at <see cref="Schools.School.DefaultMonthlyFee"/>.
+    /// </summary>
+    public decimal? MonthlyFeeOverride { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Users;
@@ -14,11 +15,97 @@ public static class PaymentEndpoints
         var schoolGroup = app.MapGroup("/api/school")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
+        schoolGroup.MapGet("/payment-settings", GetPaymentSettingsAsync);
+        schoolGroup.MapPut("/payment-settings", UpdatePaymentSettingsAsync);
         schoolGroup.MapGet("/payments", ListMonthlyPaymentsAsync);
         schoolGroup.MapGet("/athletes/{athleteProfileId:guid}/payments", ListPaymentsAsync);
+        schoolGroup.MapPut("/athletes/{athleteProfileId:guid}/fee", UpdateAthleteFeeAsync);
         schoolGroup.MapPut("/athletes/{athleteProfileId:guid}/payments/{year:int}/{month:int}", UpsertPaymentAsync);
 
         return schoolGroup;
+    }
+
+    private static async Task<IResult> GetPaymentSettingsAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var settings = await db.Schools
+            .AsNoTracking()
+            .Where(x => x.Id == schoolId.Value)
+            .Select(x => new PaymentSettingsResponse(x.DefaultMonthlyFee, x.PaymentDayOfMonth))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return settings is null ? Results.NotFound() : Results.Ok(settings);
+    }
+
+    private static async Task<IResult> UpdatePaymentSettingsAsync(
+        SavePaymentSettingsRequest request,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (request.DefaultMonthlyFee is < 0 || request.PaymentDayOfMonth is < 1 or > 28)
+        {
+            return Results.BadRequest();
+        }
+
+        var school = await db.Schools.FirstOrDefaultAsync(x => x.Id == schoolId.Value, cancellationToken);
+        if (school is null)
+        {
+            return Results.NotFound();
+        }
+
+        school.DefaultMonthlyFee = request.DefaultMonthlyFee;
+        school.PaymentDayOfMonth = request.PaymentDayOfMonth;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(new PaymentSettingsResponse(school.DefaultMonthlyFee, school.PaymentDayOfMonth));
+    }
+
+    private static async Task<IResult> UpdateAthleteFeeAsync(
+        Guid athleteProfileId,
+        SaveAthleteFeeRequest request,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (request.MonthlyFee is < 0)
+        {
+            return Results.BadRequest();
+        }
+
+        var athlete = await db.AthleteProfiles.FirstOrDefaultAsync(
+            x => x.Id == athleteProfileId && x.SchoolId == schoolId.Value && x.IsActive,
+            cancellationToken);
+
+        if (athlete is null)
+        {
+            return Results.NotFound();
+        }
+
+        athlete.MonthlyFeeOverride = request.MonthlyFee;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(new AthleteFeeResponse(athlete.Id, athlete.MonthlyFeeOverride));
     }
 
     private static async Task<IResult> ListMonthlyPaymentsAsync(
@@ -26,6 +113,7 @@ public static class PaymentEndpoints
         int month,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -39,7 +127,20 @@ public static class PaymentEndpoints
             return Results.BadRequest();
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var school = await db.Schools
+            .AsNoTracking()
+            .Where(x => x.Id == schoolId.Value)
+            .Select(x => new { x.DefaultMonthlyFee, x.PaymentDayOfMonth })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (school is null)
+        {
+            return Results.NotFound();
+        }
+
+        var today = DateOnly.FromDateTime(LocalDayRange.StartOfToday(timeZone).DateTime);
+        var isActive = PaymentSchedule.IsMonthActive(year, month, school.PaymentDayOfMonth, today);
+
         var rows = await db.AthleteProfiles
             .AsNoTracking()
             .Where(x => x.SchoolId == schoolId.Value && x.IsActive && x.User.IsActive)
@@ -56,7 +157,14 @@ public static class PaymentEndpoints
             })
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(rows.Select(x => MonthlyPaymentResponse.From(x.Athlete, x.Payment, year, month, today)));
+        return Results.Ok(rows.Select(x => MonthlyPaymentResponse.From(
+            x.Athlete,
+            x.Payment,
+            year,
+            month,
+            today,
+            PaymentSchedule.EffectiveFee(school.DefaultMonthlyFee, x.Athlete.MonthlyFeeOverride),
+            isActive)));
     }
 
     private static async Task<IResult> ListPaymentsAsync(
@@ -160,6 +268,14 @@ public static class PaymentEndpoints
 
 public sealed record SavePaymentRequest(decimal Amount, decimal? AmountPaid, PaymentStatus Status, DateOnly? PaidOn);
 
+public sealed record PaymentSettingsResponse(decimal? DefaultMonthlyFee, int? PaymentDayOfMonth);
+
+public sealed record SavePaymentSettingsRequest(decimal? DefaultMonthlyFee, int? PaymentDayOfMonth);
+
+public sealed record SaveAthleteFeeRequest(decimal? MonthlyFee);
+
+public sealed record AthleteFeeResponse(Guid AthleteProfileId, decimal? MonthlyFee);
+
 public sealed record PaymentResponse(
     Guid Id,
     Guid AthleteProfileId,
@@ -186,6 +302,26 @@ public sealed record PaymentResponse(
             PaymentStatusCalculator.GetEffectiveStatus(payment, today),
             payment.PaidOn);
     }
+
+    /// <summary>
+    /// A due that has no recorded payment row yet, derived from the configured fee so members
+    /// can see (and pay) the current month's dues before an admin touches them.
+    /// </summary>
+    public static PaymentResponse Synthetic(Guid athleteProfileId, int year, int month, decimal amount, DateOnly today)
+    {
+        var status = PaymentStatusCalculator.GetEffectiveStatus(year, month, today);
+        return new PaymentResponse(
+            Guid.Empty,
+            athleteProfileId,
+            year,
+            month,
+            amount,
+            0m,
+            amount,
+            status,
+            status,
+            null);
+    }
 }
 
 public sealed record MonthlyPaymentResponse(
@@ -199,6 +335,8 @@ public sealed record MonthlyPaymentResponse(
     decimal? Amount,
     decimal? AmountPaid,
     decimal? Balance,
+    decimal? MonthlyFeeOverride,
+    bool IsActive,
     PaymentStatus? Status,
     PaymentStatus EffectiveStatus,
     DateOnly? PaidOn)
@@ -208,8 +346,13 @@ public sealed record MonthlyPaymentResponse(
         StudentPayment? payment,
         int year,
         int month,
-        DateOnly today)
+        DateOnly today,
+        decimal? effectiveFee,
+        bool isActive)
     {
+        // When no payment row exists yet, the expected amount comes from the configured fee.
+        var amount = payment?.Amount ?? effectiveFee;
+        var amountPaid = payment?.AmountPaid ?? 0m;
         return new MonthlyPaymentResponse(
             athlete.Id,
             $"{athlete.FirstName} {athlete.LastName}",
@@ -218,11 +361,15 @@ public sealed record MonthlyPaymentResponse(
             year,
             month,
             payment?.Id,
-            payment?.Amount,
-            payment?.AmountPaid ?? 0m,
-            payment is null ? null : payment.Amount - payment.AmountPaid,
+            amount,
+            amountPaid,
+            amount is null ? null : amount - amountPaid,
+            athlete.MonthlyFeeOverride,
+            isActive,
             payment?.Status,
-            payment is null ? PaymentStatus.Unpaid : PaymentStatusCalculator.GetEffectiveStatus(payment, today),
+            payment is null
+                ? PaymentStatusCalculator.GetEffectiveStatus(year, month, today)
+                : PaymentStatusCalculator.GetEffectiveStatus(payment, today),
             payment?.PaidOn);
     }
 }

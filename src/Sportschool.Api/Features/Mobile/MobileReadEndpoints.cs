@@ -151,6 +151,7 @@ public static class MobileReadEndpoints
         Guid? athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
@@ -159,15 +160,55 @@ public static class MobileReadEndpoints
             return Results.NotFound();
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var payments = await db.StudentPayments
+        var today = DateOnly.FromDateTime(LocalDayRange.StartOfToday(timeZone).DateTime);
+        var existing = await db.StudentPayments
+            .AsNoTracking()
             .Where(x => x.SchoolId == profile.SchoolId && x.AthleteProfileId == profile.Id)
-            .OrderByDescending(x => x.Year)
-            .ThenByDescending(x => x.Month)
-            .Select(x => PaymentResponse.From(x, today))
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(payments);
+        var school = await db.Schools
+            .AsNoTracking()
+            .Where(x => x.Id == profile.SchoolId)
+            .Select(x => new { x.DefaultMonthlyFee, x.PaymentDayOfMonth })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var payments = existing.Select(x => PaymentResponse.From(x, today)).ToList();
+
+        var effectiveFee = school is null
+            ? null
+            : PaymentSchedule.EffectiveFee(school.DefaultMonthlyFee, profile.MonthlyFeeOverride);
+
+        if (effectiveFee is > 0 && school is not null)
+        {
+            var recordedMonths = existing.Select(x => (x.Year, x.Month)).ToHashSet();
+            foreach (var (year, month) in ActivePayableMonths(today, school.PaymentDayOfMonth))
+            {
+                if (recordedMonths.Add((year, month)))
+                {
+                    payments.Add(PaymentResponse.Synthetic(profile.Id, year, month, effectiveFee.Value, today));
+                }
+            }
+        }
+
+        var ordered = payments
+            .OrderByDescending(x => x.Year)
+            .ThenByDescending(x => x.Month)
+            .ToList();
+
+        return Results.Ok(ordered);
+    }
+
+    // The months a member should currently see as payable: the current month, plus next month
+    // once it has activated on the school's payment day.
+    private static IEnumerable<(int Year, int Month)> ActivePayableMonths(DateOnly today, int? paymentDay)
+    {
+        yield return (today.Year, today.Month);
+
+        var next = new DateOnly(today.Year, today.Month, 1).AddMonths(1);
+        if (PaymentSchedule.IsMonthActive(next.Year, next.Month, paymentDay, today))
+        {
+            yield return (next.Year, next.Month);
+        }
     }
 
     private static Task<Athletes.AthleteProfile?> FindCurrentAthleteProfileAsync(

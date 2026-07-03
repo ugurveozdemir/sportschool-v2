@@ -77,6 +77,82 @@ public sealed class PaymentEndpointTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PaymentSettings_RoundTrip()
+    {
+        await SeedSchoolWithAthletesAsync();
+        using var client = _factory.CreateAuthenticatedClient(_coach, UserRole.Coach);
+
+        using var save = await client.PutAsJsonAsync(
+            "/api/school/payment-settings",
+            new SavePaymentSettingsRequest(1200m, 25));
+        Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+
+        var settings = await client.GetFromJsonAsync<PaymentSettingsResponse>("/api/school/payment-settings", JsonOptions);
+        Assert.NotNull(settings);
+        Assert.Equal(1200m, settings!.DefaultMonthlyFee);
+        Assert.Equal(25, settings.PaymentDayOfMonth);
+    }
+
+    [Fact]
+    public async Task PaymentSettings_RejectsInvalidPaymentDay()
+    {
+        await SeedSchoolWithAthletesAsync();
+        using var client = _factory.CreateAuthenticatedClient(_coach, UserRole.Coach);
+
+        using var response = await client.PutAsJsonAsync(
+            "/api/school/payment-settings",
+            new SavePaymentSettingsRequest(1200m, 31));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MonthlyList_FillsAmountFromFee_WithAthleteOverride()
+    {
+        await SeedSchoolWithAthletesAsync();
+        var athleteId = await FirstAthleteIdAsync(_schoolId); // "Ada Aydin" (orders first)
+        using var client = _factory.CreateAuthenticatedClient(_coach, UserRole.Coach);
+
+        await client.PutAsJsonAsync("/api/school/payment-settings", new SavePaymentSettingsRequest(1200m, 5));
+        using var feeResponse = await client.PutAsJsonAsync(
+            $"/api/school/athletes/{athleteId}/fee",
+            new SaveAthleteFeeRequest(800m));
+        Assert.Equal(HttpStatusCode.OK, feeResponse.StatusCode);
+
+        var now = DateTime.UtcNow;
+        var rows = await client.GetFromJsonAsync<List<MonthlyPaymentResponse>>(
+            $"/api/school/payments?year={now.Year}&month={now.Month}", JsonOptions);
+
+        Assert.NotNull(rows);
+        var overridden = Assert.Single(rows!, row => row.AthleteProfileId == athleteId);
+        Assert.Equal(800m, overridden.Amount);
+        Assert.Equal(800m, overridden.MonthlyFeeOverride);
+        var defaulted = Assert.Single(rows!, row => row.AthleteProfileId != athleteId);
+        Assert.Equal(1200m, defaulted.Amount);
+        Assert.Null(defaulted.MonthlyFeeOverride);
+    }
+
+    [Fact]
+    public async Task MonthlyList_FutureMonth_IsInactiveAndPending_BeforePaymentDay()
+    {
+        await SeedSchoolWithAthletesAsync();
+        using var client = _factory.CreateAuthenticatedClient(_coach, UserRole.Coach);
+        await client.PutAsJsonAsync("/api/school/payment-settings", new SavePaymentSettingsRequest(1000m, 15));
+
+        // Two months ahead can never have activated yet, so it is inactive and merely upcoming.
+        var future = new DateOnly(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1).AddMonths(2);
+        var rows = await client.GetFromJsonAsync<List<MonthlyPaymentResponse>>(
+            $"/api/school/payments?year={future.Year}&month={future.Month}", JsonOptions);
+
+        Assert.NotNull(rows);
+        Assert.All(rows!, row =>
+        {
+            Assert.False(row.IsActive);
+            Assert.Equal(PaymentStatus.Pending, row.EffectiveStatus);
+        });
+    }
+
     public Task InitializeAsync()
     {
         return Task.CompletedTask;
