@@ -22,6 +22,8 @@ export const endpoints = {
   schoolTrainings: "/api/school/trainings",
   schoolTraining: (trainingId: string) => `/api/school/trainings/${trainingId}`,
   schoolPayments: "/api/school/payments",
+  schoolPaymentSettings: "/api/school/payment-settings",
+  schoolAthleteFee: (athleteProfileId: string) => `/api/school/athletes/${athleteProfileId}/fee`,
   schoolAthletePayment: (athleteProfileId: string, year: number, month: number) =>
     `/api/school/athletes/${athleteProfileId}/payments/${year}/${month}`,
   coachSummary: "/api/mobile/coach/summary",

@@ -4,7 +4,7 @@ import { Alert, Modal, Pressable, StyleSheet, Switch, Text, View } from "react-n
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
-import { useSchoolMonthlyPayments, useUpsertSchoolPayment } from "@/features/coach/api";
+import { usePaymentSettings, useSchoolMonthlyPayments, useUpdateAthleteFee, useUpdatePaymentSettings, useUpsertSchoolPayment } from "@/features/coach/api";
 import type { SchoolMonthlyPaymentResponse } from "@/features/coach/types";
 import { usePayments } from "@/features/me/api";
 import type { PaymentResponse } from "@/features/me/types";
@@ -46,6 +46,7 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [filter, setFilter] = useState<PaymentFilter>("all");
   const [editing, setEditing] = useState<SchoolMonthlyPaymentResponse | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const paymentsQuery = useSchoolMonthlyPayments(year, month);
   const rows = paymentsQuery.data ?? [];
@@ -72,9 +73,14 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       <View style={styles.headerBlock}>
-        <View>
-          <Text style={styles.title}>Ödeme Takibi</Text>
-          <Text style={styles.subtitle}>Aylık aidat durumlarını takip et.</Text>
+        <View style={styles.titleRow}>
+          <View style={styles.flexOne}>
+            <Text style={styles.title}>Ödeme Takibi</Text>
+            <Text style={styles.subtitle}>Aylık aidat durumlarını takip et.</Text>
+          </View>
+          <Pressable accessibilityLabel="Ödeme ayarları" onPress={() => setSettingsOpen(true)} style={styles.iconButton}>
+            <MaterialCommunityIcons name="cog-outline" size={20} color={colors.primary} />
+          </Pressable>
         </View>
         <View style={styles.monthNav}>
           <Pressable accessibilityLabel="Önceki ay" onPress={() => goToMonth(-1)} style={styles.monthNavButton}>
@@ -123,7 +129,75 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
       )}
 
       <PaymentEditorModal payment={editing} year={year} month={month} onClose={() => setEditing(null)} />
+      <PaymentSettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </ScreenShell>
+  );
+}
+
+function PaymentSettingsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const settingsQuery = usePaymentSettings(visible);
+  const updateSettings = useUpdatePaymentSettings();
+  const [fee, setFee] = useState("");
+  const [day, setDay] = useState("");
+
+  const settings = settingsQuery.data;
+  useEffect(() => {
+    if (visible && settings) {
+      setFee(settings.defaultMonthlyFee != null ? String(settings.defaultMonthlyFee) : "");
+      setDay(settings.paymentDayOfMonth != null ? String(settings.paymentDayOfMonth) : "");
+    }
+  }, [visible, settings]);
+
+  const submit = () => {
+    const trimmedFee = fee.trim();
+    const trimmedDay = day.trim();
+
+    let parsedFee: number | null = null;
+    if (trimmedFee.length > 0) {
+      parsedFee = Number(trimmedFee.replace(",", "."));
+      if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+        Alert.alert("Geçersiz ücret", "Lütfen geçerli bir ücret girin.");
+        return;
+      }
+    }
+
+    let parsedDay: number | null = null;
+    if (trimmedDay.length > 0) {
+      parsedDay = Number(trimmedDay);
+      if (!Number.isInteger(parsedDay) || parsedDay < 1 || parsedDay > 28) {
+        Alert.alert("Geçersiz gün", "Ödeme günü 1 ile 28 arasında olmalıdır.");
+        return;
+      }
+    }
+
+    updateSettings.mutate(
+      { defaultMonthlyFee: parsedFee, paymentDayOfMonth: parsedDay },
+      {
+        onSuccess: onClose,
+        onError: () => Alert.alert("Hata", "Ayarlar kaydedilemedi. Lütfen tekrar deneyin.")
+      }
+    );
+  };
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Ödeme Ayarları</Text>
+            <Pressable accessibilityLabel="Kapat" onPress={onClose} style={styles.iconButton}>
+              <MaterialCommunityIcons name="close" size={20} color={colors.primary} />
+            </Pressable>
+          </View>
+          <Text style={styles.modalSubtitle}>Okul geneli varsayılan aidat ve ödeme günü.</Text>
+          <TextField label="Varsayılan aylık ücret (₺)" keyboardType="numeric" onChangeText={setFee} placeholder="0" value={fee} />
+          <TextField label="Ödeme günü (1–28)" keyboardType="numeric" onChangeText={setDay} placeholder="örn. 5" value={day} />
+          <Text style={styles.helperText}>{"Gelecek ayın aidatı, bu günden itibaren aktif olur. Boş bırakılırsa ayın 1'inde aktif olur."}</Text>
+          <Button disabled={updateSettings.isPending} label={updateSettings.isPending ? "Kaydediliyor" : "Kaydet"} onPress={submit} />
+          <Button disabled={updateSettings.isPending} label="Vazgeç" onPress={onClose} variant="outline" />
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -164,17 +238,20 @@ function PaymentEditorModal({
   onClose: () => void;
 }) {
   const upsert = useUpsertSchoolPayment(year, month);
+  const updateFee = useUpdateAthleteFee();
   const [amount, setAmount] = useState("");
   const [paid, setPaid] = useState(false);
+  const [customFee, setCustomFee] = useState("");
 
   useEffect(() => {
     if (payment) {
       setAmount(payment.amount != null ? String(payment.amount) : "");
       setPaid(payment.effectiveStatus === "Paid");
+      setCustomFee(payment.monthlyFeeOverride != null ? String(payment.monthlyFeeOverride) : "");
     }
   }, [payment]);
 
-  const submit = () => {
+  const submit = async () => {
     if (!payment) {
       return;
     }
@@ -185,8 +262,26 @@ function PaymentEditorModal({
       return;
     }
 
-    upsert.mutate(
-      {
+    const trimmedFee = customFee.trim();
+    let parsedFee: number | null = null;
+    if (trimmedFee.length > 0) {
+      parsedFee = Number(trimmedFee.replace(",", "."));
+      if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+        Alert.alert("Geçersiz ücret", "Lütfen geçerli bir özel ücret girin.");
+        return;
+      }
+    }
+
+    const feeChanged = parsedFee !== (payment.monthlyFeeOverride ?? null);
+
+    try {
+      if (feeChanged) {
+        await updateFee.mutateAsync({
+          athleteProfileId: payment.athleteProfileId,
+          request: { monthlyFee: parsedFee }
+        });
+      }
+      await upsert.mutateAsync({
         athleteProfileId: payment.athleteProfileId,
         request: {
           amount: parsed,
@@ -194,13 +289,14 @@ function PaymentEditorModal({
           status: paid ? "Paid" : "Pending",
           paidOn: paid ? new Date().toISOString().slice(0, 10) : null
         }
-      },
-      {
-        onSuccess: onClose,
-        onError: () => Alert.alert("Hata", "Ödeme kaydedilemedi. Lütfen tekrar deneyin.")
-      }
-    );
+      });
+      onClose();
+    } catch {
+      Alert.alert("Hata", "Ödeme kaydedilemedi. Lütfen tekrar deneyin.");
+    }
   };
+
+  const saving = upsert.isPending || updateFee.isPending;
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={payment !== null}>
@@ -218,8 +314,10 @@ function PaymentEditorModal({
             <Text style={styles.toggleLabel}>Ödendi olarak işaretle</Text>
             <Switch onValueChange={setPaid} value={paid} />
           </View>
-          <Button disabled={upsert.isPending} label={upsert.isPending ? "Kaydediliyor" : "Kaydet"} onPress={submit} />
-          <Button disabled={upsert.isPending} label="Vazgeç" onPress={onClose} variant="outline" />
+          <TextField label="Sporcuya özel aylık ücret (₺)" keyboardType="numeric" onChangeText={setCustomFee} placeholder="Okul varsayılanı" value={customFee} />
+          <Text style={styles.helperText}>Boş bırakılırsa okul varsayılan ücreti uygulanır.</Text>
+          <Button disabled={saving} label={saving ? "Kaydediliyor" : "Kaydet"} onPress={submit} />
+          <Button disabled={saving} label="Vazgeç" onPress={onClose} variant="outline" />
         </View>
       </View>
     </Modal>
@@ -266,13 +364,13 @@ function MemberPayments({ session, payments }: { session: ReturnType<typeof useS
                 <Text style={styles.rowSubtitle}>Tüm aidatlar ödenmiş görünüyor.</Text>
               </SurfaceCard>
             ) : (
-              unpaid.map((payment) => <MemberPaymentRow key={payment.id} payment={payment} />)
+              unpaid.map((payment) => <MemberPaymentRow key={`${payment.year}-${payment.month}`} payment={payment} />)
             )}
           </View>
 
           <SectionTitle title="Geçmiş Ödemeler" action="Tümünü Gör" />
           <View style={styles.list}>
-            {paid.map((payment) => <MemberPaymentRow key={payment.id} payment={payment} />)}
+            {paid.map((payment) => <MemberPaymentRow key={`${payment.year}-${payment.month}`} payment={payment} />)}
           </View>
         </>
       )}
@@ -321,6 +419,7 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   flexOne: { flex: 1 },
   headerBlock: { gap: spacing.md },
+  helperText: { ...typography.body, color: colors.onSurfaceVariant },
   iconButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: "center", width: 38 },
   list: { gap: spacing.md },
   metricsRow: { flexDirection: "row", gap: spacing.sm },
@@ -352,5 +451,6 @@ const styles = StyleSheet.create({
   summaryTop: { alignItems: "flex-start", flexDirection: "row", justifyContent: "space-between" },
   summaryValue: { ...typography.headline },
   tableCard: { paddingVertical: 0 },
-  title: { ...typography.headline, color: colors.primary }
+  title: { ...typography.headline, color: colors.primary },
+  titleRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" }
 });

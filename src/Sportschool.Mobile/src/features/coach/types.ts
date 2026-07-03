@@ -147,6 +147,8 @@ export type SchoolMonthlyPaymentResponse = {
   amount: number | null;
   amountPaid: number | null;
   balance: number | null;
+  monthlyFeeOverride: number | null;
+  isActive: boolean;
   status: PaymentStatus | null;
   effectiveStatus: PaymentStatus;
   paidOn: string | null;
@@ -157,6 +159,20 @@ export type SavePaymentRequest = {
   amountPaid: number | null;
   status: PaymentStatus;
   paidOn: string | null;
+};
+
+export type PaymentSettingsResponse = {
+  defaultMonthlyFee: number | null;
+  paymentDayOfMonth: number | null;
+};
+
+export type SavePaymentSettingsRequest = {
+  defaultMonthlyFee: number | null;
+  paymentDayOfMonth: number | null;
+};
+
+export type SaveAthleteFeeRequest = {
+  monthlyFee: number | null;
 };
 
 export type SaveCoachAthleteReportRequest = {

@@ -13,10 +13,13 @@ import type {
   CoachTrainingItem,
   CreateCoachTrainingRequest,
   GroupAthleteResponse,
+  PaymentSettingsResponse,
+  SaveAthleteFeeRequest,
   SaveSchoolGroupRequest,
   SaveCoachAthleteReportRequest,
   SaveCoachAttendanceRequest,
   SavePaymentRequest,
+  SavePaymentSettingsRequest,
   SchoolGroupResponse,
   SchoolMonthlyPaymentResponse,
   UpdateCoachTrainingRequest
@@ -232,6 +235,35 @@ export function useUpsertSchoolPayment(year: number, month: number) {
         method: "PUT",
         body: request
       }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["school", "payments"] });
+    }
+  });
+}
+
+export function usePaymentSettings(enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: ["school", "payment-settings"],
+    queryFn: () => apiRequest<PaymentSettingsResponse>(endpoints.schoolPaymentSettings)
+  });
+}
+
+export function useUpdatePaymentSettings() {
+  return useMutation({
+    mutationFn: (request: SavePaymentSettingsRequest) =>
+      apiRequest<PaymentSettingsResponse>(endpoints.schoolPaymentSettings, { method: "PUT", body: request }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["school", "payment-settings"] });
+      await queryClient.invalidateQueries({ queryKey: ["school", "payments"] });
+    }
+  });
+}
+
+export function useUpdateAthleteFee() {
+  return useMutation({
+    mutationFn: ({ athleteProfileId, request }: { athleteProfileId: string; request: SaveAthleteFeeRequest }) =>
+      apiRequest(endpoints.schoolAthleteFee(athleteProfileId), { method: "PUT", body: request }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["school", "payments"] });
     }
