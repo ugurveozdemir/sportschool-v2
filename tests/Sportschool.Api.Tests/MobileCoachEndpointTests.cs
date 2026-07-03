@@ -138,6 +138,41 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task SaveAttendance_ForNotYetStartedTraining_IsRejected()
+    {
+        var data = await SeedCoachScenarioAsync();
+        var futureStartsAt = DateTimeOffset.UtcNow.AddHours(2);
+        var futureTraining = new TrainingSession
+        {
+            SchoolId = data.Group.SchoolId,
+            CoachId = data.Coach.Id,
+            Title = "Future Coach Training",
+            StartsAt = futureStartsAt,
+            EndsAt = futureStartsAt.AddHours(1),
+            Recurrence = TrainingRecurrence.None,
+            Groups = { new TrainingSessionGroup { GroupId = data.Group.Id } }
+        };
+        await _factory.SeedAsync(db =>
+        {
+            db.TrainingSessions.Add(futureTraining);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        using var response = await client.PostAsJsonAsync($"/api/mobile/coach/trainings/{futureTraining.Id}/attendance", new
+        {
+            athleteProfileId = data.Athlete.Id,
+            status = AttendanceStatus.Present
+        });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var count = await _factory.QueryAsync(db => db.AttendanceRecords.CountAsync(
+            x => x.TrainingSessionId == futureTraining.Id));
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
     public async Task CoachAthletes_ReturnsAllSchoolAthletes()
     {
         var data = await SeedCoachScenarioAsync();
@@ -241,7 +276,10 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             ParentPhone = "05000000001"
         };
         var now = DateTimeOffset.UtcNow;
-        var todayStartsAt = new DateTimeOffset(now.Year, now.Month, now.Day, 12, 0, 0, TimeSpan.Zero);
+        var startOfDay = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        // A training that has already started earlier today, so its attendance window is open
+        // regardless of the wall-clock time the test suite runs at.
+        var todayStartsAt = now.AddHours(-1) < startOfDay ? startOfDay : now.AddHours(-1);
         var coachTraining = new TrainingSession
         {
             SchoolId = school.Id,
@@ -263,7 +301,6 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             Recurrence = TrainingRecurrence.None,
             Groups = { new TrainingSessionGroup { Group = otherGroup } }
         };
-
         await _factory.SeedAsync(db =>
         {
             db.Schools.Add(school);

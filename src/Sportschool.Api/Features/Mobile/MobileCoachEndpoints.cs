@@ -416,6 +416,7 @@ public static class MobileCoachEndpoints
         SaveMobileCoachAttendanceRequest request,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -433,6 +434,11 @@ public static class MobileCoachEndpoints
         if (training is null)
         {
             return Results.NotFound();
+        }
+
+        if (!IsWithinAttendanceWindow(training.StartsAt, timeZone))
+        {
+            return AttendanceWindowClosed();
         }
 
         var groupIds = training.Groups.Select(group => group.Id).ToArray();
@@ -478,6 +484,7 @@ public static class MobileCoachEndpoints
         SaveMobileCoachAttendanceRequest request,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -495,6 +502,11 @@ public static class MobileCoachEndpoints
         if (training is null)
         {
             return Results.NotFound();
+        }
+
+        if (!IsWithinAttendanceWindow(training.StartsAt, timeZone))
+        {
+            return AttendanceWindowClosed();
         }
 
         var attendance = await db.AttendanceRecords.FirstOrDefaultAsync(
@@ -520,6 +532,26 @@ public static class MobileCoachEndpoints
         var schoolId = CurrentUser.GetSchoolId(currentUser);
         var coachId = CurrentUser.GetUserId(currentUser);
         return schoolId is null || coachId is null ? null : new CoachContext(schoolId.Value, coachId.Value);
+    }
+
+    /// <summary>
+    /// Attendance may be taken once a training has started and until the end of the day
+    /// (in the configured time zone) on which it started. Future trainings and trainings
+    /// from earlier days are outside the window.
+    /// </summary>
+    private static bool IsWithinAttendanceWindow(DateTimeOffset startsAt, TimeZoneInfo timeZone)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var todayStart = LocalDayRange.StartOfToday(timeZone, now);
+        return startsAt >= todayStart && startsAt <= now;
+    }
+
+    private static IResult AttendanceWindowClosed()
+    {
+        return Results.Problem(
+            statusCode: 422,
+            title: "Yoklama penceresi kapalı",
+            detail: "Bu antrenman için yoklama alma süresi geçerli değil.");
     }
 
     private static Task<MobileCoachAttendanceRosterTraining?> FindCoachTrainingAsync(
