@@ -19,6 +19,15 @@ import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatTime } from "@/shared/utils/date";
 
+// Attendance can be taken once a training has started and until the end of that day.
+// The backend (in the school's configured time zone) is the source of truth; this is a
+// client-side approximation using the device clock to keep the UI in sync.
+function isAttendanceWindowOpen(startsAt: string) {
+  const start = new Date(startsAt);
+  const now = new Date();
+  return start.getTime() <= now.getTime() && start.toDateString() === now.toDateString();
+}
+
 export default function TrainingDetailScreen() {
   const { session } = useSession();
   const { trainingId } = useLocalSearchParams<{ trainingId: string }>();
@@ -39,6 +48,11 @@ export default function TrainingDetailScreen() {
   }, [rosterAthletes]);
 
   const submitAttendance = () => {
+    const startsAt = rosterQuery.data?.training.startsAt;
+    if (startsAt && !isAttendanceWindowOpen(startsAt)) {
+      Alert.alert("Yoklama", "Yoklama penceresi kapalı. Yoklama yalnızca antrenmanın yapıldığı gün alınabilir.");
+      return;
+    }
     const athletes = rosterQuery.data?.athletes ?? [];
     const items = athletes.reduce<SaveCoachAttendanceItem[]>((pending, athlete) => {
       const target = statuses[athlete.athleteProfileId] ?? "Present";
@@ -91,6 +105,13 @@ export default function TrainingDetailScreen() {
 
   const { training, athletes } = rosterQuery.data;
   const notes = training.notes?.trim();
+  const attendanceOpen = isAttendanceWindowOpen(training.startsAt);
+  const notStartedYet = new Date(training.startsAt).getTime() > Date.now();
+  const attendanceHint = attendanceOpen
+    ? "Herkes varsayılan \"Geldi\" işaretli. Sadece istisnaları değiştir ve kaydet."
+    : notStartedYet
+      ? `Yoklama, antrenman başladığında (${formatTime(training.startsAt)}) açılır.`
+      : "Yoklama penceresi kapandı. Yoklama yalnızca antrenmanın yapıldığı gün alınabilir.";
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
@@ -147,19 +168,20 @@ export default function TrainingDetailScreen() {
           <EmptyState title="Oyuncu yok" description="Bu antrenmana bağlı gruplarda aktif oyuncu bulunmuyor." />
         ) : (
           <>
-            <Text style={styles.mutedText}>{"Herkes varsayılan \"Geldi\" işaretli. Sadece istisnaları değiştir ve kaydet."}</Text>
+            <Text style={attendanceOpen ? styles.mutedText : styles.warningText}>{attendanceHint}</Text>
             <View style={styles.athleteList}>
               {athletes.map((athlete) => (
                 <AttendanceRow
                   key={athlete.athleteProfileId}
                   athlete={athlete}
                   status={statuses[athlete.athleteProfileId] ?? "Present"}
+                  disabled={!attendanceOpen}
                   onChange={(status) => setStatuses((current) => ({ ...current, [athlete.athleteProfileId]: status }))}
                 />
               ))}
             </View>
             <Button
-              disabled={saveAttendance.isPending}
+              disabled={saveAttendance.isPending || !attendanceOpen}
               label={saveAttendance.isPending ? "Kaydediliyor" : "Yoklamayı Kaydet"}
               onPress={submitAttendance}
             />
@@ -194,9 +216,10 @@ const ATTENDANCE_OPTIONS: { status: AttendanceStatus; label: string }[] = [
   { status: "Excused", label: "İzinli" }
 ];
 
-function AttendanceRow({ athlete, status, onChange }: {
+function AttendanceRow({ athlete, status, disabled = false, onChange }: {
   athlete: CoachAttendanceRosterItem;
   status: AttendanceStatus;
+  disabled?: boolean;
   onChange: (status: AttendanceStatus) => void;
 }) {
   return (
@@ -208,14 +231,15 @@ function AttendanceRow({ athlete, status, onChange }: {
           <Text style={styles.athleteMeta}>Veli: {athlete.parentFullName}</Text>
         </View>
       </View>
-      <View style={styles.statusGroup}>
+      <View style={[styles.statusGroup, disabled && styles.statusGroupDisabled]}>
         {ATTENDANCE_OPTIONS.map((option) => {
           const selected = option.status === status;
           return (
             <Pressable
               key={option.status}
               accessibilityRole="button"
-              accessibilityState={{ selected }}
+              accessibilityState={{ selected, disabled }}
+              disabled={disabled}
               onPress={() => onChange(option.status)}
               style={[styles.statusChip, selected && styles.statusChipSelected]}
             >
@@ -416,8 +440,10 @@ const styles = StyleSheet.create({
   statusChipText: { ...typography.label, color: colors.onSurfaceVariant },
   statusChipTextSelected: { color: colors.onPrimary },
   statusGroup: { flexDirection: "row", gap: spacing.xs },
+  statusGroupDisabled: { opacity: 0.45 },
   summaryCard: { gap: spacing.lg },
   summaryIcon: { alignItems: "center", backgroundColor: "rgba(104,253,179,0.22)", borderRadius: radius.lg, height: 52, justifyContent: "center", width: 52 },
   summaryTop: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  timeRow: { flexDirection: "row", gap: spacing.md }
+  timeRow: { flexDirection: "row", gap: spacing.md },
+  warningText: { ...typography.bodyLarge, color: colors.error }
 });

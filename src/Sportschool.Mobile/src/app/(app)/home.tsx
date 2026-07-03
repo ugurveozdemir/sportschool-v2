@@ -1,13 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useMemberAnnouncements, useUnreadAnnouncementCount } from "@/features/announcements/api";
 import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary } from "@/features/coach/api";
-import type { CoachSummaryResponse } from "@/features/coach/types";
+import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
 import type { AthleteReportResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -85,8 +86,35 @@ export default function HomeScreen() {
   );
 }
 
+function hasStarted(training: CoachTrainingItem) {
+  return new Date(training.startsAt).getTime() <= Date.now();
+}
+
 function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName?: string; summary?: CoachSummaryResponse; navItems: ReturnType<typeof getMobileNav>; shellTitle: string }) {
   const todayTrainings = summary?.todayTrainings ?? [];
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const openAttendance = () => {
+    if (todayTrainings.length === 0) {
+      Alert.alert("Yoklama", "Bugün için planlanmış antrenman bulunmuyor.");
+      return;
+    }
+    if (todayTrainings.length === 1) {
+      const only = todayTrainings[0];
+      if (!hasStarted(only)) {
+        Alert.alert("Yoklama", `Yoklama, antrenman başladığında açılır. Başlangıç: ${formatTime(only.startsAt)}.`);
+        return;
+      }
+      router.push(`/trainings/${only.id}`);
+      return;
+    }
+    setPickerOpen(true);
+  };
+
+  const selectTraining = (training: CoachTrainingItem) => {
+    setPickerOpen(false);
+    router.push(`/trainings/${training.id}`);
+  };
 
   return (
     <ScreenShell title={shellTitle} navItems={navItems}>
@@ -126,21 +154,65 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
             label="Yoklama Al"
             icon="clipboard-check-outline"
             primary
-            onPress={() => {
-              const target = todayTrainings[0];
-              if (target) {
-                router.push(`/trainings/${target.id}`);
-              } else {
-                Alert.alert("Yoklama", "Bugün için planlanmış antrenman bulunmuyor.");
-              }
-            }}
+            onPress={openAttendance}
           />
           <QuickAction label="Ödeme Kaydet" icon="cash-multiple" tone="green" onPress={() => router.push("/payments")} />
           <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" tone="dark" onPress={() => router.push("/announcements")} />
         </View>
       </View>
 
+      <AttendancePickerModal
+        visible={pickerOpen}
+        trainings={todayTrainings}
+        onClose={() => setPickerOpen(false)}
+        onSelect={selectTraining}
+      />
     </ScreenShell>
+  );
+}
+
+function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visible: boolean; trainings: CoachTrainingItem[]; onClose: () => void; onSelect: (training: CoachTrainingItem) => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={styles.modalSheet} onPress={(event) => event.stopPropagation()}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Yoklama alınacak antrenman</Text>
+            <Pressable onPress={onClose} hitSlop={8}>
+              <MaterialCommunityIcons name="close" size={22} color={colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+          {trainings.map((training) => {
+            const started = hasStarted(training);
+            const groupNames = training.groups.map((group) => group.name).join(", ");
+            return (
+              <Pressable
+                key={training.id}
+                disabled={!started}
+                onPress={() => onSelect(training)}
+                style={started ? styles.pickerRow : styles.pickerRowDisabled}
+              >
+                <View style={styles.pickerRowMain}>
+                  <Text style={styles.pickerRowTitle}>{training.title}</Text>
+                  <Text style={styles.pickerRowMeta}>
+                    {formatTime(training.startsAt)} – {formatTime(training.endsAt)}
+                    {groupNames ? ` • ${groupNames}` : ""}
+                  </Text>
+                </View>
+                {started ? (
+                  <Pill
+                    label={training.recordedAttendanceCount >= training.totalAthletes && training.totalAthletes > 0 ? "Tamamlandı" : `${training.recordedAttendanceCount}/${training.totalAthletes}`}
+                    tone={training.recordedAttendanceCount >= training.totalAthletes && training.totalAthletes > 0 ? "success" : "neutral"}
+                  />
+                ) : (
+                  <Pill label={`${formatTime(training.startsAt)}'de başlar`} tone="warning" />
+                )}
+              </Pressable>
+            );
+          })}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -463,12 +535,21 @@ const styles = StyleSheet.create({
   linkText: { ...typography.label, color: colors.primary },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
   metricsRow: { flexDirection: "row", gap: spacing.md },
+  modalBackdrop: { alignItems: "center", backgroundColor: "rgba(11,28,48,0.45)", flex: 1, justifyContent: "center", padding: spacing.lg },
+  modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.sm },
+  modalSheet: { backgroundColor: colors.surface, borderRadius: radius.lg, gap: spacing.sm, padding: spacing.lg, width: "100%" },
+  modalTitle: { ...typography.headline, color: colors.primary },
   mutedBold: { ...typography.title, color: colors.outline },
   noPaddingCard: { padding: 0 },
   parentCardTitle: { ...typography.title, color: colors.primary },
   parentInfoBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceContainerHigh, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
   parentTitle: { ...typography.headline, color: colors.primary },
   parentTrainingCard: { backgroundColor: "rgba(232,255,243,0.45)", gap: spacing.md },
+  pickerRow: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.md, justifyContent: "space-between", padding: spacing.md },
+  pickerRowDisabled: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.md, justifyContent: "space-between", opacity: 0.55, padding: spacing.md },
+  pickerRowMain: { flex: 1, gap: 2 },
+  pickerRowMeta: { ...typography.label, color: colors.onSurfaceVariant },
+  pickerRowTitle: { ...typography.title, color: colors.onSurface },
   progressFill: { borderRadius: radius.full, height: "100%" },
   progressLabel: { ...typography.label, color: colors.onPrimary },
   progressTrack: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: radius.full, height: 7, overflow: "hidden" },
