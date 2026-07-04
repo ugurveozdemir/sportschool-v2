@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
@@ -132,6 +132,7 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
 
 function DevelopmentReports({ session, reports }: { session: ReturnType<typeof useSession>["session"]; reports: AthleteReportResponse[] }) {
   const latest = reports[0];
+  const previous = reports[1];
   const chartValues = reports.length > 0
     ? reports.slice(0, 6).reverse().map((report) => averageScore(report) * 10)
     : [40, 55, 45, 70, 60, 85];
@@ -145,11 +146,30 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
 
       {latest ? (
         <>
-          <View style={styles.metricsGrid}>
-            {scoreLabels.map(([label, key, icon]) => (
-              <MetricTile key={key} icon={icon} label={label} value={latest[key].toFixed(1)} tone={key === "speedScore" ? "success" : "primary"} />
-            ))}
-          </View>
+          <SurfaceCard style={styles.skillCard}>
+            <SectionTitle title="Performans" action={previous ? "Önceki rapora göre" : undefined} />
+            <View style={styles.skillList}>
+              {scoreLabels.map(([label, key, icon]) => (
+                <SkillRow
+                  key={key}
+                  icon={icon}
+                  label={label}
+                  value={latest[key]}
+                  delta={previous ? round1(latest[key] - previous[key]) : null}
+                />
+              ))}
+            </View>
+          </SurfaceCard>
+
+          {latest.improvementAreas ? (
+            <SurfaceCard style={styles.focusCard}>
+              <View style={styles.focusHeader}>
+                <MaterialCommunityIcons name="target" size={22} color={colors.secondary} />
+                <Text style={styles.sectionHeading}>Gelişim Alanı</Text>
+              </View>
+              <Text style={styles.focusText}>{latest.improvementAreas}</Text>
+            </SurfaceCard>
+          ) : null}
 
           <SurfaceCard style={styles.chartCard}>
             <SectionTitle title="Gelişim Grafiği" action="Son 6 Rapor" />
@@ -249,8 +269,35 @@ function LegendDot({ label, color }: { label: string; color: string }) {
   );
 }
 
+function SkillRow({ icon, label, value, delta }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: number; delta: number | null }) {
+  const up = delta !== null && delta > 0;
+  const down = delta !== null && delta < 0;
+  const deltaColor = up ? colors.secondary : down ? colors.error : colors.outline;
+  return (
+    <View style={styles.skillRow}>
+      <View style={styles.skillIcon}>
+        <MaterialCommunityIcons name={icon} size={20} color={colors.primary} />
+      </View>
+      <Text style={styles.skillLabel}>{label}</Text>
+      <Text style={styles.skillValue}>{value.toFixed(1)}</Text>
+      {delta === null || delta === 0 ? (
+        <Text style={styles.skillFlat}>{delta === 0 ? "—" : ""}</Text>
+      ) : (
+        <View style={styles.skillDelta}>
+          <MaterialCommunityIcons name={up ? "arrow-up" : "arrow-down"} size={14} color={deltaColor} />
+          <Text style={[styles.skillDeltaText, { color: deltaColor }]}>{Math.abs(delta).toFixed(1)}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function averageScore(report: AthleteReportResponse) {
   return (report.speedScore + report.strengthScore + report.dribblingScore + report.shootingScore) / 4;
+}
+
+function round1(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 function groupCode(name: string) {
@@ -278,8 +325,19 @@ const styles = StyleSheet.create({
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   legendRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, justifyContent: "center" },
   list: { gap: spacing.md },
-  metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   metricsRow: { flexDirection: "row", gap: spacing.sm },
+  skillCard: { gap: spacing.md },
+  skillList: { gap: spacing.sm },
+  skillRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  skillIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 38, justifyContent: "center", width: 38 },
+  skillLabel: { ...typography.bodyLarge, color: colors.onSurface, flex: 1 },
+  skillValue: { ...typography.title, color: colors.primary },
+  skillDelta: { alignItems: "center", flexDirection: "row", gap: 2, minWidth: 48, justifyContent: "flex-end" },
+  skillDeltaText: { ...typography.label },
+  skillFlat: { ...typography.label, color: colors.outline, minWidth: 48, textAlign: "right" },
+  focusCard: { backgroundColor: colors.secondaryContainer, gap: spacing.sm },
+  focusHeader: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  focusText: { ...typography.bodyLarge, color: colors.onSurface },
   modalBackdrop: { backgroundColor: "rgba(0, 0, 0, 0.32)", flex: 1, justifyContent: "flex-end" },
   modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: "80%", padding: spacing.lg },
   modalContent: { gap: spacing.md, paddingBottom: spacing.xl },
