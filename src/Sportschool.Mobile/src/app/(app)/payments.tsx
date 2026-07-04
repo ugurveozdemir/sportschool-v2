@@ -239,57 +239,65 @@ function PaymentEditorModal({
 }) {
   const upsert = useUpsertSchoolPayment(year, month);
   const updateFee = useUpdateAthleteFee();
-  const [amount, setAmount] = useState("");
+  const settingsQuery = usePaymentSettings(payment !== null);
+  const defaultFee = settingsQuery.data?.defaultMonthlyFee ?? null;
   const [paid, setPaid] = useState(false);
+  const [hasCustomFee, setHasCustomFee] = useState(false);
   const [customFee, setCustomFee] = useState("");
 
   useEffect(() => {
     if (payment) {
-      setAmount(payment.amount != null ? String(payment.amount) : "");
+      const override = payment.monthlyFeeOverride;
       setPaid(payment.effectiveStatus === "Paid");
-      setCustomFee(payment.monthlyFeeOverride != null ? String(payment.monthlyFeeOverride) : "");
+      setHasCustomFee(override != null);
+      setCustomFee(override != null ? String(override) : defaultFee != null ? String(defaultFee) : "");
     }
-  }, [payment]);
+  }, [payment, defaultFee]);
 
   const submit = async () => {
     if (!payment) {
       return;
     }
 
-    const parsed = Number(amount.replace(",", "."));
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      Alert.alert("Geçersiz tutar", "Lütfen sıfırdan büyük bir tutar girin.");
-      return;
-    }
-
-    const trimmedFee = customFee.trim();
-    let parsedFee: number | null = null;
-    if (trimmedFee.length > 0) {
-      parsedFee = Number(trimmedFee.replace(",", "."));
-      if (!Number.isFinite(parsedFee) || parsedFee < 0) {
-        Alert.alert("Geçersiz ücret", "Lütfen geçerli bir özel ücret girin.");
+    // When the toggle is on the athlete keeps a locked fee that ignores later default changes.
+    let overrideTarget: number | null = null;
+    if (hasCustomFee) {
+      const parsed = Number(customFee.replace(",", "."));
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        Alert.alert("Geçersiz aidat", "Lütfen sıfırdan büyük bir aidat girin.");
         return;
       }
+      overrideTarget = parsed;
     }
 
-    const feeChanged = parsedFee !== (payment.monthlyFeeOverride ?? null);
+    const feeChanged = overrideTarget !== (payment.monthlyFeeOverride ?? null);
+    const targetFee = hasCustomFee ? overrideTarget : defaultFee;
+    // Keep an already-recorded amount on a no-op fee edit; otherwise the fee drives it.
+    const amount = payment.paymentId != null && !feeChanged ? payment.amount : targetFee;
+
+    if (paid && (amount === null || amount <= 0)) {
+      Alert.alert("Aidat belirtilmedi", "Ödeme kaydı için önce bir aidat tutarı belirleyin.");
+      return;
+    }
 
     try {
       if (feeChanged) {
         await updateFee.mutateAsync({
           athleteProfileId: payment.athleteProfileId,
-          request: { monthlyFee: parsedFee }
+          request: { monthlyFee: overrideTarget }
         });
       }
-      await upsert.mutateAsync({
-        athleteProfileId: payment.athleteProfileId,
-        request: {
-          amount: parsed,
-          amountPaid: paid ? parsed : 0,
-          status: paid ? "Paid" : "Pending",
-          paidOn: paid ? new Date().toISOString().slice(0, 10) : null
-        }
-      });
+      if (amount !== null && amount > 0) {
+        await upsert.mutateAsync({
+          athleteProfileId: payment.athleteProfileId,
+          request: {
+            amount,
+            amountPaid: paid ? amount : 0,
+            status: paid ? "Paid" : "Pending",
+            paidOn: paid ? new Date().toISOString().slice(0, 10) : null
+          }
+        });
+      }
       onClose();
     } catch {
       Alert.alert("Hata", "Ödeme kaydedilemedi. Lütfen tekrar deneyin.");
@@ -309,13 +317,24 @@ function PaymentEditorModal({
             </Pressable>
           </View>
           <Text style={styles.modalSubtitle}>{formatMonth(year, month)} aidatı</Text>
-          <TextField label="Tutar (₺)" keyboardType="numeric" onChangeText={setAmount} placeholder="0" value={amount} />
           <View style={styles.toggleRow}>
             <Text style={styles.toggleLabel}>Ödendi olarak işaretle</Text>
             <Switch onValueChange={setPaid} value={paid} />
           </View>
-          <TextField label="Sporcuya özel aylık ücret (₺)" keyboardType="numeric" onChangeText={setCustomFee} placeholder="Okul varsayılanı" value={customFee} />
-          <Text style={styles.helperText}>Boş bırakılırsa okul varsayılan ücreti uygulanır.</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Sporcuya özel aidat</Text>
+            <Switch onValueChange={setHasCustomFee} value={hasCustomFee} />
+          </View>
+          {hasCustomFee ? (
+            <>
+              <TextField label="Sporcuya özel aylık ücret (₺)" keyboardType="numeric" onChangeText={setCustomFee} placeholder="0" value={customFee} />
+              <Text style={styles.helperText}>Bu sporcu, okul varsayılan ücreti değişse de bu tutardan etkilenmez.</Text>
+            </>
+          ) : (
+            <Text style={styles.helperText}>
+              {defaultFee != null ? `Okul varsayılan ücreti uygulanır: ${formatMoney(defaultFee)}.` : "Okul varsayılan ücreti tanımlı değil."}
+            </Text>
+          )}
           <Button disabled={saving} label={saving ? "Kaydediliyor" : "Kaydet"} onPress={submit} />
           <Button disabled={saving} label="Vazgeç" onPress={onClose} variant="outline" />
         </View>
