@@ -58,8 +58,8 @@ export default function CalendarScreen() {
   const isCoach = session?.roles.includes("Coach") ?? false;
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
-  // Coaches default to the weekly view; members stay on the month grid.
-  const [view, setView] = useState<CalendarView>(isCoach ? "week" : "month");
+  // Both coaches and members open on the weekly view; either can switch to the month grid.
+  const [view, setView] = useState<CalendarView>("week");
   const fetchRange = useMemo(
     () => (view === "week" ? getWeekRange(selectedDate) : getMonthRange(visibleMonth)),
     [view, selectedDate, visibleMonth]
@@ -113,8 +113,12 @@ export default function CalendarScreen() {
           markedDates={markedDates}
           selectedDate={selectedDate}
           selectedTrainings={selectedTrainings}
+          trainings={trainings}
+          view={view}
           visibleMonth={visibleMonth}
           onChangeMonth={changeMonth}
+          onChangeView={changeView}
+          onChangeWeek={changeWeek}
           onSelectDate={setSelectedDate}
         />
       )}
@@ -122,7 +126,7 @@ export default function CalendarScreen() {
   );
 }
 
-function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CoachCalendarProps) {
+function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CalendarProps) {
   const groupsQuery = useSchoolGroups();
   const createTraining = useCreateCoachTraining();
   const [isCreateVisible, setIsCreateVisible] = useState(false);
@@ -189,14 +193,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings
     <>
       <View style={styles.headerBlock}>
         <Text style={styles.coachTitle}>Antrenman Takvimi</Text>
-        <View style={styles.segmented}>
-          <Pressable onPress={() => onChangeView("week")} style={[styles.segment, view === "week" && styles.segmentActive]}>
-            <Text style={view === "week" ? styles.segmentActiveText : styles.segmentInactiveText}>Haftalık</Text>
-          </Pressable>
-          <Pressable onPress={() => onChangeView("month")} style={[styles.segment, view === "month" && styles.segmentActive]}>
-            <Text style={view === "month" ? styles.segmentActiveText : styles.segmentInactiveText}>Aylık</Text>
-          </Pressable>
-        </View>
+        <ViewToggle view={view} onChange={onChangeView} />
       </View>
       {view === "week" ? (
         <WeekAgenda
@@ -204,6 +201,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings
           trainings={trainings}
           onAddPress={openCreateTraining}
           onChangeWeek={onChangeWeek}
+          onOpenTraining={(id) => router.push(`/trainings/${id}`)}
         />
       ) : (
         <>
@@ -238,21 +236,27 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings
   );
 }
 
-function MemberCalendar({ markedDates, selectedDate, selectedTrainings, visibleMonth, onChangeMonth, onSelectDate }: CalendarViewProps) {
+function MemberCalendar({ markedDates, selectedDate, selectedTrainings, trainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CalendarProps) {
   return (
     <>
       <View style={styles.headerBlock}>
         <Text style={styles.memberTitle}>Antrenman Programı</Text>
-        <Text style={styles.subtitle}>{formatMonth(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1)}</Text>
+        <ViewToggle view={view} onChange={onChangeView} />
       </View>
-      <CalendarPanel
-        markedDates={markedDates}
-        selectedDate={selectedDate}
-        visibleMonth={visibleMonth}
-        onChangeMonth={onChangeMonth}
-        onSelectDate={onSelectDate}
-      />
-      <ScheduleList title={formatSelectedDate(selectedDate)} subtitle={`${selectedTrainings.length} Etkinlik`} trainings={selectedTrainings} />
+      {view === "week" ? (
+        <WeekAgenda selectedDate={selectedDate} trainings={trainings} onChangeWeek={onChangeWeek} />
+      ) : (
+        <>
+          <CalendarPanel
+            markedDates={markedDates}
+            selectedDate={selectedDate}
+            visibleMonth={visibleMonth}
+            onChangeMonth={onChangeMonth}
+            onSelectDate={onSelectDate}
+          />
+          <ScheduleList title={formatSelectedDate(selectedDate)} subtitle={`${selectedTrainings.length} Etkinlik`} trainings={selectedTrainings} />
+        </>
+      )}
     </>
   );
 }
@@ -266,21 +270,35 @@ type CalendarViewProps = {
   onSelectDate: (date: Date) => void;
 };
 
-type CoachCalendarProps = CalendarViewProps & {
+type CalendarProps = CalendarViewProps & {
   trainings: TrainingItem[];
   view: CalendarView;
   onChangeView: (view: CalendarView) => void;
   onChangeWeek: (offset: number) => void;
 };
 
+function ViewToggle({ view, onChange }: { view: CalendarView; onChange: (view: CalendarView) => void }) {
+  return (
+    <View style={styles.segmented}>
+      <Pressable onPress={() => onChange("week")} style={[styles.segment, view === "week" && styles.segmentActive]}>
+        <Text style={view === "week" ? styles.segmentActiveText : styles.segmentInactiveText}>Haftalık</Text>
+      </Pressable>
+      <Pressable onPress={() => onChange("month")} style={[styles.segment, view === "month" && styles.segmentActive]}>
+        <Text style={view === "month" ? styles.segmentActiveText : styles.segmentInactiveText}>Aylık</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 const weekdayLabels = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const weekdayFullLabels = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 
-function WeekAgenda({ selectedDate, trainings, onAddPress, onChangeWeek }: {
+function WeekAgenda({ selectedDate, trainings, onChangeWeek, onAddPress, onOpenTraining }: {
   selectedDate: Date;
   trainings: TrainingItem[];
-  onAddPress: (date: Date) => void;
   onChangeWeek: (offset: number) => void;
+  onAddPress?: (date: Date) => void;
+  onOpenTraining?: (id: string) => void;
 }) {
   const weekStart = startOfWeek(selectedDate);
   const today = startOfDay(new Date());
@@ -327,9 +345,11 @@ function WeekAgenda({ selectedDate, trainings, onAddPress, onChangeWeek }: {
                 <Text style={styles.dayName}>{day.label}</Text>
                 <Text style={styles.dayCount}>{day.items.length > 0 ? `${day.items.length} antrenman` : "Boş gün"}</Text>
               </View>
-              <Pressable accessibilityLabel={`${day.label} için antrenman ekle`} hitSlop={8} onPress={() => onAddPress(day.date)} style={styles.dayAddButton}>
-                <MaterialCommunityIcons name="plus" size={20} color={colors.surface} />
-              </Pressable>
+              {onAddPress ? (
+                <Pressable accessibilityLabel={`${day.label} için antrenman ekle`} hitSlop={8} onPress={() => onAddPress(day.date)} style={styles.dayAddButton}>
+                  <MaterialCommunityIcons name="plus" size={20} color={colors.surface} />
+                </Pressable>
+              ) : null}
             </View>
 
             {day.items.length === 0 ? (
@@ -337,26 +357,7 @@ function WeekAgenda({ selectedDate, trainings, onAddPress, onChangeWeek }: {
             ) : (
               <View style={styles.dayItems}>
                 {day.items.map((training) => (
-                  <Pressable
-                    key={training.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${training.title} detayını aç`}
-                    onPress={() => router.push(`/trainings/${training.id}`)}
-                    style={styles.agendaItem}
-                  >
-                    <View style={styles.agendaTime}>
-                      <Text style={styles.agendaTimeStart}>{formatTime(training.startsAt)}</Text>
-                      <Text style={styles.agendaTimeEnd}>{formatTime(training.endsAt)}</Text>
-                    </View>
-                    <View style={styles.agendaBar} />
-                    <View style={styles.flexOne}>
-                      <Text style={styles.agendaTitle}>{training.title}</Text>
-                      <Text style={styles.agendaMeta} numberOfLines={1}>
-                        {[formatGroupNames(training.groups), training.location].filter(Boolean).join(" · ")}
-                      </Text>
-                    </View>
-                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.outline} />
-                  </Pressable>
+                  <AgendaItem key={training.id} training={training} onOpen={onOpenTraining} />
                 ))}
               </View>
             )}
@@ -405,6 +406,39 @@ function CalendarPanel({ markedDates, roundedDays, selectedDate, visibleMonth, o
         <Legend color={colors.primary} label="Antrenman" />
       </View>
     </SurfaceCard>
+  );
+}
+
+function AgendaItem({ training, onOpen }: { training: TrainingItem; onOpen?: (id: string) => void }) {
+  const meta = [formatGroupNames(training.groups), training.location].filter(Boolean).join(" · ");
+  const body = (
+    <>
+      <View style={styles.agendaTime}>
+        <Text style={styles.agendaTimeStart}>{formatTime(training.startsAt)}</Text>
+        <Text style={styles.agendaTimeEnd}>{formatTime(training.endsAt)}</Text>
+      </View>
+      <View style={styles.agendaBar} />
+      <View style={styles.flexOne}>
+        <Text style={styles.agendaTitle}>{training.title}</Text>
+        <Text style={styles.agendaMeta} numberOfLines={1}>{meta}</Text>
+      </View>
+      {onOpen ? <MaterialCommunityIcons name="chevron-right" size={20} color={colors.outline} /> : null}
+    </>
+  );
+
+  if (!onOpen) {
+    return <View style={styles.agendaItem}>{body}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${training.title} detayını aç`}
+      onPress={() => onOpen(training.id)}
+      style={styles.agendaItem}
+    >
+      {body}
+    </Pressable>
   );
 }
 
