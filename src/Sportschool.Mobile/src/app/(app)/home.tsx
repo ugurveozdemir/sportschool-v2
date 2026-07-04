@@ -10,14 +10,16 @@ import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
-import type { AthleteReportResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
+import type { AthleteReportResponse, AttendanceResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import type { AttendanceStatus } from "@/shared/constants/domain";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
-import { formatRelativeDay, formatTime, isSameDay } from "@/shared/utils/date";
+import { formatDate, formatRelativeDay, formatTime, isSameDay } from "@/shared/utils/date";
+import { getAttendanceLabel } from "@/shared/utils/status";
 
 export default function HomeScreen() {
   const { session } = useSession();
@@ -47,6 +49,7 @@ export default function HomeScreen() {
   const todayTrainingCount = trainings.filter((training) => isSameDay(training.startsAt)).length;
   const payments = paymentsQuery.data ?? [];
   const announcements = announcementsQuery.data ?? [];
+  const attendance = attendanceQuery.data ?? [];
   const unpaidCount = payments.filter((payment) => payment.effectiveStatus !== "Paid").length;
   const reports = reportsQuery.data ?? [];
   const latestReport = reports[0];
@@ -67,6 +70,7 @@ export default function HomeScreen() {
         announcements={announcements.slice(0, 2)}
         latestReport={latestReport}
         previousReport={previousReport}
+        attendance={attendance}
       />
     );
   }
@@ -78,7 +82,7 @@ export default function HomeScreen() {
       firstName={profile?.firstName ?? "Arda"}
       nextTraining={nextTraining}
       groupCount={groupsQuery.data?.length ?? 0}
-      attendanceCount={attendanceQuery.data?.length ?? 0}
+      attendance={attendance}
       announcementCount={unreadCountQuery.data?.count ?? 0}
       unpaidCount={unpaidCount}
       latestReport={latestReport}
@@ -216,7 +220,8 @@ function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visi
   );
 }
 
-function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendanceCount, announcementCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: TrainingResponse; groupCount: number; attendanceCount: number; announcementCount: number; unpaidCount: number; latestReport?: AthleteReportResponse }) {
+function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendance, announcementCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; unpaidCount: number; latestReport?: AthleteReportResponse }) {
+  const stats = attendanceStats(attendance);
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={firstName.slice(0, 1)} size={42} tone="dark" />}>
       <View style={styles.headerBlock}>
@@ -264,15 +269,18 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
 
       <View style={styles.metricsRow}>
         <MetricTile icon="account-group-outline" label="Grup" value={`${groupCount}`} />
-        <MetricTile icon="calendar-check-outline" label="Yoklama" value={`${attendanceCount}`} />
+        <MetricTile icon="calendar-check-outline" label="Katılım" value={stats.total > 0 ? `%${stats.rate}` : "-"} tone="success" />
         <MetricTile icon="credit-card-clock-outline" label="Borç" value={`${unpaidCount}`} tone={unpaidCount > 0 ? "danger" : "primary"} />
       </View>
+
+      <AttendanceCard stats={stats} />
     </ScreenShell>
   );
 }
 
-function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, todayTrainingCount, announcements, latestReport, previousReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; latestReport?: AthleteReportResponse; previousReport?: AthleteReportResponse }) {
+function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, todayTrainingCount, announcements, latestReport, previousReport, attendance }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; latestReport?: AthleteReportResponse; previousReport?: AthleteReportResponse; attendance: AttendanceResponse[] }) {
   const nextTrainingGroup = nextTraining ? trainingGroupName(nextTraining) : null;
+  const stats = attendanceStats(attendance);
   const score = latestReport ? round1(averageScore([latestReport.speedScore, latestReport.strengthScore, latestReport.dribblingScore, latestReport.shootingScore])) : null;
   const previousScore = previousReport ? round1(averageScore([previousReport.speedScore, previousReport.strengthScore, previousReport.dribblingScore, previousReport.shootingScore])) : null;
   const trend = score !== null && previousScore !== null ? round1(score - previousScore) : null;
@@ -350,6 +358,8 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
         )}
       </View>
 
+      <AttendanceCard stats={stats} />
+
       <SurfaceCard style={styles.noPaddingCard}>
           <View style={styles.cardInsetHeader}>
             <Text style={styles.parentCardTitle}>Kulüp Duyuruları</Text>
@@ -379,6 +389,80 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
         <EmptyState title="Çok yakında" description="Finansal takip özelliği üzerinde çalışıyoruz." />
       </SurfaceCard>
     </ScreenShell>
+  );
+}
+
+type AttendanceStats = {
+  total: number;
+  present: number;
+  absent: number;
+  excused: number;
+  rate: number;
+  recent: AttendanceResponse[];
+};
+
+function attendanceStats(records: AttendanceResponse[]): AttendanceStats {
+  const present = records.filter((record) => record.status === "Present" || record.status === "Late").length;
+  const absent = records.filter((record) => record.status === "Absent").length;
+  const excused = records.filter((record) => record.status === "Excused").length;
+  const total = records.length;
+  return {
+    total,
+    present,
+    absent,
+    excused,
+    rate: total > 0 ? Math.round((present / total) * 100) : 0,
+    recent: records.slice(0, 5)
+  };
+}
+
+function attendanceTone(status: AttendanceStatus): "success" | "danger" | "neutral" {
+  if (status === "Present" || status === "Late") {
+    return "success";
+  }
+  return status === "Absent" ? "danger" : "neutral";
+}
+
+function AttendanceCard({ stats }: { stats: AttendanceStats }) {
+  return (
+    <SurfaceCard style={styles.sectionStack}>
+      <View style={styles.cardHeaderRow}>
+        <View style={styles.iconTitleRow}>
+          <MaterialCommunityIcons name="calendar-check-outline" size={26} color={colors.secondary} />
+          <Text style={styles.cardTitle}>Katılım</Text>
+        </View>
+        {stats.total > 0 ? <Text style={styles.attendanceRate}>%{stats.rate}</Text> : null}
+      </View>
+      {stats.total === 0 ? (
+        <EmptyState title="Kayıt yok" description="Henüz yoklama kaydı bulunmuyor." />
+      ) : (
+        <>
+          <Text style={styles.subtitle}>Son {stats.total} antrenmanın {stats.present} tanesine katıldın.</Text>
+          <View style={styles.attendanceStatsRow}>
+            <AttendanceStat label="Geldi" value={stats.present} color={colors.secondary} />
+            <AttendanceStat label="Gelmedi" value={stats.absent} color={colors.error} />
+            <AttendanceStat label="Mazeret" value={stats.excused} color={colors.outline} />
+          </View>
+          <View style={styles.attendanceList}>
+            {stats.recent.map((record) => (
+              <View key={record.id} style={styles.attendanceRow}>
+                <Text style={styles.attendanceDate}>{formatDate(record.recordedAt)}</Text>
+                <Pill label={getAttendanceLabel(record.status)} tone={attendanceTone(record.status)} />
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+    </SurfaceCard>
+  );
+}
+
+function AttendanceStat({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <View style={styles.attendanceStat}>
+      <Text style={[styles.attendanceStatValue, { color }]}>{value}</Text>
+      <Text style={styles.attendanceStatLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -499,6 +583,14 @@ function round1(value: number) {
 const styles = StyleSheet.create({
   announcementDot: { borderRadius: 4, height: 8, marginTop: 7, width: 8 },
   announcementItem: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.lg },
+  attendanceRate: { ...typography.headline, color: colors.secondary },
+  attendanceStatsRow: { flexDirection: "row", gap: spacing.sm },
+  attendanceStat: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flex: 1, gap: spacing.xs, paddingVertical: spacing.md },
+  attendanceStatValue: { ...typography.headline },
+  attendanceStatLabel: { ...typography.label, color: colors.onSurfaceVariant },
+  attendanceList: { gap: spacing.sm },
+  attendanceRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.sm },
+  attendanceDate: { ...typography.body, color: colors.onSurface },
   cardHeaderRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   cardInsetHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", padding: spacing.lg },
   cardTitle: { ...typography.headline, color: colors.primary },
