@@ -353,14 +353,8 @@ function MemberPayments({ session, payments }: { session: ReturnType<typeof useS
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "A"} size={42} tone="dark" />}>
       <View style={styles.headerBlock}>
-        <View>
-          <Text style={styles.title}>Ödemeler ve Aidat</Text>
-          <Text style={styles.subtitle}>Finansal durumunu takip et.</Text>
-        </View>
-        <Pressable style={styles.primaryButton}>
-          <MaterialCommunityIcons name="credit-card-outline" size={18} color={colors.onPrimary} />
-          <Text style={styles.primaryButtonText}>Hemen Öde</Text>
-        </Pressable>
+        <Text style={styles.title}>Ödemeler ve Aidat</Text>
+        <Text style={styles.subtitle}>Finansal durumunu takip et.</Text>
       </View>
 
       <View style={styles.summaryGrid}>
@@ -453,8 +447,6 @@ const styles = StyleSheet.create({
   paymentRow: { gap: spacing.md },
   personRow: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
   personRowDanger: { backgroundColor: "rgba(255, 218, 214, 0.25)", marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg },
-  primaryButton: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.primary, borderRadius: radius.full, flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  primaryButtonText: { ...typography.label, color: colors.onPrimary },
   rowAmount: { ...typography.title, color: colors.primary },
   rowLead: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   rowRight: { alignItems: "flex-end", gap: spacing.xs },
