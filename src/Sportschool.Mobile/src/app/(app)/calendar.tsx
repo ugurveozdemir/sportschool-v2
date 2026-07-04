@@ -100,6 +100,7 @@ export default function CalendarScreen() {
           markedDates={markedDates}
           selectedDate={selectedDate}
           selectedTrainings={selectedTrainings}
+          trainings={trainings}
           view={view}
           visibleMonth={visibleMonth}
           onChangeMonth={changeMonth}
@@ -121,20 +122,20 @@ export default function CalendarScreen() {
   );
 }
 
-function CoachCalendar({ markedDates, selectedDate, selectedTrainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CoachCalendarProps) {
+function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CoachCalendarProps) {
   const groupsQuery = useSchoolGroups();
   const createTraining = useCreateCoachTraining();
   const [isCreateVisible, setIsCreateVisible] = useState(false);
   const [form, setForm] = useState(initialTrainingForm);
   const groups = groupsQuery.data ?? [];
 
-  function openCreateTraining() {
+  function openCreateTraining(date?: Date) {
     if (groups.length === 0) {
       Alert.alert("Takvim", "Etkinlik eklemek için önce aktif bir grup olmalı.");
       return;
     }
 
-    setForm({ ...initialTrainingForm, date: selectedDate });
+    setForm({ ...initialTrainingForm, date: date ?? selectedDate });
     setIsCreateVisible(true);
   }
 
@@ -198,29 +199,31 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, view, vis
         </View>
       </View>
       {view === "week" ? (
-        <WeekStrip
-          markedDates={markedDates}
+        <WeekAgenda
           selectedDate={selectedDate}
+          trainings={trainings}
+          onAddPress={openCreateTraining}
           onChangeWeek={onChangeWeek}
-          onSelectDate={onSelectDate}
         />
       ) : (
-        <CalendarPanel
-          markedDates={markedDates}
-          roundedDays
-          selectedDate={selectedDate}
-          visibleMonth={visibleMonth}
-          onChangeMonth={onChangeMonth}
-          onSelectDate={onSelectDate}
-        />
+        <>
+          <CalendarPanel
+            markedDates={markedDates}
+            roundedDays
+            selectedDate={selectedDate}
+            visibleMonth={visibleMonth}
+            onChangeMonth={onChangeMonth}
+            onSelectDate={onSelectDate}
+          />
+          <ScheduleList
+            coach
+            subtitle={`${selectedTrainings.length} Planlı Antrenman`}
+            title={formatSelectedDate(selectedDate)}
+            trainings={selectedTrainings}
+            onAddPress={() => openCreateTraining()}
+          />
+        </>
       )}
-      <ScheduleList
-        coach
-        subtitle={`${selectedTrainings.length} Planlı Antrenman`}
-        title={formatSelectedDate(selectedDate)}
-        trainings={selectedTrainings}
-        onAddPress={openCreateTraining}
-      />
       <CreateTrainingModal
         form={form}
         groups={groups}
@@ -264,53 +267,103 @@ type CalendarViewProps = {
 };
 
 type CoachCalendarProps = CalendarViewProps & {
+  trainings: TrainingItem[];
   view: CalendarView;
   onChangeView: (view: CalendarView) => void;
   onChangeWeek: (offset: number) => void;
 };
 
 const weekdayLabels = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+const weekdayFullLabels = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 
-function WeekStrip({ markedDates, selectedDate, onChangeWeek, onSelectDate }: {
-  markedDates: Set<string>;
+function WeekAgenda({ selectedDate, trainings, onAddPress, onChangeWeek }: {
   selectedDate: Date;
+  trainings: TrainingItem[];
+  onAddPress: (date: Date) => void;
   onChangeWeek: (offset: number) => void;
-  onSelectDate: (date: Date) => void;
 }) {
   const weekStart = startOfWeek(selectedDate);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+  const today = startOfDay(new Date());
+  const days = useMemo(() => {
+    const byDay = new Map<string, TrainingItem[]>();
+    for (const training of trainings) {
+      const key = getDateKey(new Date(training.startsAt));
+      const bucket = byDay.get(key);
+      if (bucket) {
+        bucket.push(training);
+      } else {
+        byDay.set(key, [training]);
+      }
+    }
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = addDays(weekStart, index);
+      const items = (byDay.get(getDateKey(date)) ?? []).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+      return { date, label: weekdayFullLabels[index], short: weekdayLabels[index], items };
+    });
+  }, [weekStart, trainings]);
 
   return (
-    <SurfaceCard style={styles.weekCard}>
-      <View style={styles.calendarHeader}>
-        <Text style={styles.monthTitle}>{formatWeekRange(weekStart)}</Text>
-        <View style={styles.calendarArrows}>
-          <Pressable accessibilityLabel="Önceki hafta" onPress={() => onChangeWeek(-1)} style={styles.circleButton}>
-            <MaterialCommunityIcons name="chevron-left" size={22} color={colors.primary} />
-          </Pressable>
-          <Pressable accessibilityLabel="Sonraki hafta" onPress={() => onChangeWeek(1)} style={styles.circleButton}>
-            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
-          </Pressable>
-        </View>
+    <View style={styles.weekAgenda}>
+      <View style={styles.weekNav}>
+        <Pressable accessibilityLabel="Önceki hafta" onPress={() => onChangeWeek(-1)} style={styles.circleButton}>
+          <MaterialCommunityIcons name="chevron-left" size={22} color={colors.primary} />
+        </Pressable>
+        <Text style={styles.weekRangeTitle}>{formatWeekRange(weekStart)}</Text>
+        <Pressable accessibilityLabel="Sonraki hafta" onPress={() => onChangeWeek(1)} style={styles.circleButton}>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+        </Pressable>
       </View>
-      <View style={styles.weekStripRow}>
-        {days.map((date, index) => {
-          const selected = isSameDate(date, selectedDate);
-          const hasTraining = markedDates.has(getDateKey(date));
-          return (
-            <Pressable key={getDateKey(date)} onPress={() => onSelectDate(date)} style={styles.weekDayCell}>
-              <Text style={styles.weekDayLabel}>{weekdayLabels[index]}</Text>
-              <View style={[styles.weekDayInner, selected && styles.daySelected]}>
-                <Text style={[styles.dayText, selected && styles.dayTextSelected]}>{date.getDate()}</Text>
+
+      {days.map((day) => {
+        const isToday = isSameDate(day.date, today);
+        return (
+          <SurfaceCard key={getDateKey(day.date)} style={isToday ? { ...styles.dayCard, ...styles.dayCardToday } : styles.dayCard}>
+            <View style={styles.dayCardHeader}>
+              <View style={[styles.dateBadge, isToday && styles.dateBadgeToday]}>
+                <Text style={[styles.dateBadgeWeekday, isToday && styles.dateBadgeTextToday]}>{day.short}</Text>
+                <Text style={[styles.dateBadgeNumber, isToday && styles.dateBadgeTextToday]}>{day.date.getDate()}</Text>
               </View>
-              <View style={styles.dotRow}>
-                {hasTraining ? <View style={[styles.dot, { backgroundColor: selected ? colors.secondary : colors.primary }]} /> : null}
+              <View style={styles.flexOne}>
+                <Text style={styles.dayName}>{day.label}</Text>
+                <Text style={styles.dayCount}>{day.items.length > 0 ? `${day.items.length} antrenman` : "Boş gün"}</Text>
               </View>
-            </Pressable>
-          );
-        })}
-      </View>
-    </SurfaceCard>
+              <Pressable accessibilityLabel={`${day.label} için antrenman ekle`} hitSlop={8} onPress={() => onAddPress(day.date)} style={styles.dayAddButton}>
+                <MaterialCommunityIcons name="plus" size={20} color={colors.primary} />
+              </Pressable>
+            </View>
+
+            {day.items.length === 0 ? (
+              <Text style={styles.dayEmpty}>Antrenman planlanmadı</Text>
+            ) : (
+              <View style={styles.dayItems}>
+                {day.items.map((training) => (
+                  <Pressable
+                    key={training.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${training.title} detayını aç`}
+                    onPress={() => router.push(`/trainings/${training.id}`)}
+                    style={styles.agendaItem}
+                  >
+                    <View style={styles.agendaTime}>
+                      <Text style={styles.agendaTimeStart}>{formatTime(training.startsAt)}</Text>
+                      <Text style={styles.agendaTimeEnd}>{formatTime(training.endsAt)}</Text>
+                    </View>
+                    <View style={styles.agendaBar} />
+                    <View style={styles.flexOne}>
+                      <Text style={styles.agendaTitle}>{training.title}</Text>
+                      <Text style={styles.agendaMeta} numberOfLines={1}>
+                        {[formatGroupNames(training.groups), training.location].filter(Boolean).join(" · ")}
+                      </Text>
+                    </View>
+                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.outline} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </SurfaceCard>
+        );
+      })}
+    </View>
   );
 }
 
@@ -899,11 +952,30 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: colors.primary },
   segmentActiveText: { ...typography.label, color: colors.onPrimary },
   segmentInactiveText: { ...typography.label, color: colors.onSurfaceVariant },
-  weekCard: { gap: spacing.lg },
-  weekStripRow: { flexDirection: "row", justifyContent: "space-between" },
-  weekDayCell: { alignItems: "center", flex: 1, gap: spacing.xs },
-  weekDayLabel: { ...typography.label, color: colors.outline },
-  weekDayInner: { alignItems: "center", borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
+  weekAgenda: { gap: spacing.md },
+  weekNav: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  weekRangeTitle: { ...typography.title, color: colors.primary, textTransform: "capitalize" },
+  dayCard: { gap: spacing.md },
+  dayCardToday: { borderColor: colors.primary, borderWidth: 1.5 },
+  dayCardHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  dateBadge: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 52, justifyContent: "center", width: 52 },
+  dateBadgeToday: { backgroundColor: colors.primary },
+  dateBadgeWeekday: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
+  dateBadgeNumber: { ...typography.title, color: colors.primary },
+  dateBadgeTextToday: { color: colors.onPrimary },
+  dayName: { ...typography.title, color: colors.onSurface },
+  dayCount: { ...typography.body, color: colors.onSurfaceVariant },
+  dayAddButton: { alignItems: "center", backgroundColor: colors.primaryContainer, borderRadius: radius.full, height: 38, justifyContent: "center", width: 38 },
+  dayEmpty: { ...typography.body, color: colors.outline, paddingLeft: spacing.xs },
+  dayItems: { gap: spacing.sm },
+  agendaItem: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.md, padding: spacing.md },
+  agendaTime: { alignItems: "center", width: 44 },
+  agendaTimeStart: { ...typography.label, color: colors.primary },
+  agendaTimeEnd: { ...typography.body, color: colors.outline },
+  agendaBar: { alignSelf: "stretch", backgroundColor: colors.secondary, borderRadius: 3, width: 4 },
+  agendaTitle: { ...typography.title, color: colors.primary },
+  agendaMeta: { ...typography.body, color: colors.onSurfaceVariant, marginTop: 2 },
+  flexOne: { flex: 1 },
   repeatRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   repeatTextBlock: { flex: 1, gap: spacing.xs },
   repeatLabel: { ...typography.title, color: colors.onSurface },
