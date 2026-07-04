@@ -26,6 +26,7 @@ type TrainingItem = {
   endsAt: string;
   groups?: { id: string; name: string }[];
   location: string | null;
+  notes?: string | null;
   totalAthletes?: number;
 };
 
@@ -201,7 +202,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings
           trainings={trainings}
           onAddPress={openCreateTraining}
           onChangeWeek={onChangeWeek}
-          onOpenTraining={(id) => router.push(`/trainings/${id}`)}
+          onOpenTraining={(training) => router.push(`/trainings/${training.id}`)}
         />
       ) : (
         <>
@@ -237,6 +238,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings
 }
 
 function MemberCalendar({ markedDates, selectedDate, selectedTrainings, trainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CalendarProps) {
+  const [detail, setDetail] = useState<TrainingItem | null>(null);
   return (
     <>
       <View style={styles.headerBlock}>
@@ -244,7 +246,7 @@ function MemberCalendar({ markedDates, selectedDate, selectedTrainings, training
         <ViewToggle view={view} onChange={onChangeView} />
       </View>
       {view === "week" ? (
-        <WeekAgenda selectedDate={selectedDate} trainings={trainings} onChangeWeek={onChangeWeek} />
+        <WeekAgenda selectedDate={selectedDate} trainings={trainings} onChangeWeek={onChangeWeek} onOpenTraining={setDetail} />
       ) : (
         <>
           <CalendarPanel
@@ -254,9 +256,10 @@ function MemberCalendar({ markedDates, selectedDate, selectedTrainings, training
             onChangeMonth={onChangeMonth}
             onSelectDate={onSelectDate}
           />
-          <ScheduleList title={formatSelectedDate(selectedDate)} subtitle={`${selectedTrainings.length} Etkinlik`} trainings={selectedTrainings} />
+          <ScheduleList title={formatSelectedDate(selectedDate)} subtitle={`${selectedTrainings.length} Etkinlik`} trainings={selectedTrainings} onItemPress={setDetail} />
         </>
       )}
+      <TrainingDetailModal training={detail} onClose={() => setDetail(null)} />
     </>
   );
 }
@@ -298,7 +301,7 @@ function WeekAgenda({ selectedDate, trainings, onChangeWeek, onAddPress, onOpenT
   trainings: TrainingItem[];
   onChangeWeek: (offset: number) => void;
   onAddPress?: (date: Date) => void;
-  onOpenTraining?: (id: string) => void;
+  onOpenTraining?: (training: TrainingItem) => void;
 }) {
   const weekStart = startOfWeek(selectedDate);
   const today = startOfDay(new Date());
@@ -409,7 +412,7 @@ function CalendarPanel({ markedDates, roundedDays, selectedDate, visibleMonth, o
   );
 }
 
-function AgendaItem({ training, onOpen }: { training: TrainingItem; onOpen?: (id: string) => void }) {
+function AgendaItem({ training, onOpen }: { training: TrainingItem; onOpen?: (training: TrainingItem) => void }) {
   const meta = [formatGroupNames(training.groups), training.location].filter(Boolean).join(" · ");
   const body = (
     <>
@@ -434,7 +437,7 @@ function AgendaItem({ training, onOpen }: { training: TrainingItem; onOpen?: (id
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${training.title} detayını aç`}
-      onPress={() => onOpen(training.id)}
+      onPress={() => onOpen(training)}
       style={styles.agendaItem}
     >
       {body}
@@ -442,7 +445,7 @@ function AgendaItem({ training, onOpen }: { training: TrainingItem; onOpen?: (id
   );
 }
 
-function ScheduleList({ title, subtitle, trainings, coach, onAddPress }: { title: string; subtitle: string; trainings: TrainingItem[]; coach?: boolean; onAddPress?: () => void }) {
+function ScheduleList({ title, subtitle, trainings, coach, onAddPress, onItemPress }: { title: string; subtitle: string; trainings: TrainingItem[]; coach?: boolean; onAddPress?: () => void; onItemPress?: (training: TrainingItem) => void }) {
   return (
     <View style={styles.scheduleWrap}>
       <View style={styles.scheduleHeader}>
@@ -467,6 +470,7 @@ function ScheduleList({ title, subtitle, trainings, coach, onAddPress }: { title
             training={training}
             accent={index === 0 ? "secondary" : "warning"}
             coach={coach}
+            onPress={onItemPress}
           />
         ))
       )}
@@ -474,7 +478,7 @@ function ScheduleList({ title, subtitle, trainings, coach, onAddPress }: { title
   );
 }
 
-function TrainingCard({ training, accent, coach }: { training: TrainingItem; accent: "secondary" | "warning"; coach?: boolean }) {
+function TrainingCard({ training, accent, coach, onPress }: { training: TrainingItem; accent: "secondary" | "warning"; coach?: boolean; onPress?: (training: TrainingItem) => void }) {
   const accentColor = accent === "secondary" ? colors.secondary : colors.tertiaryFixedDim;
   const groupText = formatGroupNames(training.groups);
   const content = (
@@ -512,10 +516,65 @@ function TrainingCard({ training, accent, coach }: { training: TrainingItem; acc
     );
   }
 
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${training.title} detayını aç`}
+        onPress={() => onPress(training)}
+      >
+        <SurfaceCard style={styles.trainingCard}>{content}</SurfaceCard>
+      </Pressable>
+    );
+  }
+
   return (
     <SurfaceCard style={styles.trainingCard}>
       {content}
     </SurfaceCard>
+  );
+}
+
+function TrainingDetailModal({ training, onClose }: { training: TrainingItem | null; onClose: () => void }) {
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={training !== null}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <View style={styles.flexOne}>
+              <Text style={styles.modalTitle}>{training?.title}</Text>
+              {training ? <Text style={styles.subtitle}>{formatSelectedDate(new Date(training.startsAt))}</Text> : null}
+            </View>
+            <Pressable accessibilityLabel="Kapat" onPress={onClose} style={styles.closeButton}>
+              <MaterialCommunityIcons name="close" size={22} color={colors.primary} />
+            </Pressable>
+          </View>
+          {training ? (
+            <View style={styles.detailBody}>
+              <DetailRow icon="clock-outline" label="Saat" value={`${formatTime(training.startsAt)} - ${formatTime(training.endsAt)}`} />
+              <DetailRow icon="map-marker-outline" label="Konum" value={training.location ?? "Belirtilmedi"} />
+              <DetailRow icon="account-group-outline" label="Grup" value={formatGroupNames(training.groups)} />
+              {training.notes ? <DetailRow icon="note-text-outline" label="Antrenör notu" value={training.notes} /> : null}
+            </View>
+          ) : null}
+          <Button label="Kapat" onPress={onClose} variant="outline" />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function DetailRow({ icon, label, value }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: string }) {
+  return (
+    <View style={styles.detailRow}>
+      <View style={styles.detailIcon}>
+        <MaterialCommunityIcons name={icon} size={20} color={colors.primary} />
+      </View>
+      <View style={styles.flexOne}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        <Text style={styles.detailValue}>{value}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -1010,6 +1069,11 @@ const styles = StyleSheet.create({
   agendaTitle: { ...typography.title, color: colors.primary },
   agendaMeta: { ...typography.body, color: colors.onSurfaceVariant, marginTop: 2 },
   flexOne: { flex: 1 },
+  detailBody: { gap: spacing.md },
+  detailRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  detailIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 40, justifyContent: "center", width: 40 },
+  detailLabel: { ...typography.label, color: colors.onSurfaceVariant },
+  detailValue: { ...typography.bodyLarge, color: colors.onSurface },
   repeatRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   repeatTextBlock: { flex: 1, gap: spacing.xs },
   repeatLabel: { ...typography.title, color: colors.onSurface },
