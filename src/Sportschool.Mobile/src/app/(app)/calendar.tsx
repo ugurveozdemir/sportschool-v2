@@ -328,7 +328,7 @@ function WeekAgenda({ selectedDate, trainings, onAddPress, onChangeWeek }: {
                 <Text style={styles.dayCount}>{day.items.length > 0 ? `${day.items.length} antrenman` : "Boş gün"}</Text>
               </View>
               <Pressable accessibilityLabel={`${day.label} için antrenman ekle`} hitSlop={8} onPress={() => onAddPress(day.date)} style={styles.dayAddButton}>
-                <MaterialCommunityIcons name="plus" size={20} color={colors.primary} />
+                <MaterialCommunityIcons name="plus" size={20} color={colors.surface} />
               </Pressable>
             </View>
 
@@ -965,7 +965,7 @@ const styles = StyleSheet.create({
   dateBadgeTextToday: { color: colors.onPrimary },
   dayName: { ...typography.title, color: colors.onSurface },
   dayCount: { ...typography.body, color: colors.onSurfaceVariant },
-  dayAddButton: { alignItems: "center", backgroundColor: colors.primaryContainer, borderRadius: radius.full, height: 38, justifyContent: "center", width: 38 },
+  dayAddButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, height: 38, justifyContent: "center", width: 38 },
   dayEmpty: { ...typography.body, color: colors.outline, paddingLeft: spacing.xs },
   dayItems: { gap: spacing.sm },
   agendaItem: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.md, padding: spacing.md },
