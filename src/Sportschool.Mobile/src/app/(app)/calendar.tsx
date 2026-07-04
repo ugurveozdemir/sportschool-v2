@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
@@ -37,7 +37,10 @@ type TrainingFormState = {
   location: string;
   notes: string;
   date: Date;
+  repeatWeekly: boolean;
 };
+
+type CalendarView = "week" | "month";
 
 const initialTrainingForm: TrainingFormState = {
   groupIds: [],
@@ -46,7 +49,8 @@ const initialTrainingForm: TrainingFormState = {
   endTime: "18:30",
   location: "",
   notes: "",
-  date: new Date()
+  date: new Date(),
+  repeatWeekly: false
 };
 
 export default function CalendarScreen() {
@@ -54,10 +58,15 @@ export default function CalendarScreen() {
   const isCoach = session?.roles.includes("Coach") ?? false;
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
-  const monthRange = useMemo(() => getMonthRange(visibleMonth), [visibleMonth]);
+  // Coaches default to the weekly view; members stay on the month grid.
+  const [view, setView] = useState<CalendarView>(isCoach ? "week" : "month");
+  const fetchRange = useMemo(
+    () => (view === "week" ? getWeekRange(selectedDate) : getMonthRange(visibleMonth)),
+    [view, selectedDate, visibleMonth]
+  );
   const { selectedAthleteProfileId } = useAthleteSelection();
-  const trainingsQuery = useTrainings(!isCoach, monthRange, selectedAthleteProfileId);
-  const coachTrainingsQuery = useCoachTrainings(isCoach, monthRange);
+  const trainingsQuery = useTrainings(!isCoach, fetchRange, selectedAthleteProfileId);
+  const coachTrainingsQuery = useCoachTrainings(isCoach, fetchRange);
 
   if ((isCoach ? coachTrainingsQuery : trainingsQuery).isLoading) {
     return <LoadingState label="Antrenmanlar yükleniyor" />;
@@ -73,6 +82,17 @@ export default function CalendarScreen() {
     setSelectedDate((current) => new Date(nextMonth.getFullYear(), nextMonth.getMonth(), Math.min(current.getDate(), getDaysInMonth(nextMonth))));
   }
 
+  function changeWeek(offset: number) {
+    setSelectedDate((current) => addDays(current, offset * 7));
+  }
+
+  function changeView(next: CalendarView) {
+    if (next === "month") {
+      setVisibleMonth(startOfMonth(selectedDate));
+    }
+    setView(next);
+  }
+
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={isCoach ? undefined : <InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "E"} size={42} tone="dark" />}>
       {isCoach ? (
@@ -80,8 +100,11 @@ export default function CalendarScreen() {
           markedDates={markedDates}
           selectedDate={selectedDate}
           selectedTrainings={selectedTrainings}
+          view={view}
           visibleMonth={visibleMonth}
           onChangeMonth={changeMonth}
+          onChangeView={changeView}
+          onChangeWeek={changeWeek}
           onSelectDate={setSelectedDate}
         />
       ) : (
@@ -98,7 +121,7 @@ export default function CalendarScreen() {
   );
 }
 
-function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMonth, onChangeMonth, onSelectDate }: CalendarViewProps) {
+function CoachCalendar({ markedDates, selectedDate, selectedTrainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CoachCalendarProps) {
   const groupsQuery = useSchoolGroups();
   const createTraining = useCreateCoachTraining();
   const [isCreateVisible, setIsCreateVisible] = useState(false);
@@ -128,7 +151,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
 
     const startsAt = buildDateTime(form.date, form.startTime);
     const endsAt = buildDateTime(form.date, form.endTime);
-    
+
     if (!startsAt || !endsAt) {
       Alert.alert("Takvim", "Lütfen saatleri kontrol edin.");
       return;
@@ -144,8 +167,10 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
       title: form.title.trim(),
       startsAt: startsAt.toISOString(),
       endsAt: endsAt.toISOString(),
-      recurrence: "None",
-      recurrenceEndsOn: null,
+      recurrence: form.repeatWeekly ? "Weekly" : "None",
+      // Repeat weekly for a year so the coach never has to re-add it; a day short of the
+      // start's anniversary keeps us within the backend's one-year cap across time zones.
+      recurrenceEndsOn: form.repeatWeekly ? getDateKey(addDays(addYears(form.date, 1), -1)) : null,
       location: form.location.trim() || null,
       notes: form.notes.trim() || null
     };
@@ -153,7 +178,7 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
     createTraining.mutate(request, {
       onSuccess: () => {
         setIsCreateVisible(false);
-        Alert.alert("Takvim", "Etkinlik kaydedildi.");
+        Alert.alert("Takvim", form.repeatWeekly ? "Haftalık tekrar eden antrenman oluşturuldu." : "Etkinlik kaydedildi.");
       },
       onError: () => Alert.alert("Takvim", "Etkinlik kaydedilemedi.")
     });
@@ -163,15 +188,32 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, visibleMo
     <>
       <View style={styles.headerBlock}>
         <Text style={styles.coachTitle}>Antrenman Takvimi</Text>
+        <View style={styles.segmented}>
+          <Pressable onPress={() => onChangeView("week")} style={[styles.segment, view === "week" && styles.segmentActive]}>
+            <Text style={view === "week" ? styles.segmentActiveText : styles.segmentInactiveText}>Haftalık</Text>
+          </Pressable>
+          <Pressable onPress={() => onChangeView("month")} style={[styles.segment, view === "month" && styles.segmentActive]}>
+            <Text style={view === "month" ? styles.segmentActiveText : styles.segmentInactiveText}>Aylık</Text>
+          </Pressable>
+        </View>
       </View>
-      <CalendarPanel
-        markedDates={markedDates}
-        roundedDays
-        selectedDate={selectedDate}
-        visibleMonth={visibleMonth}
-        onChangeMonth={onChangeMonth}
-        onSelectDate={onSelectDate}
-      />
+      {view === "week" ? (
+        <WeekStrip
+          markedDates={markedDates}
+          selectedDate={selectedDate}
+          onChangeWeek={onChangeWeek}
+          onSelectDate={onSelectDate}
+        />
+      ) : (
+        <CalendarPanel
+          markedDates={markedDates}
+          roundedDays
+          selectedDate={selectedDate}
+          visibleMonth={visibleMonth}
+          onChangeMonth={onChangeMonth}
+          onSelectDate={onSelectDate}
+        />
+      )}
       <ScheduleList
         coach
         subtitle={`${selectedTrainings.length} Planlı Antrenman`}
@@ -220,6 +262,57 @@ type CalendarViewProps = {
   onChangeMonth: (offset: number) => void;
   onSelectDate: (date: Date) => void;
 };
+
+type CoachCalendarProps = CalendarViewProps & {
+  view: CalendarView;
+  onChangeView: (view: CalendarView) => void;
+  onChangeWeek: (offset: number) => void;
+};
+
+const weekdayLabels = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+function WeekStrip({ markedDates, selectedDate, onChangeWeek, onSelectDate }: {
+  markedDates: Set<string>;
+  selectedDate: Date;
+  onChangeWeek: (offset: number) => void;
+  onSelectDate: (date: Date) => void;
+}) {
+  const weekStart = startOfWeek(selectedDate);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+
+  return (
+    <SurfaceCard style={styles.weekCard}>
+      <View style={styles.calendarHeader}>
+        <Text style={styles.monthTitle}>{formatWeekRange(weekStart)}</Text>
+        <View style={styles.calendarArrows}>
+          <Pressable accessibilityLabel="Önceki hafta" onPress={() => onChangeWeek(-1)} style={styles.circleButton}>
+            <MaterialCommunityIcons name="chevron-left" size={22} color={colors.primary} />
+          </Pressable>
+          <Pressable accessibilityLabel="Sonraki hafta" onPress={() => onChangeWeek(1)} style={styles.circleButton}>
+            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+          </Pressable>
+        </View>
+      </View>
+      <View style={styles.weekStripRow}>
+        {days.map((date, index) => {
+          const selected = isSameDate(date, selectedDate);
+          const hasTraining = markedDates.has(getDateKey(date));
+          return (
+            <Pressable key={getDateKey(date)} onPress={() => onSelectDate(date)} style={styles.weekDayCell}>
+              <Text style={styles.weekDayLabel}>{weekdayLabels[index]}</Text>
+              <View style={[styles.weekDayInner, selected && styles.daySelected]}>
+                <Text style={[styles.dayText, selected && styles.dayTextSelected]}>{date.getDate()}</Text>
+              </View>
+              <View style={styles.dotRow}>
+                {hasTraining ? <View style={[styles.dot, { backgroundColor: selected ? colors.secondary : colors.primary }]} /> : null}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </SurfaceCard>
+  );
+}
 
 function CalendarPanel({ markedDates, roundedDays, selectedDate, visibleMonth, onChangeMonth, onSelectDate }: Omit<CalendarViewProps, "selectedTrainings"> & { roundedDays?: boolean }) {
   const cells = useMemo(() => buildMonthCells(visibleMonth), [visibleMonth]);
@@ -462,6 +555,13 @@ function CreateTrainingModal({ form, groups, saving, selectedDate, visible, onCh
 
             <TextField label="Konum" value={form.location} onChangeText={(value) => onChangeForm({ location: value })} placeholder="Saha 1" />
             <TextField label="Not" multiline value={form.notes} onChangeText={(value) => onChangeForm({ notes: value })} placeholder="Opsiyonel not" />
+            <View style={styles.repeatRow}>
+              <View style={styles.repeatTextBlock}>
+                <Text style={styles.repeatLabel}>Her hafta tekrarla</Text>
+                <Text style={styles.repeatHint}>Bu antrenman her hafta aynı gün ve saatte otomatik oluşturulur.</Text>
+              </View>
+              <Switch onValueChange={(value) => onChangeForm({ repeatWeekly: value })} value={form.repeatWeekly} />
+            </View>
             <Button disabled={saving} label={saving ? "Kaydediliyor" : "Kaydet"} onPress={onSubmit} />
           </ScrollView>
         </View>
@@ -642,6 +742,18 @@ function getMonthRange(month: Date) {
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
+function getWeekRange(date: Date) {
+  const start = startOfWeek(date);
+  const end = addDays(start, 7);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+function formatWeekRange(weekStart: Date) {
+  const weekEnd = addDays(weekStart, 6);
+  const formatter = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" });
+  return `${formatter.format(weekStart)} - ${formatter.format(weekEnd)}`;
+}
+
 function buildDateTime(date: Date, time: string) {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time.trim());
   if (!match) {
@@ -681,6 +793,16 @@ function startOfDay(date: Date) {
 
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function startOfWeek(date: Date) {
+  const day = startOfDay(date);
+  const mondayOffset = (day.getDay() + 6) % 7;
+  return addDays(day, -mondayOffset);
+}
+
+function addYears(date: Date, years: number) {
+  return new Date(date.getFullYear() + years, date.getMonth(), date.getDate());
 }
 
 function addDays(date: Date, days: number) {
@@ -771,5 +893,19 @@ const styles = StyleSheet.create({
   trainingTitle: { ...typography.title, color: colors.primary },
   trainingTopRow: { alignItems: "flex-start", flexDirection: "row", justifyContent: "space-between" },
   weekRow: { flexDirection: "row", justifyContent: "space-between" },
-  weekText: { ...typography.label, color: colors.outline, flex: 1, textAlign: "center" }
+  weekText: { ...typography.label, color: colors.outline, flex: 1, textAlign: "center" },
+  segmented: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, flexDirection: "row", padding: 4 },
+  segment: { alignItems: "center", borderRadius: radius.full, flex: 1, paddingVertical: spacing.md },
+  segmentActive: { backgroundColor: colors.primary },
+  segmentActiveText: { ...typography.label, color: colors.onPrimary },
+  segmentInactiveText: { ...typography.label, color: colors.onSurfaceVariant },
+  weekCard: { gap: spacing.lg },
+  weekStripRow: { flexDirection: "row", justifyContent: "space-between" },
+  weekDayCell: { alignItems: "center", flex: 1, gap: spacing.xs },
+  weekDayLabel: { ...typography.label, color: colors.outline },
+  weekDayInner: { alignItems: "center", borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
+  repeatRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
+  repeatTextBlock: { flex: 1, gap: spacing.xs },
+  repeatLabel: { ...typography.title, color: colors.onSurface },
+  repeatHint: { ...typography.body, color: colors.onSurfaceVariant }
 });
