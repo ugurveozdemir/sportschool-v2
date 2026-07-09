@@ -75,14 +75,9 @@ public static class MobileCoachEndpoints
             .ToList();
 
         var schoolGroupIds = await SchoolGroupIds(context, db).ToArrayAsync(cancellationToken);
-        var athleteCount = await db.GroupAthletes
+        var athleteCount = await db.AthleteProfiles
             .AsNoTracking()
-            .Where(x => schoolGroupIds.Contains(x.GroupId)
-                && x.AthleteProfile.SchoolId == context.SchoolId
-                && x.AthleteProfile.IsActive
-                && x.AthleteProfile.User.IsActive)
-            .Select(x => x.AthleteProfileId)
-            .Distinct()
+            .Where(x => x.SchoolId == context.SchoolId && x.IsActive && x.User.IsActive)
             .CountAsync(cancellationToken);
 
         return Results.Ok(new MobileCoachSummaryResponse(
@@ -129,28 +124,30 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var coachGroupIds = SchoolGroupIds(context, db);
-        var athleteRows = await db.GroupAthletes
+        var athleteRows = await db.AthleteProfiles
             .AsNoTracking()
-            .Where(x => coachGroupIds.Contains(x.GroupId)
-                && x.AthleteProfile.SchoolId == context.SchoolId
-                && x.AthleteProfile.IsActive
-                && x.AthleteProfile.User.IsActive)
-            .Select(x => new
-            {
-                x.AthleteProfileId,
-                x.AthleteProfile.FirstName,
-                x.AthleteProfile.LastName,
-                x.AthleteProfile.BirthDate,
-                x.AthleteProfile.ParentFullName,
-                x.AthleteProfile.ParentPhone,
-                GroupName = x.Group.Name
-            })
+            .Where(x => x.SchoolId == context.SchoolId && x.IsActive && x.User.IsActive)
             .OrderBy(x => x.LastName)
             .ThenBy(x => x.FirstName)
+            .Select(x => new
+            {
+                AthleteProfileId = x.Id,
+                x.FirstName,
+                x.LastName,
+                x.BirthDate,
+                x.ParentFullName,
+                x.ParentPhone,
+                GroupNames = db.GroupAthletes
+                    .Where(membership => membership.AthleteProfileId == x.Id
+                        && membership.Group.SchoolId == context.SchoolId
+                        && membership.Group.IsActive)
+                    .OrderBy(membership => membership.Group.Name)
+                    .Select(membership => membership.Group.Name)
+                    .ToArray()
+            })
             .ToListAsync(cancellationToken);
 
-        var athleteIds = athleteRows.Select(x => x.AthleteProfileId).Distinct().ToArray();
+        var athleteIds = athleteRows.Select(x => x.AthleteProfileId).ToArray();
         var reportScores = await db.AthleteReports
             .AsNoTracking()
             .Where(x => x.SchoolId == context.SchoolId && athleteIds.Contains(x.AthleteProfileId))
@@ -169,26 +166,15 @@ public static class MobileCoachEndpoints
                 x => (decimal?)x.OrderByDescending(report => report.CreatedAt).First().AverageScore);
 
         var athletes = athleteRows
-            .GroupBy(x => new
-            {
+            .Select(x => new MobileCoachAthleteListItem(
                 x.AthleteProfileId,
                 x.FirstName,
                 x.LastName,
                 x.BirthDate,
                 x.ParentFullName,
-                x.ParentPhone
-            })
-            .Select(x => new MobileCoachAthleteListItem(
-                x.Key.AthleteProfileId,
-                x.Key.FirstName,
-                x.Key.LastName,
-                x.Key.BirthDate,
-                x.Key.ParentFullName,
-                x.Key.ParentPhone,
-                x.Select(row => row.GroupName).OrderBy(name => name).ToArray(),
-                latestScores.GetValueOrDefault(x.Key.AthleteProfileId)))
-            .OrderBy(x => x.LastName)
-            .ThenBy(x => x.FirstName)
+                x.ParentPhone,
+                x.GroupNames,
+                latestScores.GetValueOrDefault(x.AthleteProfileId)))
             .ToArray();
 
         return Results.Ok(athletes);
