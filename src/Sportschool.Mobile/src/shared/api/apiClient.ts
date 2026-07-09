@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 import { getCurrentSession, replaceCurrentSession } from "@/core/sessionProvider";
 import { endpoints } from "@/shared/constants/endpoints";
 import { ApiError } from "@/shared/api/apiError";
@@ -10,7 +12,8 @@ type RequestOptions = {
   retryOnUnauthorized?: boolean;
 };
 
-const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:5062";
+const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
+  ?? (Platform.OS === "android" ? "http://10.0.2.2:5062" : "http://localhost:5062");
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
   const response = await sendRequest<TResponse>(path, options);
