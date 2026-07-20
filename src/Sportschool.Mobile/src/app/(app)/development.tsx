@@ -194,11 +194,6 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
               </View>
             ))}
           </SurfaceCard>
-
-          <Pressable style={styles.contactButton}>
-            <MaterialCommunityIcons name="chat-outline" size={20} color={colors.onPrimary} />
-            <Text style={styles.primaryButtonText}>Antrenör ile İletişime Geç</Text>
-          </Pressable>
         </>
       ) : (
         <SurfaceCard>

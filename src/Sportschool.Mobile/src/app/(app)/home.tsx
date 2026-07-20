@@ -84,7 +84,6 @@ export default function HomeScreen() {
       groupCount={groupsQuery.data?.length ?? 0}
       attendance={attendance}
       announcementCount={unreadCountQuery.data?.count ?? 0}
-      unpaidCount={unpaidCount}
       latestReport={latestReport}
     />
   );
@@ -220,7 +219,7 @@ function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visi
   );
 }
 
-function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendance, announcementCount, unpaidCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; unpaidCount: number; latestReport?: AthleteReportResponse }) {
+function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendance, announcementCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; latestReport?: AthleteReportResponse }) {
   const stats = attendanceStats(attendance);
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={firstName.slice(0, 1)} size={42} tone="dark" />}>
@@ -270,7 +269,6 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
       <View style={styles.metricsRow}>
         <MetricTile icon="account-group-outline" label="Grup" value={`${groupCount}`} />
         <MetricTile icon="calendar-check-outline" label="Katılım" value={stats.total > 0 ? `%${stats.rate}` : "-"} tone="success" />
-        <MetricTile icon="credit-card-clock-outline" label="Borç" value={`${unpaidCount}`} tone={unpaidCount > 0 ? "danger" : "primary"} />
       </View>
 
       <AttendanceCard stats={stats} />
@@ -382,11 +380,6 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
             <Text style={styles.rowMeta}>Güncel duyuru bulunmuyor.</Text>
           </View>
         )}
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.sectionStack}>
-        <Text style={styles.parentCardTitle}>Finansal Durum</Text>
-        <EmptyState title="Çok yakında" description="Finansal takip özelliği üzerinde çalışıyoruz." />
       </SurfaceCard>
     </ScreenShell>
   );

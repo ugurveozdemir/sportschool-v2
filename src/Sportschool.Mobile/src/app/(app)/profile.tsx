@@ -100,13 +100,6 @@ export default function ProfileScreen() {
         ))}
       </SurfaceCard>
 
-      <SurfaceCard style={styles.settingsCard}>
-        <SectionTitle title="Ayarlar" />
-        <SettingRow icon="account-outline" label="Kişisel Bilgiler" />
-        <SettingRow icon="bell-ring-outline" label="Bildirim Ayarları" />
-        <SettingRow icon="shield-check-outline" label="Güvenlik" />
-      </SurfaceCard>
-
       <Pressable disabled={logoutMutation.isPending} onPress={() => logoutMutation.mutate()} style={styles.logoutButton}>
         <MaterialCommunityIcons name="logout" size={20} color={colors.error} />
         <Text style={styles.logoutText}>Çıkış Yap</Text>
@@ -120,20 +113,6 @@ function Info({ label, value }: { label: string; value: string }) {
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-}
-
-function SettingRow({ icon, label }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }) {
-  return (
-    <View style={styles.settingRow}>
-      <View style={styles.groupLead}>
-        <View style={styles.settingIcon}>
-          <MaterialCommunityIcons name={icon} size={22} color={colors.onSurfaceVariant} />
-        </View>
-        <Text style={styles.settingText}>{label}</Text>
-      </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color={colors.outline} />
     </View>
   );
 }

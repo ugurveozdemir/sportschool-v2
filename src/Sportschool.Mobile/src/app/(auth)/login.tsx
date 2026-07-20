@@ -59,22 +59,10 @@ export default function LoginScreen() {
             control={form.control}
             name="password"
             render={({ field, fieldState }) => (
-              <View style={styles.passwordWrap}>
-                <TextField error={fieldState.error?.message} label="Şifre" onBlur={field.onBlur} onChangeText={field.onChange} placeholder="••••••••" secureTextEntry value={field.value} />
-                <Text style={styles.forgot}>Şifremi Unuttum</Text>
-              </View>
+              <TextField error={fieldState.error?.message} label="Şifre" onBlur={field.onBlur} onChangeText={field.onChange} placeholder="••••••••" secureTextEntry value={field.value} />
             )}
           />
           <Button disabled={loginMutation.isPending} label={loginMutation.isPending ? "Giriş yapılıyor" : "Giriş Yap  ↪"} onPress={form.handleSubmit((values) => loginMutation.mutate(values))} />
-          <View style={styles.dividerRow}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>veya</Text>
-            <View style={styles.divider} />
-          </View>
-          <Pressable style={styles.clubButton}>
-            <MaterialCommunityIcons name="store-plus-outline" size={24} color={colors.primary} />
-            <Text style={styles.clubText}>Yeni Kulüp Kaydı</Text>
-          </Pressable>
         </View>
 
         <Pressable onPress={() => router.replace("/role")} style={styles.switchRole}>
