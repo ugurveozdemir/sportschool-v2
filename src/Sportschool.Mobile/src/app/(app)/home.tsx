@@ -24,7 +24,8 @@ import { getAttendanceLabel } from "@/shared/utils/status";
 
 export default function HomeScreen() {
   const { session } = useSession();
-  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isSchoolAdmin = session?.loginRole === "SchoolAdmin";
+  const isCoach = (session?.roles.includes("Coach") ?? false) || isSchoolAdmin;
   const isParent = session?.roles.includes("Parent") ?? false;
   const navItems = getMobileNav(session);
   const shellTitle = getShellTitle(session);
@@ -41,7 +42,7 @@ export default function HomeScreen() {
   const coachSummaryQuery = useCoachSummary(isCoach);
 
   if (isCoach) {
-    return <CoachHome sessionName={session?.fullName} summary={coachSummaryQuery.data} navItems={navItems} shellTitle={shellTitle} />;
+    return <CoachHome sessionName={session?.fullName} summary={coachSummaryQuery.data} navItems={navItems} shellTitle={shellTitle} isSchoolAdmin={isSchoolAdmin} />;
   }
 
   const profile = profileQuery.data;
@@ -95,7 +96,7 @@ function hasStarted(training: CoachTrainingItem) {
   return new Date(training.startsAt).getTime() <= Date.now();
 }
 
-function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName?: string; summary?: CoachSummaryResponse; navItems: ReturnType<typeof getMobileNav>; shellTitle: string }) {
+function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }: { sessionName?: string; summary?: CoachSummaryResponse; navItems: ReturnType<typeof getMobileNav>; shellTitle: string; isSchoolAdmin: boolean }) {
   const todayTrainings = summary?.todayTrainings ?? [];
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -126,7 +127,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle }: { sessionName
       <View style={styles.welcomeRow}>
         <View>
           <Text style={styles.dateText}>{new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", weekday: "long" }).format(new Date())}</Text>
-          <Text style={styles.displayTitle}>Merhaba, {sessionName?.split(" ")[0] ?? "Koç"}</Text>
+          <Text style={styles.displayTitle}>Merhaba, {sessionName?.split(" ")[0] ?? (isSchoolAdmin ? "Yönetici" : "Koç")}</Text>
         </View>
         <InitialsAvatar label="KÇ" size={54} tone="dark" />
       </View>

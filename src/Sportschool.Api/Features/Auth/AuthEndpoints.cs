@@ -49,9 +49,9 @@ public static class AuthEndpoints
             return Results.BadRequest();
         }
 
-        var role = request.Mode.ToUserRole();
+        var requestedRole = request.Mode.ToUserRole();
         var normalizedEmail = TextNormalizer.NormalizeEmail(request.Email);
-        var candidates = await FindLoginCandidatesAsync(db, role, normalizedEmail, cancellationToken);
+        var candidates = await FindLoginCandidatesAsync(db, requestedRole, normalizedEmail, cancellationToken);
 
         // The same email can exist across several schools (email is unique per school),
         // so the password is what resolves which account — and therefore which school — to sign in.
@@ -65,13 +65,14 @@ public static class AuthEndpoints
         }
 
         var user = matches[0];
+        var loginRole = ResolveLoginRole(user, requestedRole);
 
-        var accessToken = jwtTokenService.CreateAccessToken(user, role);
-        var refreshToken = refreshTokenService.CreateToken(user.Id, role, request.DeviceName);
+        var accessToken = jwtTokenService.CreateAccessToken(user, loginRole);
+        var refreshToken = refreshTokenService.CreateToken(user.Id, loginRole, request.DeviceName);
         db.RefreshTokens.Add(refreshToken.Entity);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(AuthResponse.From(user, accessToken, refreshToken.PlainTextToken));
+        return Results.Ok(AuthResponse.From(user, accessToken, refreshToken.PlainTextToken, loginRole));
     }
 
     private static async Task<IResult> RefreshAsync(
@@ -112,7 +113,7 @@ public static class AuthEndpoints
         db.RefreshTokens.Add(refreshToken.Entity);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(AuthResponse.From(storedToken.User, accessToken, refreshToken.PlainTextToken));
+        return Results.Ok(AuthResponse.From(storedToken.User, accessToken, refreshToken.PlainTextToken, storedToken.Role));
     }
 
     private static async Task<IResult> LogoutAsync(
@@ -191,7 +192,8 @@ public static class AuthEndpoints
             .Include(x => x.School)
             .Where(x => x.IsActive
                 && x.NormalizedEmail == normalizedEmail
-                && x.Roles.Any(roleAssignment => roleAssignment.Role == role));
+                && x.Roles.Any(roleAssignment => roleAssignment.Role == role
+                    || (role == UserRole.Coach && roleAssignment.Role == UserRole.SchoolAdmin)));
 
         // PlatformOwner accounts are school-less and globally unique by email;
         // every other role is scoped to an active school.
@@ -200,5 +202,15 @@ public static class AuthEndpoints
             : users.Where(x => x.School != null && x.School.IsActive);
 
         return users.ToListAsync(cancellationToken);
+    }
+
+    private static UserRole ResolveLoginRole(AppUser user, UserRole requestedRole)
+    {
+        // School administrators are also allowed to use coach functions. When they enter
+        // through the coach screen, keep the session in its more privileged admin context.
+        return requestedRole == UserRole.Coach
+            && user.Roles.Any(x => x.Role == UserRole.SchoolAdmin)
+            ? UserRole.SchoolAdmin
+            : requestedRole;
     }
 }

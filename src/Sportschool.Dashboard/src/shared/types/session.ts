@@ -8,5 +8,6 @@ export type AuthSession = {
   schoolId: string | null;
   email: string;
   fullName: string;
+  loginRole: UserRole;
   roles: UserRole[];
 };

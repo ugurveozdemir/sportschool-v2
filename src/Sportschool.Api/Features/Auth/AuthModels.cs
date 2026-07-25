@@ -34,9 +34,14 @@ public sealed record AuthResponse(
     Guid? SchoolId,
     string Email,
     string FullName,
+    UserRole LoginRole,
     UserRole[] Roles)
 {
-    public static AuthResponse From(AppUser user, IssuedAccessToken accessToken, string refreshToken)
+    public static AuthResponse From(
+        AppUser user,
+        IssuedAccessToken accessToken,
+        string refreshToken,
+        UserRole loginRole)
     {
         return new AuthResponse(
             accessToken.Token,
@@ -46,6 +51,7 @@ public sealed record AuthResponse(
             user.SchoolId,
             user.Email,
             user.FullName,
+            loginRole,
             user.Roles.Select(x => x.Role).Order().ToArray());
     }
 }

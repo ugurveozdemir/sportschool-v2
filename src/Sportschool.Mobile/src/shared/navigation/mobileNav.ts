@@ -26,6 +26,9 @@ const parentNav: NavItem[] = [
 ];
 
 export function getMobileNav(session: Session | null) {
+  if (session?.loginRole === "SchoolAdmin") {
+    return coachNav;
+  }
   if (session?.roles.includes("Coach")) {
     return coachNav;
   }
@@ -36,6 +39,9 @@ export function getMobileNav(session: Session | null) {
 }
 
 export function getShellTitle(session: Session | null) {
+  if (session?.loginRole === "SchoolAdmin") {
+    return "Okul Yönetimi";
+  }
   if (session?.roles.includes("Coach")) {
     return "Akademi Pro";
   }

@@ -93,6 +93,42 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task Login_FromCoachMode_UsesSchoolAdminRoleForSchoolAdminAccount()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var school = new School
+        {
+            Name = $"School Admin Login {suffix}",
+            Code = $"school-admin-login-{suffix}",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode($"school-admin-login-{suffix}")
+        };
+        var admin = TestUsers.Create(school.Id, $"admin-login-{suffix}@example.com", "School Admin", "admin-password", UserRole.SchoolAdmin);
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.Add(school);
+            db.Users.Add(admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = admin.Email,
+            password = "admin-password",
+            mode = LoginMode.Coach,
+            deviceName = "test"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+        Assert.NotNull(auth);
+        Assert.Equal(UserRole.SchoolAdmin, auth!.LoginRole);
+        Assert.Contains(UserRole.SchoolAdmin, auth.Roles);
+    }
+
+    [Fact]
     public async Task Login_SameEmailInTwoSchools_ResolvesByPassword()
     {
         var suffix = Guid.NewGuid().ToString("N");

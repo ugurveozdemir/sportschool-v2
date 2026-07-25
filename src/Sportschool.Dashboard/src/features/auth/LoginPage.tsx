@@ -46,7 +46,7 @@ export function LoginPage() {
             S
           </div>
           <h1 className="text-xl font-semibold text-slate-900">Sportschool Platform</h1>
-          <p className="mt-1 text-sm text-slate-500">Platform yöneticisi girişi</p>
+          <p className="mt-1 text-sm text-slate-500">Platform veya okul yöneticisi girişi</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4" noValidate>

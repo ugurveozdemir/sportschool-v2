@@ -8,5 +8,6 @@ export type Session = {
   schoolId: string | null;
   email: string;
   fullName: string;
+  loginRole: LoginMode;
   roles: LoginMode[];
 };
