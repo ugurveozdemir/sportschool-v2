@@ -12,7 +12,8 @@ import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/t
 import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
 import type { AthleteReportResponse, AttendanceResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { CircularScore, InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { resolveApiUrl } from "@/shared/api/apiClient";
 import type { AttendanceStatus } from "@/shared/constants/domain";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -80,6 +81,7 @@ export default function HomeScreen() {
       navItems={navItems}
       shellTitle={shellTitle}
       firstName={profile?.firstName ?? "Arda"}
+      profileImageUrl={profile?.profileImageUrl}
       nextTraining={nextTraining}
       groupCount={groupsQuery.data?.length ?? 0}
       attendance={attendance}
@@ -219,10 +221,10 @@ function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visi
   );
 }
 
-function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount, attendance, announcementCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; latestReport?: AthleteReportResponse }) {
+function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTraining, groupCount, attendance, announcementCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; profileImageUrl?: string | null; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; latestReport?: AthleteReportResponse }) {
   const stats = attendanceStats(attendance);
   return (
-    <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={firstName.slice(0, 1)} size={42} tone="dark" />}>
+    <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={profileImageUrl ? resolveApiUrl(profileImageUrl) : null} label={firstName.slice(0, 1)} size={42} tone="dark" />}>
       <View style={styles.headerBlock}>
         <Text style={styles.displayTitle}>Merhaba, {firstName}</Text>
         <Text style={styles.subtitle}>Performansına odaklan, sınırlarını zorla.</Text>
@@ -278,12 +280,13 @@ function AthleteHome({ navItems, shellTitle, firstName, nextTraining, groupCount
 
 function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, todayTrainingCount, announcements, latestReport, previousReport, attendance }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; latestReport?: AthleteReportResponse; previousReport?: AthleteReportResponse; attendance: AttendanceResponse[] }) {
   const nextTrainingGroup = nextTraining ? trainingGroupName(nextTraining) : null;
+  const selectedAthlete = athletes.find((athlete) => athlete.id === selectedAthleteProfileId);
   const stats = attendanceStats(attendance);
   const score = latestReport ? round1(averageScore([latestReport.speedScore, latestReport.strengthScore, latestReport.dribblingScore, latestReport.shootingScore])) : null;
   const previousScore = previousReport ? round1(averageScore([previousReport.speedScore, previousReport.strengthScore, previousReport.dribblingScore, previousReport.shootingScore])) : null;
   const trend = score !== null && previousScore !== null ? round1(score - previousScore) : null;
   return (
-    <ScreenShell title={shellTitle} navItems={navItems} avatar={<InitialsAvatar label={childName.slice(0, 1)} size={42} tone="light" />}>
+    <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={selectedAthlete?.profileImageUrl ? resolveApiUrl(selectedAthlete.profileImageUrl) : null} label={childName.slice(0, 1)} size={42} tone="light" />}>
       <View style={styles.headerBlockSmallGap}>
         <Text style={styles.parentTitle}>Günaydın, {parentName}</Text>
         <Text style={styles.subtitle}>Bugün {todayTrainingCount > 0 ? `${todayTrainingCount} antrenman` : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
@@ -294,7 +297,7 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
               const name = `${athlete.firstName} ${athlete.lastName}`;
               return (
                 <Pressable key={athlete.id} onPress={() => onSelectAthlete(athlete.id)} style={isSelected ? styles.childSwitchActive : styles.childSwitchInactive}>
-                  <InitialsAvatar label={athlete.firstName.slice(0, 1)} size={24} tone={isSelected ? "dark" : "light"} />
+                  <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={athlete.firstName.slice(0, 1)} size={24} tone={isSelected ? "dark" : "light"} />
                   <Text style={isSelected ? styles.childSwitchActiveText : styles.childSwitchText} numberOfLines={1}>{name}</Text>
                 </Pressable>
               );

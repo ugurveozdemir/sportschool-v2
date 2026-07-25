@@ -90,7 +90,7 @@ public static class SchoolManagementEndpoints
         int? pageSize,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
-        IMediaStorage storage,
+        MediaAccessUrlService mediaUrls,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -125,7 +125,7 @@ public static class SchoolManagementEndpoints
                 .Skip((page.Value - 1) * pageSize.Value)
                 .Take(pageSize.Value)
                 .ToListAsync(cancellationToken);
-            var items = athletes.Select(x => AthleteRosterResponse.From(x, storage)).ToList();
+            var items = athletes.Select(x => AthleteRosterResponse.From(x, mediaUrls)).ToList();
 
             return Results.Ok(new PaginatedList<AthleteRosterResponse>(items, totalCount, page.Value, pageSize.Value));
         }
@@ -133,7 +133,7 @@ public static class SchoolManagementEndpoints
         {
             var athletes = await orderedQuery
                 .ToListAsync(cancellationToken);
-            var items = athletes.Select(x => AthleteRosterResponse.From(x, storage)).ToList();
+            var items = athletes.Select(x => AthleteRosterResponse.From(x, mediaUrls)).ToList();
 
             return Results.Ok(items);
         }
@@ -320,7 +320,7 @@ public sealed record AthleteRosterResponse(
     string ParentPhone,
     string? ProfileImageUrl)
 {
-    public static AthleteRosterResponse From(AthleteProfile athlete, IMediaStorage storage)
+    public static AthleteRosterResponse From(AthleteProfile athlete, MediaAccessUrlService mediaUrls)
     {
         return new AthleteRosterResponse(
             athlete.Id,
@@ -331,7 +331,7 @@ public sealed record AthleteRosterResponse(
             athlete.BirthDate,
             athlete.ParentFullName,
             athlete.ParentPhone,
-            athlete.ProfileImageStorageKey is null ? null : storage.GetPublicUrl(athlete.ProfileImageStorageKey));
+            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id));
     }
 }
 

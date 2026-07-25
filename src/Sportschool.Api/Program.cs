@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.FileProviders;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Announcements;
 using Sportschool.Api.Features.Applications;
@@ -50,7 +49,9 @@ builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
 builder.Services.AddSingleton<TemporaryPasswordGenerator>();
 builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 100 * 1024 * 1024);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 100 * 1024 * 1024);
 builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
+builder.Services.AddSingleton<MediaAccessUrlService>();
 builder.Services.AddHostedService<DevSeedHostedService>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
@@ -90,18 +91,6 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseStaticFiles();
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
-{
-    var mediaStorage = app.Services.GetRequiredService<IMediaStorage>();
-    if (mediaStorage is LocalMediaStorage localMediaStorage)
-    {
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(localMediaStorage.RootPath),
-            RequestPath = "/media"
-        });
-    }
-}
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -122,6 +111,7 @@ app.MapAttendanceEndpoints();
 app.MapSchoolManagementEndpoints();
 app.MapDashboardEndpoints();
 app.MapAthleteMediaEndpoints();
+app.MapMediaAccessEndpoints();
 app.MapFallbackToFile("/dashboard/{*path:nonfile}", "dashboard/index.html");
 
 app.Run();

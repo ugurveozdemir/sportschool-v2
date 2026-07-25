@@ -37,7 +37,7 @@ public sealed class AthleteMediaEndpointTests
         });
 
         using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
-        using var content = CreateUpload("image", "avatar.png", "image/png", [137, 80, 78, 71]);
+        using var content = CreateUpload("image", "avatar.png", "image/png", [137, 80, 78, 71, 13, 10, 26, 10]);
 
         var response = await client.PutAsync($"/api/school/athletes/{athlete.Id}/profile-image", content);
 
@@ -45,7 +45,12 @@ public sealed class AthleteMediaEndpointTests
         var result = await response.Content.ReadFromJsonAsync<ProfileImageResponse>(JsonOptions);
         Assert.NotNull(result);
         Assert.Equal(athlete.Id, result.AthleteProfileId);
-        Assert.StartsWith("/media/profile-images/", result.Url);
+        Assert.StartsWith($"/api/media/profile-images/{athlete.Id}?token=", result.Url);
+
+        using var mediaClient = factory.CreateClient();
+        using var mediaResponse = await mediaClient.GetAsync(result.Url);
+        Assert.Equal(HttpStatusCode.OK, mediaResponse.StatusCode);
+        Assert.Equal("image/png", mediaResponse.Content.Headers.ContentType?.MediaType);
 
         var updatedAthlete = await factory.QueryAsync(db => db.AthleteProfiles.SingleAsync(x => x.Id == athlete.Id));
         Assert.NotNull(updatedAthlete.ProfileImageStorageKey);
@@ -77,6 +82,31 @@ public sealed class AthleteMediaEndpointTests
     }
 
     [Fact]
+    public async Task ProfileImageRejectsSpoofedContentType()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "media-admin-validation@example.com", "Media Admin", "password", UserRole.SchoolAdmin);
+        var athleteUser = TestUsers.Create(schoolId, "media-athlete-validation@example.com", "Media Athlete", "password", UserRole.Athlete);
+        var athlete = CreateAthlete(schoolId, athleteUser, "Ece", "Yilmaz");
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Media School", "media-validation"));
+            db.Users.AddRange(admin, athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        using var content = CreateUpload("image", "payload.html", "image/jpeg", "<script>alert(1)</script>"u8.ToArray());
+
+        var response = await client.PutAsync($"/api/school/athletes/{athlete.Id}/profile-image", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PublishedVideoAppearsOnlyInCurrentSchoolFeed()
     {
         await using var factory = new TestAppFactory();
@@ -99,7 +129,7 @@ public sealed class AthleteMediaEndpointTests
         });
 
         using var adminClient = factory.CreateAuthenticatedClient(adminA, UserRole.SchoolAdmin);
-        using var upload = CreateUpload("video", "training.mp4", "video/mp4", [0, 0, 0, 24, 102, 116, 121, 112]);
+        using var upload = CreateUpload("video", "training.mp4", "video/mp4", [0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);
         var uploadResponse = await adminClient.PostAsync(
             $"/api/school/athlete-videos?athleteProfileId={athleteA.Id}&caption=Great%20training",
             upload);
