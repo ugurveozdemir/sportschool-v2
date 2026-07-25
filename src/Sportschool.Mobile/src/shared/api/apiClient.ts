@@ -15,6 +15,14 @@ type RequestOptions = {
 const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
   ?? (Platform.OS === "android" ? "http://10.0.2.2:5062" : "http://localhost:5062");
 
+export function resolveApiUrl(pathOrUrl: string) {
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+    return pathOrUrl;
+  }
+
+  return `${baseUrl}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`;
+}
+
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
   const response = await sendRequest<TResponse>(path, options);
   return response;
@@ -33,7 +41,7 @@ async function sendRequest<TResponse>(path: string, options: RequestOptions): Pr
     headers.set("Authorization", `Bearer ${session.accessToken}`);
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(resolveApiUrl(path), {
     method,
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body)

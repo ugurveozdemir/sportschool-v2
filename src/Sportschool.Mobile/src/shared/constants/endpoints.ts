@@ -12,6 +12,7 @@ export const endpoints = {
   meAnnouncementsUnreadCount: "/api/me/announcements/unread-count",
   meAnnouncementsRead: "/api/me/announcements/read",
   meAthleteReports: "/api/me/athlete-reports",
+  feed: "/api/feed",
   schoolAnnouncements: "/api/school/announcements",
   schoolAnnouncement: (announcementId: string) => `/api/school/announcements/${announcementId}`,
   schoolGroups: "/api/school/groups",

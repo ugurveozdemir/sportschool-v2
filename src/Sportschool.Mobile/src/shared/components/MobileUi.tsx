@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
 import { router, usePathname } from "expo-router";
 import type { PropsWithChildren, ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
@@ -127,6 +127,14 @@ export function InitialsAvatar({ label, size = 42, tone = "light" }: { label: st
   );
 }
 
+export function ProfileAvatar({ uri, label, size = 42, tone = "light" }: { uri?: string | null; label: string; size?: number; tone?: "dark" | "light" | "green" | "red" }) {
+  if (!uri) {
+    return <InitialsAvatar label={label} size={size} tone={tone} />;
+  }
+
+  return <Image accessibilityLabel={`${label} profil fotoğrafı`} source={{ uri }} style={[styles.profileAvatar, { width: size, height: size, borderRadius: size / 2 }]} />;
+}
+
 export function CircularScore({ value, label, color = colors.secondary, size = 68 }: { value: number; label: string; color?: string; size?: number }) {
   const stroke = 6;
   const radiusValue = (size - stroke) / 2;
@@ -226,6 +234,7 @@ const styles = StyleSheet.create({
   iconButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
   initialsAvatar: { alignItems: "center", justifyContent: "center" },
   initialsText: { ...typography.title },
+  profileAvatar: { backgroundColor: colors.primaryFixed, resizeMode: "cover" },
   metricLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   metricTile: { flex: 1, gap: spacing.sm, minHeight: 112 },
   metricValue: { ...typography.headline },

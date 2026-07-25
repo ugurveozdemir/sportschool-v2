@@ -4,6 +4,7 @@ using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Groups;
+using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Trainings;
@@ -32,25 +33,26 @@ public static class MobileReadEndpoints
     private static async Task<IResult> ListAthletesAsync(
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        IMediaStorage storage,
         CancellationToken cancellationToken)
     {
         var profiles = await CurrentAthleteProfiles(currentUser, db)
             .OrderBy(x => x.FirstName)
             .ThenBy(x => x.LastName)
-            .Select(x => MobileAthleteResponse.From(x))
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(profiles);
+        return Results.Ok(profiles.Select(x => MobileAthleteResponse.From(x, storage)));
     }
 
     private static async Task<IResult> GetProfileAsync(
         Guid? athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        IMediaStorage storage,
         CancellationToken cancellationToken)
     {
         var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
-        return profile is null ? Results.NotFound() : Results.Ok(MobileProfileResponse.From(profile));
+        return profile is null ? Results.NotFound() : Results.Ok(MobileProfileResponse.From(profile, storage));
     }
 
     private static async Task<IResult> ListGroupsAsync(
@@ -251,15 +253,17 @@ public sealed record MobileAthleteResponse(
     Guid Id,
     string FirstName,
     string LastName,
-    DateOnly BirthDate)
+    DateOnly BirthDate,
+    string? ProfileImageUrl)
 {
-    public static MobileAthleteResponse From(Athletes.AthleteProfile profile)
+    public static MobileAthleteResponse From(Athletes.AthleteProfile profile, IMediaStorage storage)
     {
         return new MobileAthleteResponse(
             profile.Id,
             profile.FirstName,
             profile.LastName,
-            profile.BirthDate);
+            profile.BirthDate,
+            profile.ProfileImageStorageKey is null ? null : storage.GetPublicUrl(profile.ProfileImageStorageKey));
     }
 }
 
@@ -271,9 +275,10 @@ public sealed record MobileProfileResponse(
     string LastName,
     DateOnly BirthDate,
     string ParentFullName,
-    string ParentPhone)
+    string ParentPhone,
+    string? ProfileImageUrl)
 {
-    public static MobileProfileResponse From(Athletes.AthleteProfile profile)
+    public static MobileProfileResponse From(Athletes.AthleteProfile profile, IMediaStorage storage)
     {
         return new MobileProfileResponse(
             profile.Id,
@@ -283,6 +288,7 @@ public sealed record MobileProfileResponse(
             profile.LastName,
             profile.BirthDate,
             profile.ParentFullName,
-            profile.ParentPhone);
+            profile.ParentPhone,
+            profile.ProfileImageStorageKey is null ? null : storage.GetPublicUrl(profile.ProfileImageStorageKey));
     }
 }

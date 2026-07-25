@@ -10,7 +10,8 @@ import { useCoachGroups } from "@/features/coach/api";
 import { useGroups, useProfile, useReports } from "@/features/me/api";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { CircularScore, InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { CircularScore, InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { resolveApiUrl } from "@/shared/api/apiClient";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
@@ -51,7 +52,7 @@ export default function ProfileScreen() {
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       <View style={styles.profileHero}>
         <View style={styles.avatarWrap}>
-          <InitialsAvatar label={initials(displayName ?? "A")} size={128} tone="dark" />
+          {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={128} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={128} tone="dark" />}
           <View style={styles.verifiedBadge}>
             <MaterialCommunityIcons name={isCoach ? "whistle-outline" : "check-decagram"} size={18} color={colors.onSecondaryContainer} />
           </View>

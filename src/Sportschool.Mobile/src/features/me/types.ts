@@ -5,6 +5,7 @@ export type MobileAthleteResponse = {
   firstName: string;
   lastName: string;
   birthDate: string;
+  profileImageUrl: string | null;
 };
 
 export type MobileProfileResponse = {
@@ -16,6 +17,7 @@ export type MobileProfileResponse = {
   birthDate: string;
   parentFullName: string;
   parentPhone: string;
+  profileImageUrl: string | null;
 };
 
 export type GroupResponse = {

@@ -9,6 +9,7 @@ export default function AppTabs() {
       }}
     >
       <Tabs.Screen name="home" />
+      <Tabs.Screen name="feed" />
       <Tabs.Screen name="announcements" options={{ href: null }} />
       <Tabs.Screen name="calendar" />
       <Tabs.Screen name="trainings/[trainingId]" options={{ href: null }} />
