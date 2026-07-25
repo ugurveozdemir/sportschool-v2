@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Athletes;
+using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -89,6 +90,7 @@ public static class SchoolManagementEndpoints
         int? pageSize,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        IMediaStorage storage,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -119,19 +121,19 @@ public static class SchoolManagementEndpoints
 
         if (page.HasValue && pageSize.HasValue)
         {
-            var items = await orderedQuery
+            var athletes = await orderedQuery
                 .Skip((page.Value - 1) * pageSize.Value)
                 .Take(pageSize.Value)
-                .Select(x => AthleteRosterResponse.From(x))
                 .ToListAsync(cancellationToken);
+            var items = athletes.Select(x => AthleteRosterResponse.From(x, storage)).ToList();
 
             return Results.Ok(new PaginatedList<AthleteRosterResponse>(items, totalCount, page.Value, pageSize.Value));
         }
         else
         {
-            var items = await orderedQuery
-                .Select(x => AthleteRosterResponse.From(x))
+            var athletes = await orderedQuery
                 .ToListAsync(cancellationToken);
+            var items = athletes.Select(x => AthleteRosterResponse.From(x, storage)).ToList();
 
             return Results.Ok(items);
         }
@@ -315,9 +317,10 @@ public sealed record AthleteRosterResponse(
     string LastName,
     DateOnly BirthDate,
     string ParentFullName,
-    string ParentPhone)
+    string ParentPhone,
+    string? ProfileImageUrl)
 {
-    public static AthleteRosterResponse From(AthleteProfile athlete)
+    public static AthleteRosterResponse From(AthleteProfile athlete, IMediaStorage storage)
     {
         return new AthleteRosterResponse(
             athlete.Id,
@@ -327,7 +330,8 @@ public sealed record AthleteRosterResponse(
             athlete.LastName,
             athlete.BirthDate,
             athlete.ParentFullName,
-            athlete.ParentPhone);
+            athlete.ParentPhone,
+            athlete.ProfileImageStorageKey is null ? null : storage.GetPublicUrl(athlete.ProfileImageStorageKey));
     }
 }
 

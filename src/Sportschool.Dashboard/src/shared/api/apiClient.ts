@@ -4,7 +4,7 @@ import { ApiError } from "./apiError";
 import { clearStoredSession, getStoredSession, storeSession } from "./sessionStore";
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   auth?: boolean;
 };
@@ -34,6 +34,28 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
   return body as TResponse;
 }
 
+export async function apiFormRequest<TResponse>(path: string, method: "POST" | "PUT", body: FormData): Promise<TResponse> {
+  let response = await sendFormRequest(path, method, body);
+
+  if (response.status === 401) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      response = await sendFormRequest(path, method, body);
+    }
+  }
+
+  const text = await response.text();
+  const responseBody = text ? parseJson(text) : null;
+  if (!response.ok) {
+    if (response.status === 401) {
+      clearStoredSession();
+    }
+    throw new ApiError(messageFor(response.status), response.status, responseBody);
+  }
+
+  return responseBody as TResponse;
+}
+
 async function sendRequest(path: string, options: RequestOptions): Promise<Response> {
   const method = options.method ?? "GET";
   const headers = new Headers({ Accept: "application/json" });
@@ -52,6 +74,16 @@ async function sendRequest(path: string, options: RequestOptions): Promise<Respo
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body)
   });
+}
+
+function sendFormRequest(path: string, method: "POST" | "PUT", body: FormData): Promise<Response> {
+  const headers = new Headers({ Accept: "application/json" });
+  const session = getStoredSession();
+  if (session?.accessToken) {
+    headers.set("Authorization", `Bearer ${session.accessToken}`);
+  }
+
+  return fetch(path, { method, headers, body });
 }
 
 function refreshSession(): Promise<AuthSession | null> {
