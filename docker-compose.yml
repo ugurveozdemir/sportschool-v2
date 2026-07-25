@@ -30,6 +30,9 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=sportschool;Username=sportschool;Password=sportschool"
     ports:
       - "5062:8080"
+    volumes:
+      - sportschool-v2-media-data:/app/AppData/Media
 
 volumes:
   sportschool-v2-postgres-data:
+  sportschool-v2-media-data:
