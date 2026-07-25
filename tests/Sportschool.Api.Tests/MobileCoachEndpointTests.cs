@@ -115,6 +115,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         Assert.NotNull(roster);
         Assert.Equal(new[] { data.Group.Id, extraGroup.Id }.Order(), roster!.Training.Groups.Select(x => x.Id).Order());
         Assert.Equal(new[] { data.Athlete.Id, extraAthlete.Id }.Order(), roster.Athletes.Select(x => x.AthleteProfileId).Order());
+        Assert.Contains(roster.Athletes, athlete => athlete.AthleteProfileId == data.Athlete.Id && athlete.ProfileImageUrl is not null);
     }
 
     [Fact]
@@ -185,6 +186,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         Assert.Equal(2, athletes!.Length);
         Assert.Contains(athletes, a => a.AthleteProfileId == data.Athlete.Id);
         Assert.Contains(athletes, a => a.AthleteProfileId == data.OtherCoachAthlete.Id);
+        Assert.Contains(athletes, a => a.AthleteProfileId == data.Athlete.Id && a.ProfileImageUrl is not null);
     }
 
     [Fact]
@@ -263,7 +265,9 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             LastName = "Athlete",
             BirthDate = new DateOnly(2014, 1, 1),
             ParentFullName = "Mobile Parent",
-            ParentPhone = "05000000000"
+            ParentPhone = "05000000000",
+            ProfileImageStorageKey = "profile-images/mobile-athlete.png",
+            ProfileImageVersion = Guid.NewGuid()
         };
         var otherCoachAthlete = new AthleteProfile
         {

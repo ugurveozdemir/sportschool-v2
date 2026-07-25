@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -28,6 +29,7 @@ public static class GroupEndpoints
         Guid groupId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        MediaAccessUrlService mediaUrls,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -53,15 +55,25 @@ public static class GroupEndpoints
                 && x.AthleteProfile.User.IsActive)
             .OrderBy(x => x.AthleteProfile.LastName)
             .ThenBy(x => x.AthleteProfile.FirstName)
-            .Select(x => new GroupAthleteResponse(
+            .Select(x => new
+            {
                 x.AthleteProfile.Id,
                 x.AthleteProfile.FirstName,
                 x.AthleteProfile.LastName,
                 x.AthleteProfile.ParentFullName,
-                x.AthleteProfile.ParentPhone))
+                x.AthleteProfile.ParentPhone,
+                x.AthleteProfile.ProfileImageStorageKey,
+                x.AthleteProfile.ProfileImageVersion
+            })
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(athletes);
+        return Results.Ok(athletes.Select(x => new GroupAthleteResponse(
+            x.Id,
+            x.FirstName,
+            x.LastName,
+            x.ParentFullName,
+            x.ParentPhone,
+            x.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(schoolId.Value, x.Id, x.ProfileImageVersion))));
     }
 
     private static async Task<IResult> ListGroupsAsync(
@@ -274,4 +286,5 @@ public sealed record GroupAthleteResponse(
     string FirstName,
     string LastName,
     string ParentFullName,
-    string ParentPhone);
+    string ParentPhone,
+    string? ProfileImageUrl);

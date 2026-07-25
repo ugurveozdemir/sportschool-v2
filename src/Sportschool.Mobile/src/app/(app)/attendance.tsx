@@ -9,7 +9,8 @@ import type { CoachAthleteListItem } from "@/features/coach/types";
 import { useAttendance, useTrainings } from "@/features/me/api";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, MetricTile, Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
+import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
+import { resolveApiUrl } from "@/shared/api/apiClient";
 import { colors } from "@/shared/design/colors";
 import { spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
@@ -104,7 +105,7 @@ function AthleteRow({ athlete }: { athlete: CoachAthleteListItem }) {
   return (
     <Pressable onPress={() => router.push({ pathname: "/athletes/[athleteProfileId]", params: { athleteProfileId: athlete.athleteProfileId } })}>
       <SurfaceCard style={styles.athleteCard}>
-        <InitialsAvatar label={initials(name)} size={58} tone="light" />
+        <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={initials(name)} size={58} tone="light" />
         <View style={styles.flexOne}>
           <Text style={styles.athleteName}>{name}</Text>
           <Text style={styles.rowMeta}>{athlete.groups.join(", ") || "Grup ataması yok"}</Text>

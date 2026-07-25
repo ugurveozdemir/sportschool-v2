@@ -9,7 +9,8 @@ import type { SaveCoachAthleteReportRequest } from "@/features/coach/types";
 import type { AthleteReportResponse } from "@/features/me/types";
 import { Button } from "@/shared/components/Button";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { BarChart, CircularScore, InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { BarChart, CircularScore, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { resolveApiUrl } from "@/shared/api/apiClient";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -84,7 +85,7 @@ export default function CoachAthleteDetailScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
         </Pressable>
         <View style={styles.identity}>
-          <InitialsAvatar label={initials(name)} size={108} tone="dark" />
+          <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={initials(name)} size={108} tone="dark" />
           <Text style={styles.title}>{name}</Text>
           <Text style={styles.subtitle}>{athlete.groups.join(", ") || "Grup ataması yok"}</Text>
           <View style={styles.pillRow}>

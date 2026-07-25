@@ -17,7 +17,8 @@ import type { SchoolGroupResponse } from "@/features/coach/types";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { resolveApiUrl } from "@/shared/api/apiClient";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -207,7 +208,7 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
                     <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
                       {isSelected && <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} />}
                     </View>
-                    <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
+                    <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
                     <View style={styles.flexOne}>
                       <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
                       <Text style={styles.athleteMeta}>Veli: {athlete.parentFullName}</Text>
@@ -241,7 +242,7 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
           ) : (
             currentAthletes.map((athlete) => (
               <View key={athlete.id} style={styles.athleteRow}>
-                <InitialsAvatar label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
+                <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
                 <View style={styles.flexOne}>
                   <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
                   <Text style={styles.athleteMeta}>{athlete.parentFullName}</Text>

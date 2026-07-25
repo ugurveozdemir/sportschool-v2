@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Attendance;
+using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
@@ -116,6 +117,7 @@ public static class MobileCoachEndpoints
     private static async Task<IResult> ListAthletesAsync(
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        MediaAccessUrlService mediaUrls,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -137,6 +139,8 @@ public static class MobileCoachEndpoints
                 x.BirthDate,
                 x.ParentFullName,
                 x.ParentPhone,
+                x.ProfileImageStorageKey,
+                x.ProfileImageVersion,
                 GroupNames = db.GroupAthletes
                     .Where(membership => membership.AthleteProfileId == x.Id
                         && membership.Group.SchoolId == context.SchoolId
@@ -173,6 +177,7 @@ public static class MobileCoachEndpoints
                 x.BirthDate,
                 x.ParentFullName,
                 x.ParentPhone,
+                x.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(context.SchoolId, x.AthleteProfileId, x.ProfileImageVersion),
                 x.GroupNames,
                 latestScores.GetValueOrDefault(x.AthleteProfileId)))
             .ToArray();
@@ -184,6 +189,7 @@ public static class MobileCoachEndpoints
         Guid athleteProfileId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        MediaAccessUrlService mediaUrls,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -207,7 +213,9 @@ public static class MobileCoachEndpoints
                 x.LastName,
                 x.BirthDate,
                 x.ParentFullName,
-                x.ParentPhone
+                x.ParentPhone,
+                x.ProfileImageStorageKey,
+                x.ProfileImageVersion
             })
             .FirstAsync(cancellationToken);
 
@@ -235,6 +243,7 @@ public static class MobileCoachEndpoints
             athlete.BirthDate,
             athlete.ParentFullName,
             athlete.ParentPhone,
+            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(context.SchoolId, athlete.Id, athlete.ProfileImageVersion),
             groups,
             reports));
     }
@@ -339,6 +348,7 @@ public static class MobileCoachEndpoints
         Guid trainingId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        MediaAccessUrlService mediaUrls,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -367,6 +377,8 @@ public static class MobileCoachEndpoints
                 x.AthleteProfile.LastName,
                 x.AthleteProfile.ParentFullName,
                 x.AthleteProfile.ParentPhone,
+                x.AthleteProfile.ProfileImageStorageKey,
+                x.AthleteProfile.ProfileImageVersion,
                 Status = db.AttendanceRecords
                     .Where(a => a.TrainingSessionId == trainingId && a.AthleteProfileId == x.AthleteProfileId)
                     .Select(a => (AttendanceStatus?)a.Status)
@@ -381,6 +393,8 @@ public static class MobileCoachEndpoints
                 x.LastName,
                 x.ParentFullName,
                 x.ParentPhone,
+                x.ProfileImageStorageKey,
+                x.ProfileImageVersion,
                 x.Status
             })
             .Select(x => new MobileCoachAttendanceRosterItem(
@@ -389,6 +403,7 @@ public static class MobileCoachEndpoints
                 x.Key.LastName,
                 x.Key.ParentFullName,
                 x.Key.ParentPhone,
+                x.Key.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(context.SchoolId, x.Key.AthleteProfileId, x.Key.ProfileImageVersion),
                 x.Key.Status))
             .OrderBy(x => x.LastName)
             .ThenBy(x => x.FirstName)
@@ -622,6 +637,7 @@ public sealed record MobileCoachAthleteListItem(
     DateOnly BirthDate,
     string ParentFullName,
     string ParentPhone,
+    string? ProfileImageUrl,
     IReadOnlyCollection<string> Groups,
     decimal? LatestAverageScore);
 
@@ -632,6 +648,7 @@ public sealed record MobileCoachAthleteDetailResponse(
     DateOnly BirthDate,
     string ParentFullName,
     string ParentPhone,
+    string? ProfileImageUrl,
     IReadOnlyCollection<string> Groups,
     IReadOnlyCollection<AthleteReportResponse> Reports);
 
@@ -665,6 +682,7 @@ public sealed record MobileCoachAttendanceRosterItem(
     string LastName,
     string ParentFullName,
     string ParentPhone,
+    string? ProfileImageUrl,
     AttendanceStatus? Status);
 
 public sealed record SaveMobileCoachAttendanceRequest(Guid AthleteProfileId, AttendanceStatus Status);

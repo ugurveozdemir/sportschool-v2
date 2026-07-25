@@ -35,6 +35,7 @@ export type GroupAthleteResponse = {
   lastName: string;
   parentFullName: string;
   parentPhone: string;
+  profileImageUrl: string | null;
 };
 
 export type AthleteRosterResponse = {
@@ -46,6 +47,7 @@ export type AthleteRosterResponse = {
   birthDate: string;
   parentFullName: string;
   parentPhone: string;
+  profileImageUrl: string | null;
 };
 
 export type CoachAthleteListItem = {
@@ -55,6 +57,7 @@ export type CoachAthleteListItem = {
   birthDate: string;
   parentFullName: string;
   parentPhone: string;
+  profileImageUrl: string | null;
   groups: string[];
   latestAverageScore: number | null;
 };
@@ -66,6 +69,7 @@ export type CoachAthleteDetailResponse = {
   birthDate: string;
   parentFullName: string;
   parentPhone: string;
+  profileImageUrl: string | null;
   groups: string[];
   reports: AthleteReportResponse[];
 };
@@ -128,6 +132,7 @@ export type CoachAttendanceRosterItem = {
   lastName: string;
   parentFullName: string;
   parentPhone: string;
+  profileImageUrl: string | null;
   status: AttendanceStatus | null;
 };
 
