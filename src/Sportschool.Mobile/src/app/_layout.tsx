@@ -4,6 +4,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { queryClient } from "@/core/queryClient";
@@ -29,6 +30,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
+        <AppDataRefresher />
         <SessionProvider>
           <AthleteSelectionProvider>
             <StatusBar style="dark" backgroundColor={colors.background} />
@@ -38,4 +40,24 @@ export default function RootLayout() {
       </QueryClientProvider>
     </SafeAreaProvider>
   );
+}
+
+function AppDataRefresher() {
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") {
+        return;
+      }
+
+      void Promise.all([
+        queryClient.refetchQueries({ queryKey: ["me", "profile"], type: "active" }),
+        queryClient.refetchQueries({ queryKey: ["me", "athletes"], type: "active" }),
+        queryClient.refetchQueries({ queryKey: ["feed"], type: "active" })
+      ]);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  return null;
 }

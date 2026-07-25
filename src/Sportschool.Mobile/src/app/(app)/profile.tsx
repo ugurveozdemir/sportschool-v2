@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
@@ -26,6 +27,13 @@ export default function ProfileScreen() {
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
   const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const coachGroupsQuery = useCoachGroups(isCoach);
+  const { refetch: refetchProfile } = profileQuery;
+
+  useFocusEffect(useCallback(() => {
+    if (!isCoach) {
+      void refetchProfile();
+    }
+  }, [isCoach, refetchProfile]));
   const logoutMutation = useMutation({
     mutationFn: async () => {
       if (session?.refreshToken) {

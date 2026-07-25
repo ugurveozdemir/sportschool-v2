@@ -16,8 +16,8 @@ public sealed class MediaAccessUrlService(IOptions<JwtOptions> jwtOptions)
     private static readonly TimeSpan UrlLifetime = TimeSpan.FromMinutes(15);
     private readonly byte[] _signingKey = Encoding.UTF8.GetBytes(jwtOptions.Value.SigningKey);
 
-    public string CreateProfileImageUrl(Guid schoolId, Guid athleteProfileId) =>
-        CreateUrl(MediaResourceType.ProfileImage, schoolId, athleteProfileId, $"/api/media/profile-images/{athleteProfileId}");
+    public string CreateProfileImageUrl(Guid schoolId, Guid athleteProfileId, Guid? version) =>
+        CreateUrl(MediaResourceType.ProfileImage, schoolId, athleteProfileId, $"/api/media/profile-images/{athleteProfileId}", version);
 
     public string CreateVideoUrl(Guid schoolId, Guid videoId) =>
         CreateUrl(MediaResourceType.AthleteVideo, schoolId, videoId, $"/api/media/athlete-videos/{videoId}");
@@ -69,12 +69,13 @@ public sealed class MediaAccessUrlService(IOptions<JwtOptions> jwtOptions)
         return DateTimeOffset.UtcNow < DateTimeOffset.FromUnixTimeSeconds(expiresAt);
     }
 
-    private string CreateUrl(MediaResourceType resourceType, Guid schoolId, Guid resourceId, string path)
+    private string CreateUrl(MediaResourceType resourceType, Guid schoolId, Guid resourceId, string path, Guid? version = null)
     {
         var expiresAt = DateTimeOffset.UtcNow.Add(UrlLifetime).ToUnixTimeSeconds();
         var payload = Encoding.UTF8.GetBytes($"{resourceType}:{schoolId:N}:{resourceId:N}:{expiresAt}");
         var token = $"{Encode(payload)}.{Encode(Sign(payload))}";
-        return $"{path}?token={Uri.EscapeDataString(token)}";
+        var versionQuery = version is null ? string.Empty : $"&v={version.Value:N}";
+        return $"{path}?token={Uri.EscapeDataString(token)}{versionQuery}";
     }
 
     private byte[] Sign(byte[] payload) => HMACSHA256.HashData(_signingKey, payload);

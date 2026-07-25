@@ -73,6 +73,7 @@ public static class AthleteMediaEndpoints
             cancellationToken);
         var previousStorageKey = athlete.ProfileImageStorageKey;
         athlete.ProfileImageStorageKey = newStorageKey;
+        athlete.ProfileImageVersion = Guid.NewGuid();
         await db.SaveChangesAsync(cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(previousStorageKey))
@@ -80,7 +81,7 @@ public static class AthleteMediaEndpoints
             await storage.DeleteAsync(previousStorageKey, cancellationToken);
         }
 
-        return Results.Ok(new ProfileImageResponse(athlete.Id, mediaUrls.CreateProfileImageUrl(schoolId.Value, athlete.Id)));
+        return Results.Ok(new ProfileImageResponse(athlete.Id, mediaUrls.CreateProfileImageUrl(schoolId.Value, athlete.Id, athlete.ProfileImageVersion)));
     }
 
     private static async Task<IResult> DeleteProfileImageAsync(
@@ -109,6 +110,7 @@ public static class AthleteMediaEndpoints
 
         var storageKey = athlete.ProfileImageStorageKey;
         athlete.ProfileImageStorageKey = null;
+        athlete.ProfileImageVersion = null;
         await db.SaveChangesAsync(cancellationToken);
         await storage.DeleteAsync(storageKey, cancellationToken);
 
@@ -404,7 +406,7 @@ public sealed record AthleteVideoResponse(
             athlete.Id,
             athlete.FirstName,
             athlete.LastName,
-            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id),
+            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion),
             mediaUrls.CreateVideoUrl(video.SchoolId, video.Id),
             video.Caption,
             video.Status,

@@ -14,7 +14,12 @@ export function useMyAthletes(enabled = true) {
 }
 
 export function useProfile(enabled = true, athleteProfileId?: string | null) {
-  return useQuery({ enabled, queryKey: ["me", "profile", athleteProfileId], queryFn: () => apiRequest<MobileProfileResponse>(withAthlete(endpoints.meProfile, athleteProfileId)) });
+  return useQuery({
+    enabled,
+    queryKey: ["me", "profile", athleteProfileId],
+    queryFn: () => apiRequest<MobileProfileResponse>(withAthlete(endpoints.meProfile, athleteProfileId)),
+    refetchOnMount: "always"
+  });
 }
 
 export function useGroups(enabled = true, athleteProfileId?: string | null) {

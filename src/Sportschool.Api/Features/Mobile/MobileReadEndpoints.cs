@@ -263,7 +263,7 @@ public sealed record MobileAthleteResponse(
             profile.FirstName,
             profile.LastName,
             profile.BirthDate,
-            profile.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(profile.SchoolId, profile.Id));
+            profile.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(profile.SchoolId, profile.Id, profile.ProfileImageVersion));
     }
 }
 
@@ -289,6 +289,6 @@ public sealed record MobileProfileResponse(
             profile.BirthDate,
             profile.ParentFullName,
             profile.ParentPhone,
-            profile.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(profile.SchoolId, profile.Id));
+            profile.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(profile.SchoolId, profile.Id, profile.ProfileImageVersion));
     }
 }

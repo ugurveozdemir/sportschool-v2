@@ -46,6 +46,7 @@ public sealed class AthleteMediaEndpointTests
         Assert.NotNull(result);
         Assert.Equal(athlete.Id, result.AthleteProfileId);
         Assert.StartsWith($"/api/media/profile-images/{athlete.Id}?token=", result.Url);
+        Assert.Contains("&v=", result.Url);
 
         using var mediaClient = factory.CreateClient();
         using var mediaResponse = await mediaClient.GetAsync(result.Url);
@@ -54,6 +55,7 @@ public sealed class AthleteMediaEndpointTests
 
         var updatedAthlete = await factory.QueryAsync(db => db.AthleteProfiles.SingleAsync(x => x.Id == athlete.Id));
         Assert.NotNull(updatedAthlete.ProfileImageStorageKey);
+        Assert.NotNull(updatedAthlete.ProfileImageVersion);
     }
 
     [Fact]

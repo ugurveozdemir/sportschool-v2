@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
@@ -24,6 +25,7 @@ import { getAttendanceLabel } from "@/shared/utils/status";
 
 export default function HomeScreen() {
   const { session } = useSession();
+  const queryClient = useQueryClient();
   const isSchoolAdmin = session?.loginRole === "SchoolAdmin";
   const isCoach = (session?.roles.includes("Coach") ?? false) || isSchoolAdmin;
   const isParent = session?.roles.includes("Parent") ?? false;
@@ -40,6 +42,18 @@ export default function HomeScreen() {
   const announcementsQuery = useMemberAnnouncements(!isCoach, true);
   const unreadCountQuery = useUnreadAnnouncementCount(!isCoach);
   const coachSummaryQuery = useCoachSummary(isCoach);
+  const { refetch: refetchProfile } = profileQuery;
+
+  useFocusEffect(useCallback(() => {
+    if (isCoach) {
+      return;
+    }
+
+    void Promise.all([
+      refetchProfile(),
+      queryClient.refetchQueries({ queryKey: ["me", "athletes"], type: "active" })
+    ]);
+  }, [isCoach, queryClient, refetchProfile]));
 
   if (isCoach) {
     return <CoachHome sessionName={session?.fullName} summary={coachSummaryQuery.data} navItems={navItems} shellTitle={shellTitle} isSchoolAdmin={isSchoolAdmin} />;

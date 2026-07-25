@@ -39,5 +39,7 @@ public sealed class AthleteProfile
 
     public string? ProfileImageStorageKey { get; set; }
 
+    public Guid? ProfileImageVersion { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

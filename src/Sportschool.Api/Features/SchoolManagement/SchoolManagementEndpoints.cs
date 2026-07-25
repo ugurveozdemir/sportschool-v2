@@ -331,7 +331,7 @@ public sealed record AthleteRosterResponse(
             athlete.BirthDate,
             athlete.ParentFullName,
             athlete.ParentPhone,
-            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id));
+            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion));
     }
 }
 
