@@ -37,5 +37,7 @@ public sealed class AthleteProfile
     /// </summary>
     public decimal? MonthlyFeeOverride { get; set; }
 
+    public string? ProfileImageStorageKey { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

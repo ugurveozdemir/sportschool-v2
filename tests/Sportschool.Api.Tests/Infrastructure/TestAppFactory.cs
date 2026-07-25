@@ -14,11 +14,13 @@ namespace Sportschool.Api.Tests.Infrastructure;
 public sealed class TestAppFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly string _mediaPath = Path.Combine(Path.GetTempPath(), "sportschool-api-tests", Guid.NewGuid().ToString("N"));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("Application:TimeZone", "UTC");
+        builder.UseSetting("Media:LocalStoragePath", _mediaPath);
         builder.ConfigureServices(services =>
         {
             _connection.Open();
@@ -59,6 +61,10 @@ public sealed class TestAppFactory : WebApplicationFactory<Program>
     public override async ValueTask DisposeAsync()
     {
         await _connection.DisposeAsync();
+        if (Directory.Exists(_mediaPath))
+        {
+            Directory.Delete(_mediaPath, recursive: true);
+        }
         await base.DisposeAsync();
     }
 }

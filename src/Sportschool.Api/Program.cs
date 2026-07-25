@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.FileProviders;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Announcements;
 using Sportschool.Api.Features.Applications;
@@ -12,6 +14,7 @@ using Sportschool.Api.Features.Bootstrap;
 using Sportschool.Api.Features.Dashboard;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Mobile;
+using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Platform;
 using Sportschool.Api.Features.Reports;
@@ -46,6 +49,8 @@ builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
 builder.Services.AddSingleton<TemporaryPasswordGenerator>();
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 100 * 1024 * 1024);
+builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
 builder.Services.AddHostedService<DevSeedHostedService>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
@@ -85,6 +90,18 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseStaticFiles();
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+{
+    var mediaStorage = app.Services.GetRequiredService<IMediaStorage>();
+    if (mediaStorage is LocalMediaStorage localMediaStorage)
+    {
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(localMediaStorage.RootPath),
+            RequestPath = "/media"
+        });
+    }
+}
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -104,6 +121,7 @@ app.MapAthleteReportEndpoints();
 app.MapAttendanceEndpoints();
 app.MapSchoolManagementEndpoints();
 app.MapDashboardEndpoints();
+app.MapAthleteMediaEndpoints();
 app.MapFallbackToFile("/dashboard/{*path:nonfile}", "dashboard/index.html");
 
 app.Run();

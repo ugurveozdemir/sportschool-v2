@@ -11,6 +11,7 @@ using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Features.Announcements;
 using Sportschool.Api.Features.Matches;
+using Sportschool.Api.Features.Media;
 
 namespace Sportschool.Api.Data;
 
@@ -52,6 +53,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
     public DbSet<MatchSquad> MatchSquads => Set<MatchSquad>();
 
     public DbSet<AthleteMeasurement> AthleteMeasurements => Set<AthleteMeasurement>();
+
+    public DbSet<AthleteVideo> AthleteVideos => Set<AthleteVideo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -143,6 +146,7 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             athlete.Property(x => x.LastName).HasMaxLength(80).IsRequired();
             athlete.Property(x => x.ParentFullName).HasMaxLength(160).IsRequired();
             athlete.Property(x => x.ParentPhone).HasMaxLength(40).IsRequired();
+            athlete.Property(x => x.ProfileImageStorageKey).HasMaxLength(500);
             athlete.Property(x => x.MonthlyFeeOverride).HasPrecision(12, 2);
             athlete.HasIndex(x => new { x.SchoolId, x.UserId }).IsUnique();
 
@@ -386,6 +390,31 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
                 .WithMany()
                 .HasForeignKey(x => x.AthleteProfileId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AthleteVideo>(video =>
+        {
+            video.HasKey(x => x.Id);
+            video.Property(x => x.StorageKey).HasMaxLength(500).IsRequired();
+            video.Property(x => x.Caption).HasMaxLength(300);
+            video.Property(x => x.Status).HasConversion<string>().HasMaxLength(40);
+            video.HasIndex(x => new { x.SchoolId, x.IsActive, x.IsPublished, x.PublishedAt });
+            video.HasIndex(x => new { x.AthleteProfileId, x.CreatedAt });
+
+            video.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            video.HasOne(x => x.AthleteProfile)
+                .WithMany()
+                .HasForeignKey(x => x.AthleteProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            video.HasOne(x => x.UploadedBy)
+                .WithMany()
+                .HasForeignKey(x => x.UploadedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
