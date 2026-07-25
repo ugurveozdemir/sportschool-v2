@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import { useFeed } from "@/features/feed/api";
@@ -23,7 +23,7 @@ export default function FeedScreen() {
     return <LoadingState label="Videolar yükleniyor" />;
   }
 
-  const videos = feedQuery.data?.items ?? [];
+  const videos = feedQuery.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} contentStyle={styles.content}>
       <View style={styles.heading}>
@@ -33,6 +33,11 @@ export default function FeedScreen() {
 
       {videos.length === 0 ? <SurfaceCard><EmptyState title="Henüz video yok" description="Okul yöneticisi yayınladığında videolar burada görünecek." /></SurfaceCard> : null}
       {videos.map((video) => <FeedVideoCard key={video.id} video={video} />)}
+      {feedQuery.hasNextPage ? (
+        <Pressable disabled={feedQuery.isFetchingNextPage} onPress={() => feedQuery.fetchNextPage()} style={styles.loadMore}>
+          <Text style={styles.loadMoreText}>{feedQuery.isFetchingNextPage ? "Videolar yükleniyor…" : "Daha fazla video göster"}</Text>
+        </Pressable>
+      ) : null}
     </ScreenShell>
   );
 }
@@ -68,6 +73,8 @@ const styles = StyleSheet.create({
   content: { gap: spacing.lg },
   date: { ...typography.label, color: colors.onSurfaceVariant },
   heading: { gap: spacing.xs },
+  loadMore: { alignItems: "center", borderColor: colors.outline, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
+  loadMoreText: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.body, color: colors.onSurfaceVariant },
   title: { ...typography.headline, color: colors.primary },
   video: { backgroundColor: colors.primary, borderRadius: radius.md, height: 230, overflow: "hidden", width: "100%" }

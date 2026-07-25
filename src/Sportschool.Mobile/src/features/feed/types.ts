@@ -15,4 +15,5 @@ export type AthleteFeedVideo = {
 export type AthleteFeedResponse = {
   items: AthleteFeedVideo[];
   nextBefore: string | null;
+  nextBeforeId: string | null;
 };

@@ -153,6 +153,52 @@ public sealed class AthleteMediaEndpointTests
         Assert.Empty(schoolBFeed!.Items);
     }
 
+    [Fact]
+    public async Task FeedCursorDoesNotSkipVideosPublishedAtTheSameTime()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var athleteUser = TestUsers.Create(schoolId, "media-cursor-athlete@example.com", "Media Athlete", "password", UserRole.Athlete);
+        var athlete = CreateAthlete(schoolId, athleteUser, "Fikri", "Yilmaz");
+        var publishedAt = new DateTimeOffset(2026, 7, 25, 12, 0, 0, TimeSpan.Zero);
+        var videos = new[]
+        {
+            CreatePublishedVideo("00000000-0000-0000-0000-000000000001", schoolId, athlete.Id, athleteUser.Id, publishedAt),
+            CreatePublishedVideo("00000000-0000-0000-0000-000000000002", schoolId, athlete.Id, athleteUser.Id, publishedAt),
+            CreatePublishedVideo("00000000-0000-0000-0000-000000000003", schoolId, athlete.Id, athleteUser.Id, publishedAt)
+        };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Media School", "media-cursor"));
+            db.Users.Add(athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            db.AthleteVideos.AddRange(videos);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(athleteUser, UserRole.Athlete);
+        var firstPage = await client.GetFromJsonAsync<AthleteFeedResponse>("/api/feed?pageSize=1", JsonOptions);
+        Assert.NotNull(firstPage);
+        Assert.NotNull(firstPage.NextBefore);
+        Assert.NotNull(firstPage.NextBeforeId);
+
+        var secondPage = await client.GetFromJsonAsync<AthleteFeedResponse>(
+            $"/api/feed?pageSize=1&before={Uri.EscapeDataString(firstPage.NextBefore.Value.ToString("O"))}&beforeId={firstPage.NextBeforeId}",
+            JsonOptions);
+        Assert.NotNull(secondPage);
+        Assert.NotEqual(firstPage.Items[0].Id, secondPage.Items[0].Id);
+        Assert.NotNull(secondPage.NextBefore);
+        Assert.NotNull(secondPage.NextBeforeId);
+
+        var thirdPage = await client.GetFromJsonAsync<AthleteFeedResponse>(
+            $"/api/feed?pageSize=1&before={Uri.EscapeDataString(secondPage.NextBefore.Value.ToString("O"))}&beforeId={secondPage.NextBeforeId}",
+            JsonOptions);
+        Assert.NotNull(thirdPage);
+        Assert.NotEqual(firstPage.Items[0].Id, thirdPage.Items[0].Id);
+        Assert.NotEqual(secondPage.Items[0].Id, thirdPage.Items[0].Id);
+    }
+
     private static MultipartFormDataContent CreateUpload(string fieldName, string fileName, string contentType, byte[] bytes)
     {
         var content = new MultipartFormDataContent();
@@ -179,5 +225,18 @@ public sealed class AthleteMediaEndpointTests
         BirthDate = new DateOnly(2015, 1, 1),
         ParentFullName = "Parent",
         ParentPhone = "5550000000"
+    };
+
+    private static AthleteVideo CreatePublishedVideo(string id, Guid schoolId, Guid athleteProfileId, Guid uploadedByUserId, DateTimeOffset publishedAt) => new()
+    {
+        Id = Guid.Parse(id),
+        SchoolId = schoolId,
+        AthleteProfileId = athleteProfileId,
+        UploadedByUserId = uploadedByUserId,
+        StorageKey = $"athlete-videos/{Guid.NewGuid():N}.mp4",
+        Status = AthleteVideoStatus.Ready,
+        IsPublished = true,
+        PublishedAt = publishedAt,
+        CreatedAt = publishedAt
     };
 }

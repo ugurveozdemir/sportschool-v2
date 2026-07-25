@@ -253,6 +253,7 @@ public static class AthleteMediaEndpoints
 
     private static async Task<IResult> GetFeedAsync(
         DateTimeOffset? before,
+        Guid? beforeId,
         int? pageSize,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
@@ -278,7 +279,8 @@ public static class AthleteMediaEndpoints
         var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
         if (before is not null && !usesSqlite)
         {
-            query = query.Where(x => x.PublishedAt < before.Value);
+            query = query.Where(x => x.PublishedAt < before.Value
+                || (beforeId.HasValue && x.PublishedAt == before.Value && x.Id.CompareTo(beforeId.Value) < 0));
         }
 
         List<AthleteVideo> videos;
@@ -289,7 +291,8 @@ public static class AthleteMediaEndpoints
             var localVideos = await query.ToListAsync(cancellationToken);
             if (before is not null)
             {
-                localVideos = localVideos.Where(x => x.PublishedAt < before.Value).ToList();
+                localVideos = localVideos.Where(x => x.PublishedAt < before.Value
+                    || (beforeId.HasValue && x.PublishedAt == before.Value && x.Id.CompareTo(beforeId.Value) < 0)).ToList();
             }
 
             videos = localVideos
@@ -311,8 +314,9 @@ public static class AthleteMediaEndpoints
             .Select(x => AthleteVideoResponse.From(x, x.AthleteProfile, mediaUrls))
             .ToList();
         var nextBefore = hasMore ? items[^1].PublishedAt : null;
+        Guid? nextBeforeId = hasMore ? items[^1].Id : null;
 
-        return Results.Ok(new AthleteFeedResponse(items, nextBefore));
+        return Results.Ok(new AthleteFeedResponse(items, nextBefore, nextBeforeId));
     }
 
     private static Task<AthleteProfile?> FindActiveAthleteAsync(
@@ -410,4 +414,4 @@ public sealed record AthleteVideoResponse(
     }
 }
 
-public sealed record AthleteFeedResponse(IReadOnlyList<AthleteVideoResponse> Items, DateTimeOffset? NextBefore);
+public sealed record AthleteFeedResponse(IReadOnlyList<AthleteVideoResponse> Items, DateTimeOffset? NextBefore, Guid? NextBeforeId);
