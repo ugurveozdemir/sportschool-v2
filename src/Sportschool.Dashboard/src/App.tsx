@@ -16,6 +16,7 @@ import { getStoredSession, type UserRole } from "./app/auth/sessionStore";
 import { LoginPage } from "./app/pages/LoginPage";
 import { SchoolsPage } from "./features/platform/SchoolsPage";
 import { AthletesPage } from "./features/school/AthletesPage";
+import { GroupsPage } from "./features/school/GroupsPage";
 import { SchoolDashboardPage } from "./features/school/SchoolDashboardPage";
 
 type AppModule = {
@@ -62,7 +63,7 @@ export function App() {
                 path={module.path}
                 element={
                   <RoleGuard roles={module.roles}>
-                    {module.path === "/sporcular" ? <AthletesPage /> : <ModulePage module={module} />}
+                    {module.path === "/sporcular" ? <AthletesPage /> : module.path === "/gruplar" ? <GroupsPage /> : <ModulePage module={module} />}
                   </RoleGuard>
                 }
               />

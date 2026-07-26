@@ -79,6 +79,20 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.athlete-add-control {
+  display: flex;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.athlete-add-control .ant-select {
+  flex: 1;
+}
+
+.group-roster-table {
+  margin-top: 24px;
+}
+
 .dashboard-stats {
   display: grid;
   gap: 16px;
