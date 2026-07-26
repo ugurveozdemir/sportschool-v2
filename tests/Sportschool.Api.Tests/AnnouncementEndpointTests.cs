@@ -46,44 +46,22 @@ public sealed class AnnouncementEndpointTests
     }
 
     [Fact]
-    public async Task CoachCanCreateAnnouncementForOwnSchool()
+    public async Task CoachCanReadButCannotManageSchoolAnnouncements()
     {
         await using var factory = new TestAppFactory();
         var fixture = await SeedAnnouncementScenarioAsync(factory);
         using var client = factory.CreateAuthenticatedClient(fixture.Coach, UserRole.Coach);
         var request = new SaveAnnouncementRequest("Maç saati değişti", "Cumartesi maçı 15:00 yerine 16:00 başlayacak.", null);
 
-        using var response = await client.PostAsJsonAsync("/api/school/announcements", request);
+        var announcements = await client.GetFromJsonAsync<AnnouncementResponse[]>("/api/school/announcements");
+        using var createResponse = await client.PostAsJsonAsync("/api/school/announcements", request);
+        using var updateResponse = await client.PutAsJsonAsync($"/api/school/announcements/{fixture.CurrentAnnouncementId}", request);
+        using var deleteResponse = await client.DeleteAsync($"/api/school/announcements/{fixture.CurrentAnnouncementId}");
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<AnnouncementResponse>();
-        Assert.NotNull(body);
-        Assert.Equal(fixture.Coach.Id, body.CreatedByUserId);
-        Assert.True(body.IsNew);
-        var saved = await factory.QueryAsync(db => db.Announcements.SingleAsync(x => x.Id == body.Id));
-        Assert.Equal(fixture.School.Id, saved.SchoolId);
-        Assert.Equal(fixture.Coach.Id, saved.CreatedByUserId);
-    }
-
-    [Fact]
-    public async Task CoachCanOnlyUpdateOwnAnnouncement()
-    {
-        await using var factory = new TestAppFactory();
-        var fixture = await SeedAnnouncementScenarioAsync(factory);
-        using var coachClient = factory.CreateAuthenticatedClient(fixture.Coach, UserRole.Coach);
-        using var otherCoachClient = factory.CreateAuthenticatedClient(fixture.OtherCoachSameSchool, UserRole.Coach);
-        var request = new SaveAnnouncementRequest("Güncellenen başlık", "Güncellenen duyuru içeriği.", null);
-
-        using var forbiddenResponse = await otherCoachClient.PutAsJsonAsync($"/api/school/announcements/{fixture.CurrentAnnouncementId}", request);
-        using var successResponse = await coachClient.PutAsJsonAsync($"/api/school/announcements/{fixture.CurrentAnnouncementId}", request);
-
-        Assert.Equal(HttpStatusCode.NotFound, forbiddenResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, successResponse.StatusCode);
-        var title = await factory.QueryAsync(db => db.Announcements
-            .Where(x => x.Id == fixture.CurrentAnnouncementId)
-            .Select(x => x.Title)
-            .SingleAsync());
-        Assert.Equal("Güncellenen başlık", title);
+        Assert.NotNull(announcements);
+        Assert.Equal(HttpStatusCode.Forbidden, createResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, updateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, deleteResponse.StatusCode);
     }
 
     [Fact]

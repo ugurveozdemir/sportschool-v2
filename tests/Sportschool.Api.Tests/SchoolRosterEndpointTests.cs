@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Auth;
+using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
@@ -137,18 +138,18 @@ public sealed class SchoolRosterEndpointTests
     }
 
     [Fact]
-    public async Task DeactivateAthlete_WorksCorrectly_AndRevokesTokens()
+    public async Task SchoolAdminCanDeactivateAthlete_AndRevokesTokens()
     {
         await using var factory = new TestAppFactory();
         var schoolId = Guid.NewGuid();
-        var coach = TestUsers.Create(schoolId, "coach-deact-ath@example.com", "Coach", "password", UserRole.Coach);
+        var admin = TestUsers.Create(schoolId, "admin-deact-ath@example.com", "Admin", "password", UserRole.SchoolAdmin);
         var athleteUser = TestUsers.Create(schoolId, "ath-deact@example.com", "Ath", "password", UserRole.Athlete);
         var profileId = Guid.NewGuid();
 
         await factory.SeedAsync(db =>
         {
             db.Schools.Add(CreateSchool(schoolId, "Tenant School", "deact-3"));
-            db.Users.AddRange(coach, athleteUser);
+            db.Users.AddRange(admin, athleteUser);
 
             var profile = CreateAthleteProfile(schoolId, athleteUser, "Ath", "L");
             profile.Id = profileId;
@@ -166,7 +167,7 @@ public sealed class SchoolRosterEndpointTests
             return Task.CompletedTask;
         });
 
-        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
 
         using var response = await client.DeleteAsync($"/api/school/athletes/{profileId}");
         Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
@@ -177,6 +178,40 @@ public sealed class SchoolRosterEndpointTests
         Assert.False(updatedProfile.User.IsActive);
         var token = Assert.Single(updatedProfile.User.RefreshTokens);
         Assert.NotNull(token.RevokedAt);
+    }
+
+    [Fact]
+    public async Task CoachCannotDeactivateAthleteOrManageGroups()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-restricted@example.com", "Coach", "password", UserRole.Coach);
+        var athlete = TestUsers.Create(schoolId, "athlete-restricted@example.com", "Athlete", "password", UserRole.Athlete);
+        var athleteProfile = CreateAthleteProfile(schoolId, athlete, "Athlete", "Restricted");
+        var group = new TrainingGroup { SchoolId = schoolId, Name = "Group A" };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "coach-restricted"));
+            db.Users.AddRange(coach, athlete);
+            db.AthleteProfiles.Add(athleteProfile);
+            db.TrainingGroups.Add(group);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+        using var deactivateResponse = await client.DeleteAsync($"/api/school/athletes/{athleteProfile.Id}");
+        using var createGroupResponse = await client.PostAsJsonAsync("/api/school/groups", new CreateGroupRequest("New group", null));
+        using var addAthleteResponse = await client.PostAsync($"/api/school/groups/{group.Id}/athletes/{athleteProfile.Id}", null);
+
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, deactivateResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, createGroupResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, addAthleteResponse.StatusCode);
+        var isAthleteActive = await factory.QueryAsync(db => db.AthleteProfiles
+            .Where(x => x.Id == athleteProfile.Id)
+            .Select(x => x.IsActive)
+            .SingleAsync());
+        Assert.True(isAthleteActive);
     }
 
     [Fact]

@@ -24,7 +24,7 @@ public static class SchoolManagementEndpoints
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
         staffGroup.MapGet("/athletes", ListAthletesAsync);
-        staffGroup.MapDelete("/athletes/{athleteProfileId:guid}", DeactivateAthleteAsync);
+        adminGroup.MapDelete("/athletes/{athleteProfileId:guid}", DeactivateAthleteAsync);
 
         return adminGroup;
     }

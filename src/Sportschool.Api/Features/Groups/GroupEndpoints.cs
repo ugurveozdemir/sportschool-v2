@@ -11,16 +11,23 @@ public static class GroupEndpoints
 {
     public static RouteGroupBuilder MapGroupEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/school/groups")
+        var group = app.MapGroup("/api/school/groups");
+
+        group.MapGet("/", ListGroupsAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
+        group.MapGet("/{groupId:guid}/athletes", ListGroupAthletesAsync)
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
 
-        group.MapGet("/", ListGroupsAsync);
-        group.MapPost("/", CreateGroupAsync);
-        group.MapPut("/{groupId:guid}", UpdateGroupAsync);
-        group.MapDelete("/{groupId:guid}", DeactivateGroupAsync);
-        group.MapGet("/{groupId:guid}/athletes", ListGroupAthletesAsync);
-        group.MapPost("/{groupId:guid}/athletes/{athleteProfileId:guid}", AddAthleteAsync);
-        group.MapDelete("/{groupId:guid}/athletes/{athleteProfileId:guid}", RemoveAthleteAsync);
+        group.MapPost("/", CreateGroupAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+        group.MapPut("/{groupId:guid}", UpdateGroupAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+        group.MapDelete("/{groupId:guid}", DeactivateGroupAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+        group.MapPost("/{groupId:guid}/athletes/{athleteProfileId:guid}", AddAthleteAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+        group.MapDelete("/{groupId:guid}/athletes/{athleteProfileId:guid}", RemoveAthleteAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
 
         return group;
     }

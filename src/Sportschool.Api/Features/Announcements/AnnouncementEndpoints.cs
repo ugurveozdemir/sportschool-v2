@@ -12,13 +12,16 @@ public static class AnnouncementEndpoints
 
     public static IEndpointRouteBuilder MapAnnouncementEndpoints(this IEndpointRouteBuilder app)
     {
-        var schoolGroup = app.MapGroup("/api/school/announcements")
-            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
+        var schoolGroup = app.MapGroup("/api/school/announcements");
 
-        schoolGroup.MapGet("", ListSchoolAnnouncementsAsync);
-        schoolGroup.MapPost("", CreateAnnouncementAsync);
-        schoolGroup.MapPut("/{id:guid}", UpdateAnnouncementAsync);
-        schoolGroup.MapDelete("/{id:guid}", DeactivateAnnouncementAsync);
+        schoolGroup.MapGet("", ListSchoolAnnouncementsAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
+        schoolGroup.MapPost("", CreateAnnouncementAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+        schoolGroup.MapPut("/{id:guid}", UpdateAnnouncementAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
+        schoolGroup.MapDelete("/{id:guid}", DeactivateAnnouncementAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
 
         var mobileGroup = app.MapGroup("/api/me/announcements")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.Parent.ToString(), UserRole.Athlete.ToString()));
