@@ -57,6 +57,22 @@ body {
   margin-top: 28px;
 }
 
+.page-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-heading .ant-typography {
+  margin-top: 0;
+}
+
+.admin-table {
+  margin-top: 32px;
+}
+
 .module-card,
 .page-card {
   border-color: #e5e7eb;

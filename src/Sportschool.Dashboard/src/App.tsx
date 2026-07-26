@@ -14,6 +14,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigat
 import { authProvider } from "./app/auth/authProvider";
 import { getStoredSession, type UserRole } from "./app/auth/sessionStore";
 import { LoginPage } from "./app/pages/LoginPage";
+import { SchoolsPage } from "./features/platform/SchoolsPage";
 
 type AppModule = {
   path: string;
@@ -122,6 +123,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 function DashboardHome() {
   const session = getStoredSession();
   const isPlatformOwner = session?.loginRole === "PlatformOwner";
+  if (isPlatformOwner) return <SchoolsPage />;
+
   const modules = isPlatformOwner ? platformModules : schoolModules;
 
   return (
