@@ -19,6 +19,7 @@ import { AthletesPage } from "./features/school/AthletesPage";
 import { AnnouncementsPage } from "./features/school/AnnouncementsPage";
 import { CoachesPage } from "./features/school/CoachesPage";
 import { GroupsPage } from "./features/school/GroupsPage";
+import { PaymentsPage } from "./features/school/PaymentsPage";
 import { SchoolDashboardPage } from "./features/school/SchoolDashboardPage";
 import { TrainingsPage } from "./features/school/TrainingsPage";
 
@@ -66,7 +67,7 @@ export function App() {
                 path={module.path}
                 element={
                   <RoleGuard roles={module.roles}>
-                    {module.path === "/sporcular" ? <AthletesPage /> : module.path === "/antrenorler" ? <CoachesPage /> : module.path === "/gruplar" ? <GroupsPage /> : module.path === "/antrenmanlar" ? <TrainingsPage /> : module.path === "/duyurular" ? <AnnouncementsPage /> : <ModulePage module={module} />}
+                    {module.path === "/sporcular" ? <AthletesPage /> : module.path === "/antrenorler" ? <CoachesPage /> : module.path === "/gruplar" ? <GroupsPage /> : module.path === "/antrenmanlar" ? <TrainingsPage /> : module.path === "/odemeler" ? <PaymentsPage /> : module.path === "/duyurular" ? <AnnouncementsPage /> : <ModulePage module={module} />}
                   </RoleGuard>
                 }
               />

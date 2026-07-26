@@ -108,6 +108,10 @@ body {
   gap: 16px;
 }
 
+.full-width {
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .training-form-grid {
     grid-template-columns: 1fr;
