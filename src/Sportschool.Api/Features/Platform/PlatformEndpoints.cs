@@ -113,7 +113,19 @@ public static class PlatformEndpoints
             return Results.NotFound();
         }
 
+        var revokedAt = DateTimeOffset.UtcNow;
+        var schoolUsers = await db.Users
+            .Include(user => user.RefreshTokens)
+            .Where(user => user.SchoolId == schoolId)
+            .ToListAsync(cancellationToken);
+
         school.IsActive = false;
+        foreach (var refreshToken in schoolUsers
+            .SelectMany(user => user.RefreshTokens)
+            .Where(token => token.IsActive))
+        {
+            refreshToken.RevokedAt = revokedAt;
+        }
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.NoContent();

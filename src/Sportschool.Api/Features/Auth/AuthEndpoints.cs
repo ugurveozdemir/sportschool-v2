@@ -95,7 +95,10 @@ public static class AuthEndpoints
             .ThenInclude(x => x.School)
             .FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
 
-        if (storedToken is null || !storedToken.IsActive || !storedToken.User.IsActive)
+        if (storedToken is null
+            || !storedToken.IsActive
+            || !storedToken.User.IsActive
+            || (storedToken.User.SchoolId is not null && storedToken.User.School is not { IsActive: true }))
         {
             return Results.Unauthorized();
         }

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
@@ -257,5 +258,35 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
         Assert.True(passwordHasher.Verify("new-password", result.PasswordHash));
         Assert.False(passwordHasher.Verify("old-password", result.PasswordHash));
         Assert.Equal(0, result.ActiveRefreshTokenCount);
+    }
+
+    [Fact]
+    public async Task RefreshRejectsActiveTokenForInactiveSchool()
+    {
+        var schoolId = Guid.NewGuid();
+        var schoolCode = $"inactive-refresh-{Guid.NewGuid():N}";
+        var user = TestUsers.Create(schoolId, $"refresh-inactive-{Guid.NewGuid():N}@example.com", "Inactive School User", "password", UserRole.Coach);
+        var refreshTokenService = _factory.Services.GetRequiredService<RefreshTokenService>();
+        var issuedRefreshToken = refreshTokenService.CreateToken(user.Id, UserRole.Coach, "test-device");
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.Add(new School
+            {
+                Id = schoolId,
+                Name = "Inactive Refresh School",
+                Code = schoolCode,
+                NormalizedCode = TextNormalizer.NormalizeSchoolCode(schoolCode),
+                IsActive = false
+            });
+            db.Users.Add(user);
+            db.RefreshTokens.Add(issuedRefreshToken.Entity);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateClient();
+        using var response = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = issuedRefreshToken.PlainTextToken });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

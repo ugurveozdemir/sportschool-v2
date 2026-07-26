@@ -71,6 +71,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var schoolId = CurrentUser.GetSchoolId(context.Principal!);
+                if (schoolId is null)
+                {
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<SportschoolDbContext>();
+                var schoolIsActive = await db.Schools.AnyAsync(
+                    school => school.Id == schoolId.Value && school.IsActive,
+                    context.HttpContext.RequestAborted);
+
+                if (!schoolIsActive)
+                {
+                    context.Fail("School is inactive.");
+                }
+            }
+        };
     });
 
 builder.Services.AddAuthorization();

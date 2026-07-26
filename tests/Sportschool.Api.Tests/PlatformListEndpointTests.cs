@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Sportschool.Api.Features.Platform;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
@@ -10,6 +12,40 @@ namespace Sportschool.Api.Tests;
 
 public sealed class PlatformListEndpointTests
 {
+    [Fact]
+    public async Task DeactivateSchool_RevokesRefreshTokensAndBlocksCurrentAccessTokens()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var platformOwner = TestUsers.Create(null, "platform-deactivate-school@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolAdmin = TestUsers.Create(schoolId, "admin-deactivate-school@example.com", "School Admin", "password", UserRole.SchoolAdmin, UserRole.Coach);
+        var refreshTokenService = factory.Services.GetRequiredService<RefreshTokenService>();
+        var issuedRefreshToken = refreshTokenService.CreateToken(schoolAdmin.Id, UserRole.SchoolAdmin, "test-device");
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Deactivate Tenant", "deactivate-school", isActive: true));
+            db.Users.AddRange(platformOwner, schoolAdmin);
+            db.RefreshTokens.Add(issuedRefreshToken.Entity);
+            return Task.CompletedTask;
+        });
+
+        using var platformClient = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+        using var schoolClient = factory.CreateAuthenticatedClient(schoolAdmin, UserRole.SchoolAdmin);
+        using var deactivateResponse = await platformClient.DeleteAsync($"/api/platform/schools/{schoolId}");
+        using var accessTokenResponse = await schoolClient.GetAsync("/api/school/athletes");
+        using var refreshResponse = await schoolClient.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = issuedRefreshToken.PlainTextToken });
+
+        Assert.Equal(HttpStatusCode.NoContent, deactivateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, accessTokenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, refreshResponse.StatusCode);
+        var tokenIsRevoked = await factory.QueryAsync<DateTimeOffset?>(db => db.RefreshTokens
+            .Where(token => token.Id == issuedRefreshToken.Entity.Id)
+            .Select(token => token.RevokedAt)
+            .SingleAsync());
+        Assert.NotNull(tokenIsRevoked);
+    }
+
     [Fact]
     public async Task PlatformOwnerCanListSchoolsAndSchoolAdmins()
     {
