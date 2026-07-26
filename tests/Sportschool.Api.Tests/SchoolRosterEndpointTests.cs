@@ -182,7 +182,7 @@ public sealed class SchoolRosterEndpointTests
     }
 
     [Fact]
-    public async Task DeactivateUser_WorksCorrectly_AndRevokesTokens()
+    public async Task DeactivateCoach_WorksCorrectly_AndRevokesTokens()
     {
         await using var factory = new TestAppFactory();
         var schoolId = Guid.NewGuid();
@@ -209,7 +209,7 @@ public sealed class SchoolRosterEndpointTests
 
         using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
 
-        using var response = await client.DeleteAsync($"/api/school/users/{coach.Id}");
+        using var response = await client.DeleteAsync($"/api/school/coaches/{coach.Id}");
         Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
 
         // Verify deactivated in DB
@@ -220,7 +220,7 @@ public sealed class SchoolRosterEndpointTests
     }
 
     [Fact]
-    public async Task DeactivateUser_SelfDeactivation_Prevented()
+    public async Task DeactivateCoach_SelfDeactivation_Prevented()
     {
         await using var factory = new TestAppFactory();
         var schoolId = Guid.NewGuid();
@@ -235,8 +235,37 @@ public sealed class SchoolRosterEndpointTests
 
         using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
 
-        using var response = await client.DeleteAsync($"/api/school/users/{admin.Id}");
+        using var response = await client.DeleteAsync($"/api/school/coaches/{admin.Id}");
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SchoolAdminCannotDeactivateAnotherAdminOrParentThroughCoachEndpoint()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-protect@example.com", "Admin", "password", UserRole.SchoolAdmin, UserRole.Coach);
+        var otherAdmin = TestUsers.Create(schoolId, "other-admin-protect@example.com", "Other Admin", "password", UserRole.SchoolAdmin, UserRole.Coach);
+        var parent = TestUsers.Create(schoolId, "parent-protect@example.com", "Parent", "password", UserRole.Parent);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "deact-protect"));
+            db.Users.AddRange(admin, otherAdmin, parent);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        using var adminResponse = await client.DeleteAsync($"/api/school/coaches/{otherAdmin.Id}");
+        using var parentResponse = await client.DeleteAsync($"/api/school/coaches/{parent.Id}");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, adminResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, parentResponse.StatusCode);
+        var users = await factory.QueryAsync(db => db.Users
+            .Where(x => x.Id == otherAdmin.Id || x.Id == parent.Id)
+            .Select(x => new { x.Id, x.IsActive })
+            .ToListAsync());
+        Assert.All(users, user => Assert.True(user.IsActive));
     }
 
     [Fact]
@@ -346,7 +375,7 @@ public sealed class SchoolRosterEndpointTests
 
         using var client = factory.CreateAuthenticatedClient(adminA, UserRole.SchoolAdmin);
 
-        using var response = await client.DeleteAsync($"/api/school/users/{coachB.Id}");
+        using var response = await client.DeleteAsync($"/api/school/coaches/{coachB.Id}");
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 

@@ -68,7 +68,7 @@ export function CoachesPage() {
           {
             title: "İşlemler",
             key: "actions",
-            render: (_, coach) => (
+            render: (_, coach) => !coach.roles.includes("SchoolAdmin") && (
               <Popconfirm title="Bu antrenör pasife alınsın mı?" description="Antrenör mobil uygulamaya giriş yapamayacak." okText="Pasife al" cancelText="Vazgeç" onConfirm={() => deactivateMutation.mutate(coach.id)}>
                 <Button danger size="small" loading={deactivateMutation.isPending}>Pasife al</Button>
               </Popconfirm>

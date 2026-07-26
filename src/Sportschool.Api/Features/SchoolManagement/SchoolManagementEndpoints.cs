@@ -22,7 +22,7 @@ public static class SchoolManagementEndpoints
         adminGroup.MapGet("/coaches", ListCoachesAsync);
         adminGroup.MapPost("/coaches", UpsertCoachAsync);
         adminGroup.MapPost("/athletes", CreateAthleteAsync);
-        adminGroup.MapDelete("/users/{userId:guid}", DeactivateUserAsync);
+        adminGroup.MapDelete("/coaches/{coachId:guid}", DeactivateCoachAsync);
 
         var staffGroup = app.MapGroup("/api/school")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
@@ -351,8 +351,8 @@ public static class SchoolManagementEndpoints
             AthleteRosterResponse.From(athleteProfile, mediaUrls));
     }
 
-    private static async Task<IResult> DeactivateUserAsync(
-        Guid userId,
+    private static async Task<IResult> DeactivateCoachAsync(
+        Guid coachId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -364,14 +364,21 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
-        if (userId == currentUserId.Value)
+        if (coachId == currentUserId.Value)
         {
             return Results.BadRequest();
         }
 
         var user = await db.Users
+            .Include(x => x.Roles)
             .Include(x => x.RefreshTokens)
-            .FirstOrDefaultAsync(x => x.Id == userId && x.SchoolId == schoolId.Value && x.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(
+                x => x.Id == coachId
+                    && x.SchoolId == schoolId.Value
+                    && x.IsActive
+                    && x.Roles.Any(role => role.Role == UserRole.Coach)
+                    && !x.Roles.Any(role => role.Role == UserRole.SchoolAdmin),
+                cancellationToken);
 
         if (user is null)
         {

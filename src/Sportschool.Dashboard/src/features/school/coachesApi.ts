@@ -25,5 +25,5 @@ export function createCoach(input: { fullName: string; email: string }): Promise
 }
 
 export function deactivateCoach(userId: string): Promise<void> {
-  return apiRequest<void>(`/api/school/users/${userId}`, { method: "DELETE" });
+  return apiRequest<void>(`/api/school/coaches/${userId}`, { method: "DELETE" });
 }
