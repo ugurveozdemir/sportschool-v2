@@ -123,6 +123,12 @@ public static class TrainingEndpoints
             return Results.NotFound();
         }
 
+        var coachId = await ResolveCoachIdAsync(request.CoachId, currentUser, userId.Value, schoolId.Value, db, cancellationToken);
+        if (coachId is null)
+        {
+            return Results.NotFound();
+        }
+
         var sessions = new List<TrainingSession>();
         if (request.Recurrence == TrainingRecurrence.Weekly)
         {
@@ -134,7 +140,7 @@ public static class TrainingEndpoints
             {
                 sessions.Add(CreateTrainingSession(
                     schoolId.Value,
-                    userId.Value,
+                    coachId.Value,
                     groupIds,
                     request,
                     currentStartsAt,
@@ -154,7 +160,7 @@ public static class TrainingEndpoints
         {
             sessions.Add(CreateTrainingSession(
                 schoolId.Value,
-                userId.Value,
+                coachId.Value,
                 groupIds,
                 request,
                 request.StartsAt,
@@ -261,6 +267,13 @@ public static class TrainingEndpoints
             return Results.NotFound();
         }
 
+        var coachId = await ResolveCoachIdAsync(request.CoachId, currentUser, training.CoachId, schoolId.Value, db, cancellationToken);
+        if (coachId is null)
+        {
+            return Results.NotFound();
+        }
+
+        training.CoachId = coachId.Value;
         training.Title = request.Title.Trim();
         training.StartsAt = request.StartsAt;
         training.EndsAt = request.EndsAt;
@@ -341,6 +354,30 @@ public static class TrainingEndpoints
             .ToListAsync(cancellationToken);
     }
 
+    private static async Task<Guid?> ResolveCoachIdAsync(
+        Guid? requestedCoachId,
+        ClaimsPrincipal currentUser,
+        Guid defaultCoachId,
+        Guid schoolId,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.IsInRole(UserRole.Coach.ToString()))
+        {
+            return defaultCoachId;
+        }
+
+        var coachId = requestedCoachId ?? defaultCoachId;
+        var isActiveCoach = await db.Users.AnyAsync(
+            x => x.Id == coachId
+                && x.SchoolId == schoolId
+                && x.IsActive
+                && x.Roles.Any(role => role.Role == UserRole.Coach),
+            cancellationToken);
+
+        return isActiveCoach ? coachId : null;
+    }
+
     private static TrainingSession CreateTrainingSession(
         Guid schoolId,
         Guid coachId,
@@ -379,7 +416,8 @@ public sealed record CreateTrainingRequest(
     TrainingRecurrence Recurrence,
     DateOnly? RecurrenceEndsOn,
     string? Location,
-    string? Notes);
+    string? Notes,
+    Guid? CoachId = null);
 
 public sealed record TrainingResponse(
     Guid Id,
@@ -415,7 +453,8 @@ public sealed record UpdateTrainingRequest(
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
     string? Location,
-    string? Notes);
+    string? Notes,
+    Guid? CoachId = null);
 
 public sealed record TrainingListResponse(
     Guid Id,

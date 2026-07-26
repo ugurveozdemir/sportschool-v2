@@ -102,6 +102,19 @@ body {
   flex: 1;
 }
 
+.training-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .training-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
 .dashboard-stats {
   display: grid;
   gap: 16px;

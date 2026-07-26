@@ -112,6 +112,42 @@ public sealed class TrainingEndpointTests
     }
 
     [Fact]
+    public async Task SchoolAdminCanAssignTrainingToActiveCoach()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-assign-training@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var coach = TestUsers.Create(schoolId, "coach-assigned-training@example.com", "Coach", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "train-assign"));
+            db.TrainingGroups.Add(new TrainingGroup { Id = groupId, SchoolId = schoolId, Name = "Group A" });
+            db.Users.AddRange(admin, coach);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        var request = new CreateTrainingRequest(
+            [groupId],
+            "Coach Assignment",
+            DateTimeOffset.UtcNow.AddDays(1),
+            DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            TrainingRecurrence.None,
+            null,
+            null,
+            null,
+            coach.Id);
+
+        using var response = await client.PostAsJsonAsync("/api/school/trainings", request, JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var savedSession = await factory.QueryAsync(db => db.TrainingSessions.SingleAsync());
+        Assert.Equal(coach.Id, savedSession.CoachId);
+    }
+
+    [Fact]
     public async Task CreateWeeklyRecurringTraining_ExpandsCorrectly()
     {
         await using var factory = new TestAppFactory();
