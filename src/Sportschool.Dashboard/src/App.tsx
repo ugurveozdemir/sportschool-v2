@@ -15,6 +15,7 @@ import { authProvider } from "./app/auth/authProvider";
 import { getStoredSession, type UserRole } from "./app/auth/sessionStore";
 import { LoginPage } from "./app/pages/LoginPage";
 import { SchoolsPage } from "./features/platform/SchoolsPage";
+import { AthletesPage } from "./features/school/AthletesPage";
 import { SchoolDashboardPage } from "./features/school/SchoolDashboardPage";
 
 type AppModule = {
@@ -61,7 +62,7 @@ export function App() {
                 path={module.path}
                 element={
                   <RoleGuard roles={module.roles}>
-                    <ModulePage module={module} />
+                    {module.path === "/sporcular" ? <AthletesPage /> : <ModulePage module={module} />}
                   </RoleGuard>
                 }
               />
