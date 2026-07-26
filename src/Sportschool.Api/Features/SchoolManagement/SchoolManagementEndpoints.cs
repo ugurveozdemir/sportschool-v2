@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Athletes;
+using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
@@ -10,6 +11,8 @@ namespace Sportschool.Api.Features.SchoolManagement;
 
 public static class SchoolManagementEndpoints
 {
+    private const int MinimumPasswordLength = 8;
+
     public static RouteGroupBuilder MapSchoolManagementEndpoints(this IEndpointRouteBuilder app)
     {
         var adminGroup = app.MapGroup("/api/school")
@@ -18,6 +21,7 @@ public static class SchoolManagementEndpoints
         adminGroup.MapGet("/users", ListUsersAsync);
         adminGroup.MapGet("/coaches", ListCoachesAsync);
         adminGroup.MapPost("/coaches", UpsertCoachAsync);
+        adminGroup.MapPost("/athletes", CreateAthleteAsync);
         adminGroup.MapDelete("/users/{userId:guid}", DeactivateUserAsync);
 
         var staffGroup = app.MapGroup("/api/school")
@@ -218,6 +222,135 @@ public static class SchoolManagementEndpoints
         return Results.Created($"/api/school/coaches/{coach.Id}", CoachResponse.From(coach, temporaryPassword));
     }
 
+    private static async Task<IResult> CreateAthleteAsync(
+        CreateAthleteRequest request,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        PasswordHasher passwordHasher,
+        MediaAccessUrlService mediaUrls,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FirstName)
+            || string.IsNullOrWhiteSpace(request.LastName)
+            || string.IsNullOrWhiteSpace(request.AthleteEmail)
+            || string.IsNullOrWhiteSpace(request.AthletePassword)
+            || request.AthletePassword.Length < MinimumPasswordLength
+            || string.IsNullOrWhiteSpace(request.ParentFullName)
+            || string.IsNullOrWhiteSpace(request.ParentPhone)
+            || string.IsNullOrWhiteSpace(request.ParentEmail)
+            || string.IsNullOrWhiteSpace(request.ParentPassword)
+            || request.ParentPassword.Length < MinimumPasswordLength
+            || request.BirthDate > DateOnly.FromDateTime(DateTime.UtcNow))
+        {
+            return Results.BadRequest();
+        }
+
+        var schoolIsActive = await db.Schools.AnyAsync(
+            x => x.Id == schoolId.Value && x.IsActive,
+            cancellationToken);
+        if (!schoolIsActive)
+        {
+            return Results.Forbid();
+        }
+
+        var normalizedAthleteEmail = TextNormalizer.NormalizeEmail(request.AthleteEmail);
+        var normalizedParentEmail = TextNormalizer.NormalizeEmail(request.ParentEmail);
+        if (normalizedAthleteEmail == normalizedParentEmail)
+        {
+            return Results.BadRequest();
+        }
+
+        var athleteEmailExists = await db.Users.AnyAsync(
+            x => x.SchoolId == schoolId.Value && x.NormalizedEmail == normalizedAthleteEmail,
+            cancellationToken);
+        if (athleteEmailExists)
+        {
+            return Results.Conflict();
+        }
+
+        TrainingGroup? group = null;
+        if (request.GroupId is not null)
+        {
+            group = await db.TrainingGroups.FirstOrDefaultAsync(
+                x => x.Id == request.GroupId.Value && x.SchoolId == schoolId.Value && x.IsActive,
+                cancellationToken);
+            if (group is null)
+            {
+                return Results.NotFound();
+            }
+        }
+
+        var parent = await db.Users
+            .Include(x => x.Roles)
+            .FirstOrDefaultAsync(
+                x => x.SchoolId == schoolId.Value && x.NormalizedEmail == normalizedParentEmail,
+                cancellationToken);
+
+        if (parent is { IsActive: false })
+        {
+            return Results.Conflict();
+        }
+
+        if (parent is null)
+        {
+            parent = new AppUser
+            {
+                SchoolId = schoolId.Value,
+                Email = request.ParentEmail.Trim(),
+                NormalizedEmail = normalizedParentEmail,
+                FullName = request.ParentFullName.Trim(),
+                PasswordHash = passwordHasher.Hash(request.ParentPassword)
+            };
+            parent.Roles.Add(new UserRoleAssignment { User = parent, Role = UserRole.Parent });
+            db.Users.Add(parent);
+        }
+        else if (!parent.Roles.Any(x => x.Role == UserRole.Parent))
+        {
+            parent.Roles.Add(new UserRoleAssignment { User = parent, Role = UserRole.Parent });
+        }
+
+        var athleteUser = new AppUser
+        {
+            SchoolId = schoolId.Value,
+            Email = request.AthleteEmail.Trim(),
+            NormalizedEmail = normalizedAthleteEmail,
+            FullName = $"{request.FirstName.Trim()} {request.LastName.Trim()}",
+            PasswordHash = passwordHasher.Hash(request.AthletePassword)
+        };
+        athleteUser.Roles.Add(new UserRoleAssignment { User = athleteUser, Role = UserRole.Athlete });
+
+        var athleteProfile = new AthleteProfile
+        {
+            SchoolId = schoolId.Value,
+            User = athleteUser,
+            Parent = parent,
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
+            BirthDate = request.BirthDate,
+            ParentFullName = request.ParentFullName.Trim(),
+            ParentPhone = request.ParentPhone.Trim()
+        };
+
+        db.Users.Add(athleteUser);
+        db.AthleteProfiles.Add(athleteProfile);
+        if (group is not null)
+        {
+            db.GroupAthletes.Add(new GroupAthlete { Group = group, AthleteProfile = athleteProfile });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Created(
+            $"/api/school/athletes/{athleteProfile.Id}",
+            AthleteRosterResponse.From(athleteProfile, mediaUrls));
+    }
+
     private static async Task<IResult> DeactivateUserAsync(
         Guid userId,
         ClaimsPrincipal currentUser,
@@ -295,6 +428,18 @@ public static class SchoolManagementEndpoints
 }
 
 public sealed record CreateCoachRequest(string Email, string FullName);
+
+public sealed record CreateAthleteRequest(
+    string FirstName,
+    string LastName,
+    DateOnly BirthDate,
+    string AthleteEmail,
+    string AthletePassword,
+    string ParentFullName,
+    string ParentPhone,
+    string ParentEmail,
+    string ParentPassword,
+    Guid? GroupId);
 
 public sealed record SchoolUserResponse(Guid Id, Guid SchoolId, string Email, string FullName, UserRole[] Roles)
 {

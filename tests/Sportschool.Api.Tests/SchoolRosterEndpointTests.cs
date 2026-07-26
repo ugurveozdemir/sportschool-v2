@@ -80,6 +80,76 @@ public sealed class SchoolRosterEndpointTests
     }
 
     [Fact]
+    public async Task SchoolAdminCanCreateAthletesAndReuseExistingParent()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-create-athlete@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var group = new TrainingGroup { SchoolId = schoolId, Name = "U12" };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Create Athlete School", "create-athlete"));
+            db.Users.Add(admin);
+            db.TrainingGroups.Add(group);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        var firstRequest = new CreateAthleteRequest(
+            "Ali",
+            "Yılmaz",
+            new DateOnly(2013, 4, 5),
+            "ali@example.com",
+            "athlete-pass-1",
+            "Ayşe Yılmaz",
+            "5551112233",
+            "ayse@example.com",
+            "parent-pass-1",
+            group.Id);
+        var secondRequest = firstRequest with
+        {
+            FirstName = "Ece",
+            AthleteEmail = "ece@example.com",
+            AthletePassword = "athlete-pass-2",
+            ParentPassword = "ignored-parent-pass"
+        };
+
+        using var firstResponse = await client.PostAsJsonAsync("/api/school/athletes", firstRequest);
+        using var secondResponse = await client.PostAsJsonAsync("/api/school/athletes", secondRequest);
+
+        Assert.Equal(System.Net.HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Created, secondResponse.StatusCode);
+        var firstAthlete = await firstResponse.Content.ReadFromJsonAsync<AthleteRosterResponse>(JsonOptions);
+        var secondAthlete = await secondResponse.Content.ReadFromJsonAsync<AthleteRosterResponse>(JsonOptions);
+        Assert.NotNull(firstAthlete);
+        Assert.NotNull(secondAthlete);
+
+        var result = await factory.QueryAsync(async db =>
+        {
+            var profiles = await db.AthleteProfiles
+                .Include(x => x.User)
+                .Include(x => x.Parent)
+                .Where(x => x.SchoolId == schoolId)
+                .OrderBy(x => x.FirstName)
+                .ToListAsync();
+            var parentCount = await db.Users.CountAsync(
+                x => x.SchoolId == schoolId && x.NormalizedEmail == TextNormalizer.NormalizeEmail("ayse@example.com"));
+            var membershipCount = await db.GroupAthletes.CountAsync(x => x.GroupId == group.Id);
+            return new { Profiles = profiles, ParentCount = parentCount, MembershipCount = membershipCount };
+        });
+
+        Assert.Equal(2, result.Profiles.Count);
+        Assert.Equal(1, result.ParentCount);
+        Assert.Equal(2, result.MembershipCount);
+        Assert.Equal(result.Profiles[0].ParentUserId, result.Profiles[1].ParentUserId);
+        var hasher = new PasswordHasher();
+        Assert.True(hasher.Verify("parent-pass-1", result.Profiles[0].Parent!.PasswordHash));
+        Assert.Contains(result.Profiles, x => x.User.Email == "ali@example.com" && hasher.Verify("athlete-pass-1", x.User.PasswordHash));
+        Assert.Contains(result.Profiles, x => x.User.Email == "ece@example.com" && hasher.Verify("athlete-pass-2", x.User.PasswordHash));
+    }
+
+    [Fact]
     public async Task DeactivateUser_WorksCorrectly_AndRevokesTokens()
     {
         await using var factory = new TestAppFactory();
@@ -201,10 +271,22 @@ public sealed class SchoolRosterEndpointTests
 
         using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
         using var deactivateResponse = await client.DeleteAsync($"/api/school/athletes/{athleteProfile.Id}");
+        using var createAthleteResponse = await client.PostAsJsonAsync("/api/school/athletes", new CreateAthleteRequest(
+            "New",
+            "Athlete",
+            new DateOnly(2013, 1, 1),
+            "new-athlete@example.com",
+            "athlete-password",
+            "New Parent",
+            "555",
+            "new-parent@example.com",
+            "parent-password",
+            null));
         using var createGroupResponse = await client.PostAsJsonAsync("/api/school/groups", new CreateGroupRequest("New group", null));
         using var addAthleteResponse = await client.PostAsync($"/api/school/groups/{group.Id}/athletes/{athleteProfile.Id}", null);
 
         Assert.Equal(System.Net.HttpStatusCode.Forbidden, deactivateResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, createAthleteResponse.StatusCode);
         Assert.Equal(System.Net.HttpStatusCode.Forbidden, createGroupResponse.StatusCode);
         Assert.Equal(System.Net.HttpStatusCode.Forbidden, addAthleteResponse.StatusCode);
         var isAthleteActive = await factory.QueryAsync(db => db.AthleteProfiles
