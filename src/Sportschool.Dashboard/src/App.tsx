@@ -15,6 +15,7 @@ import { authProvider } from "./app/auth/authProvider";
 import { getStoredSession, type UserRole } from "./app/auth/sessionStore";
 import { LoginPage } from "./app/pages/LoginPage";
 import { SchoolsPage } from "./features/platform/SchoolsPage";
+import { SchoolDashboardPage } from "./features/school/SchoolDashboardPage";
 
 type AppModule = {
   path: string;
@@ -125,7 +126,9 @@ function DashboardHome() {
   const isPlatformOwner = session?.loginRole === "PlatformOwner";
   if (isPlatformOwner) return <SchoolsPage />;
 
-  const modules = isPlatformOwner ? platformModules : schoolModules;
+  if (!isPlatformOwner) return <SchoolDashboardPage />;
+
+  const modules = platformModules;
 
   return (
     <div>

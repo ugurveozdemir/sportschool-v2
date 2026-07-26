@@ -73,6 +73,19 @@ body {
   margin-top: 32px;
 }
 
+.dashboard-stats {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin: 28px 0;
+}
+
+.dashboard-content-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .module-card,
 .page-card {
   border-color: #e5e7eb;
@@ -106,5 +119,9 @@ body {
 
   .user-name {
     display: none;
+  }
+
+  .dashboard-content-grid {
+    grid-template-columns: 1fr;
   }
 }
