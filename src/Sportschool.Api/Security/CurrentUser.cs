@@ -1,9 +1,18 @@
 using System.Security.Claims;
+using Sportschool.Api.Features.Users;
 
 namespace Sportschool.Api.Security;
 
 public static class CurrentUser
 {
+    public static bool IsCoachSession(ClaimsPrincipal user)
+    {
+        return string.Equals(
+            user.FindFirstValue("login_role"),
+            UserRole.Coach.ToString(),
+            StringComparison.Ordinal);
+    }
+
     public static Guid? GetUserId(ClaimsPrincipal user)
     {
         var value = user.FindFirstValue(ClaimTypes.NameIdentifier)

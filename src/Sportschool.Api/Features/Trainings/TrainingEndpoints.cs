@@ -262,7 +262,7 @@ public static class TrainingEndpoints
             return Results.NotFound();
         }
 
-        if (currentUser.IsInRole(UserRole.Coach.ToString()) && training.CoachId != userId.Value)
+        if (CurrentUser.IsCoachSession(currentUser) && training.CoachId != userId.Value)
         {
             return Results.NotFound();
         }
@@ -320,7 +320,7 @@ public static class TrainingEndpoints
             return Results.NotFound();
         }
 
-        if (currentUser.IsInRole(UserRole.Coach.ToString()) && training.CoachId != userId.Value)
+        if (CurrentUser.IsCoachSession(currentUser) && training.CoachId != userId.Value)
         {
             return Results.NotFound();
         }
@@ -362,7 +362,7 @@ public static class TrainingEndpoints
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        if (currentUser.IsInRole(UserRole.Coach.ToString()))
+        if (CurrentUser.IsCoachSession(currentUser))
         {
             return defaultCoachId;
         }
