@@ -50,6 +50,38 @@ public sealed class SchoolRosterEndpointTests
     }
 
     [Fact]
+    public async Task SchoolAdminCanCreateCoachWithTemporaryPassword()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-create-coach@example.com", "Admin", "password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Create Coach School", "create-coach"));
+            db.Users.Add(admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        using var response = await client.PostAsJsonAsync(
+            "/api/school/coaches",
+            new CreateCoachRequest("new-coach@example.com", "New Coach"));
+
+        Assert.Equal(System.Net.HttpStatusCode.Created, response.StatusCode);
+        var coach = await response.Content.ReadFromJsonAsync<CoachResponse>(JsonOptions);
+        Assert.NotNull(coach);
+        Assert.False(string.IsNullOrWhiteSpace(coach.TemporaryPassword));
+
+        var persistedCoach = await factory.QueryAsync(db => db.Users
+            .Include(x => x.Roles)
+            .SingleAsync(x => x.Id == coach.Id));
+        var hasher = new PasswordHasher();
+        Assert.True(hasher.Verify(coach.TemporaryPassword!, persistedCoach.PasswordHash));
+        Assert.Contains(persistedCoach.Roles, x => x.Role == UserRole.Coach);
+    }
+
+    [Fact]
     public async Task CoachCanListOnlyCurrentSchoolAthletes()
     {
         await using var factory = new TestAppFactory();
