@@ -10,14 +10,7 @@ type LoginFormValues = {
 
 export function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { mutate: login, isPending } = useLogin<LoginFormValues>({
-    mutationOptions: {
-      onSuccess: (result) => {
-        if (!result.success) setErrorMessage(result.error?.message ?? "Giriş yapılamadı.");
-      },
-      onError: () => setErrorMessage("Giriş yapılamadı. Lütfen tekrar deneyin.")
-    }
-  });
+  const { mutate: login, isPending } = useLogin<LoginFormValues>();
 
   return (
     <main className="login-page">
@@ -30,7 +23,12 @@ export function LoginPage() {
           requiredMark={false}
           onFinish={(values) => {
             setErrorMessage(null);
-            login(values);
+            login(values, {
+              onSuccess: (result) => {
+                if (!result.success) setErrorMessage(result.error?.message ?? "Giriş yapılamadı.");
+              },
+              onError: () => setErrorMessage("Giriş yapılamadı. Lütfen tekrar deneyin.")
+            });
           }}
         >
           <Form.Item name="email" label="E-posta" rules={[{ required: true, message: "E-posta zorunludur." }, { type: "email", message: "Geçerli bir e-posta girin." }]}>
