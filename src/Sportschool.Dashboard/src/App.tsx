@@ -26,7 +26,6 @@ type AppModule = {
 
 const schoolModules: AppModule[] = [
   { path: "/", title: "Ana Sayfa", description: "Okulunuzun günlük durumunu buradan takip edeceksiniz.", roles: ["SchoolAdmin"] },
-  { path: "/basvurular", title: "Başvurular", description: "Yeni sporcu başvurularını değerlendirin.", roles: ["SchoolAdmin"] },
   { path: "/sporcular", title: "Sporcular", description: "Sporcu ve veli bilgilerini yönetin.", roles: ["SchoolAdmin"] },
   { path: "/antrenorler", title: "Antrenörler", description: "Antrenör hesaplarını yönetin.", roles: ["SchoolAdmin"] },
   { path: "/gruplar", title: "Gruplar", description: "Grupları ve sporcu kadrolarını düzenleyin.", roles: ["SchoolAdmin"] },
@@ -88,7 +87,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     ? [{ key: "/", icon: <ApartmentOutlined />, label: "Okullar" }]
     : [
         { key: "/", icon: <ApartmentOutlined />, label: "Ana Sayfa" },
-        { key: "/basvurular", icon: <UserOutlined />, label: "Başvurular" },
         { key: "/sporcular", icon: <TeamOutlined />, label: "Sporcular" },
         { key: "/antrenorler", icon: <UserOutlined />, label: "Antrenörler" },
         { key: "/gruplar", icon: <TeamOutlined />, label: "Gruplar" },
