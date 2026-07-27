@@ -79,18 +79,41 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.athlete-add-control {
+.group-roster-editor {
+  padding: 8px 0;
+}
+
+.group-roster-loading {
+  margin: 16px 0;
+}
+
+.athlete-checkbox-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 16px 0;
+}
+
+.athlete-checkbox {
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   display: flex;
-  margin-bottom: 24px;
-  width: 100%;
+  margin-inline-start: 0;
+  padding: 12px;
 }
 
-.athlete-add-control .ant-select {
-  flex: 1;
+.athlete-checkbox > span:last-child {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
 }
 
-.group-roster-table {
-  margin-top: 24px;
+.athlete-checkbox > span:last-child > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .athlete-table-link {
