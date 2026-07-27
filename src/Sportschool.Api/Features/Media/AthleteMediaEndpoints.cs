@@ -365,10 +365,10 @@ public static class AthleteMediaEndpoints
             return null;
         }
 
-        return file.ContentType.ToLowerInvariant() switch
+        return Path.GetExtension(file.FileName).ToLowerInvariant() switch
         {
-            "video/mp4" => ".mp4",
-            "video/quicktime" when header.AsSpan(8, 4).SequenceEqual("qt  "u8) => ".mov",
+            ".mp4" => ".mp4",
+            ".mov" when header.AsSpan(8, 4).SequenceEqual("qt  "u8) => ".mov",
             _ => null
         };
     }

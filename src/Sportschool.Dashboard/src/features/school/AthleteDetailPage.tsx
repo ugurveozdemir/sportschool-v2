@@ -208,7 +208,7 @@ export function AthleteDetailPage() {
         extra={<Button type="primary" icon={<VideoCameraOutlined />} onClick={() => videoInput.current?.click()}>Video ekle</Button>}
       >
         <Typography.Paragraph type="secondary">MP4 veya MOV formatında, en fazla 100 MB video ekleyin. Yalnızca yayınlanan videolar sporcu ve velilerin akışında görünür.</Typography.Paragraph>
-        <input ref={videoInput} className="visually-hidden" type="file" accept="video/mp4,video/quicktime" onChange={selectVideo} />
+        <input ref={videoInput} className="visually-hidden" type="file" accept=".mp4,.mov,video/mp4,video/quicktime" onChange={selectVideo} />
         {videosQuery.isLoading
           ? <Skeleton active paragraph={{ rows: 3 }} />
           : (videosQuery.data ?? []).length > 0
@@ -283,7 +283,8 @@ function isAllowedImage(file: File): boolean {
 }
 
 function isAllowedVideo(file: File): boolean {
-  return ["video/mp4", "video/quicktime"].includes(file.type) && file.size > 0 && file.size <= 100 * 1024 * 1024;
+  const extension = file.name.split(".").at(-1)?.toLowerCase();
+  return ["mp4", "mov"].includes(extension ?? "") && file.size > 0 && file.size <= 100 * 1024 * 1024;
 }
 
 function formatFileSize(bytes: number): string {

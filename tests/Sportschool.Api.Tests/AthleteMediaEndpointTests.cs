@@ -109,6 +109,31 @@ public sealed class AthleteMediaEndpointTests
     }
 
     [Fact]
+    public async Task SchoolAdminCanUploadMp4WhenBrowserUsesGenericMimeType()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "media-safari-admin@example.com", "Media Safari Admin", "password", UserRole.SchoolAdmin);
+        var athleteUser = TestUsers.Create(schoolId, "media-safari-athlete@example.com", "Media Safari Athlete", "password", UserRole.Athlete);
+        var athlete = CreateAthlete(schoolId, athleteUser, "Gul", "Yilmaz");
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Media Safari School", "media-safari"));
+            db.Users.AddRange(admin, athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        using var upload = CreateUpload("video", "training.mp4", "application/octet-stream", [0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);
+
+        var response = await client.PostAsync($"/api/school/athlete-videos?athleteProfileId={athlete.Id}", upload);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PublishedVideoAppearsOnlyInCurrentSchoolFeed()
     {
         await using var factory = new TestAppFactory();
