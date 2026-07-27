@@ -16,6 +16,7 @@ import { getStoredSession, type UserRole } from "./app/auth/sessionStore";
 import { LoginPage } from "./app/pages/LoginPage";
 import { SchoolsPage } from "./features/platform/SchoolsPage";
 import { AthletesPage } from "./features/school/AthletesPage";
+import { AthleteDetailPage } from "./features/school/AthleteDetailPage";
 import { AnnouncementsPage } from "./features/school/AnnouncementsPage";
 import { CoachesPage } from "./features/school/CoachesPage";
 import { GroupsPage } from "./features/school/GroupsPage";
@@ -72,6 +73,14 @@ export function App() {
                 }
               />
             ))}
+            <Route
+              path="/sporcular/:athleteId"
+              element={
+                <RoleGuard roles={["SchoolAdmin"]}>
+                  <AthleteDetailPage />
+                </RoleGuard>
+              }
+            />
           </Route>
           <Route path="*" element={<CatchAllNavigate to="/" />} />
         </Routes>
@@ -89,6 +98,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (!session) return null;
 
   const isPlatformOwner = session.loginRole === "PlatformOwner";
+  const selectedMenuKey = location.pathname.startsWith("/sporcular/") ? "/sporcular" : location.pathname;
   const menuItems: MenuProps["items"] = isPlatformOwner
     ? [{ key: "/", icon: <ApartmentOutlined />, label: "Okullar" }]
     : [
@@ -106,7 +116,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     <Layout className="app-layout">
       <Layout.Sider breakpoint="lg" collapsedWidth="0" width={244} className="app-sider">
         <div className="brand">Sportschool</div>
-        <Menu theme="dark" mode="inline" selectedKeys={[location.pathname]} items={menuItems} onClick={({ key }) => navigate(key)} />
+        <Menu theme="dark" mode="inline" selectedKeys={[selectedMenuKey]} items={menuItems} onClick={({ key }) => navigate(key)} />
       </Layout.Sider>
       <Layout>
         <Layout.Header className="app-header">

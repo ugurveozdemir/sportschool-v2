@@ -1,7 +1,8 @@
 import { PlusOutlined, UserOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Avatar, Button, Form, Input, Modal, Popconfirm, Select, Space, Table, Typography, message } from "antd";
+import { Avatar, Button, Form, Input, Modal, Popconfirm, Select, Table, Typography, message } from "antd";
 import { useState } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
 import { createAthlete, deactivateAthlete, listAthletes, listGroups, type Athlete, type CreateAthleteInput } from "./athletesApi";
 
@@ -56,10 +57,10 @@ export function AthletesPage() {
             title: "Sporcu",
             key: "athlete",
             render: (_, athlete) => (
-              <Space>
+              <Link className="athlete-table-link" to={`/sporcular/${athlete.id}`}>
                 <Avatar src={athlete.profileImageUrl ?? undefined} icon={<UserOutlined />} />
                 <Typography.Text strong>{athlete.firstName} {athlete.lastName}</Typography.Text>
-              </Space>
+              </Link>
             )
           },
           { title: "Doğum tarihi", dataIndex: "birthDate", key: "birthDate", render: (value: string) => formatDate(value) },

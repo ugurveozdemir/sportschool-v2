@@ -93,6 +93,37 @@ body {
   margin-top: 24px;
 }
 
+.athlete-table-link {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.detail-back-button {
+  margin-bottom: 16px;
+}
+
+.athlete-profile-summary {
+  align-items: center;
+  display: flex;
+  gap: 20px;
+}
+
+.athlete-profile-summary .ant-typography {
+  margin: 0;
+}
+
+.athlete-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.athlete-groups-card {
+  margin-top: 16px;
+}
+
 .temporary-password-control {
   display: flex;
   width: 100%;
@@ -169,6 +200,14 @@ body {
 
   .dashboard-content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .athlete-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .athlete-profile-summary {
+    align-items: flex-start;
   }
 
   .form-grid {

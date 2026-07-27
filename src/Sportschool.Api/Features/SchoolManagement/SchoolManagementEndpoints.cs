@@ -22,6 +22,7 @@ public static class SchoolManagementEndpoints
         adminGroup.MapGet("/coaches", ListCoachesAsync);
         adminGroup.MapPost("/coaches", UpsertCoachAsync);
         adminGroup.MapPost("/athletes", CreateAthleteAsync);
+        adminGroup.MapGet("/athletes/{athleteProfileId:guid}", GetAthleteAsync);
         adminGroup.MapDelete("/coaches/{coachId:guid}", DeactivateCoachAsync);
 
         var staffGroup = app.MapGroup("/api/school")
@@ -220,6 +221,48 @@ public static class SchoolManagementEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/school/coaches/{coach.Id}", CoachResponse.From(coach, temporaryPassword));
+    }
+
+    private static async Task<IResult> GetAthleteAsync(
+        Guid athleteProfileId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        MediaAccessUrlService mediaUrls,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var athlete = await db.AthleteProfiles
+            .AsNoTracking()
+            .Include(x => x.User)
+            .Include(x => x.Parent)
+            .FirstOrDefaultAsync(
+                x => x.Id == athleteProfileId
+                    && x.SchoolId == schoolId.Value
+                    && x.IsActive
+                    && x.User.IsActive,
+                cancellationToken);
+
+        if (athlete is null)
+        {
+            return Results.NotFound();
+        }
+
+        var groups = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x =>
+                x.AthleteProfileId == athlete.Id
+                && x.Group.SchoolId == schoolId.Value
+                && x.Group.IsActive)
+            .OrderBy(x => x.Group.Name)
+            .Select(x => new AthleteGroupResponse(x.Group.Id, x.Group.Name))
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(AthleteDetailResponse.From(athlete, groups, mediaUrls));
     }
 
     private static async Task<IResult> CreateAthleteAsync(
@@ -484,6 +527,45 @@ public sealed record AthleteRosterResponse(
             athlete.ParentFullName,
             athlete.ParentPhone,
             athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion));
+    }
+}
+
+public sealed record AthleteGroupResponse(Guid Id, string Name);
+
+public sealed record AthleteDetailResponse(
+    Guid Id,
+    Guid SchoolId,
+    Guid UserId,
+    string FirstName,
+    string LastName,
+    DateOnly BirthDate,
+    string Email,
+    string ParentFullName,
+    string ParentPhone,
+    string? ParentEmail,
+    string? ProfileImageUrl,
+    DateTimeOffset CreatedAt,
+    IReadOnlyCollection<AthleteGroupResponse> Groups)
+{
+    public static AthleteDetailResponse From(
+        AthleteProfile athlete,
+        IReadOnlyCollection<AthleteGroupResponse> groups,
+        MediaAccessUrlService mediaUrls)
+    {
+        return new AthleteDetailResponse(
+            athlete.Id,
+            athlete.SchoolId,
+            athlete.UserId,
+            athlete.FirstName,
+            athlete.LastName,
+            athlete.BirthDate,
+            athlete.User.Email,
+            athlete.ParentFullName,
+            athlete.ParentPhone,
+            athlete.Parent?.Email,
+            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion),
+            athlete.CreatedAt,
+            groups);
     }
 }
 

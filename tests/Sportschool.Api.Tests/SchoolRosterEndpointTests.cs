@@ -443,6 +443,72 @@ public sealed class SchoolRosterEndpointTests
         Assert.Equal("Lefter", athlete2.FirstName);
     }
 
+    [Fact]
+    public async Task SchoolAdminCanGetAthleteDetailsFromCurrentSchool()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolAId = Guid.NewGuid();
+        var schoolBId = Guid.NewGuid();
+        var adminA = TestUsers.Create(schoolAId, "admin-detail-a@example.com", "Admin A", "password", UserRole.SchoolAdmin);
+        var athleteAUser = TestUsers.Create(schoolAId, "athlete-detail-a@example.com", "Ali Yılmaz", "password", UserRole.Athlete);
+        var parentA = TestUsers.Create(schoolAId, "parent-detail-a@example.com", "Ayşe Yılmaz", "password", UserRole.Parent);
+        var athleteBUser = TestUsers.Create(schoolBId, "athlete-detail-b@example.com", "Other Athlete", "password", UserRole.Athlete);
+        var athleteA = CreateAthleteProfile(schoolAId, athleteAUser, "Ali", "Yılmaz");
+        athleteA.Parent = parentA;
+        athleteA.ParentFullName = parentA.FullName;
+        athleteA.ParentPhone = "555 111 22 33";
+        var athleteB = CreateAthleteProfile(schoolBId, athleteBUser, "Other", "Athlete");
+        var group = new TrainingGroup { SchoolId = schoolAId, Name = "U12" };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.AddRange(CreateSchool(schoolAId, "Detail School", "detail-a"), CreateSchool(schoolBId, "Other School", "detail-b"));
+            db.Users.AddRange(adminA, athleteAUser, parentA, athleteBUser);
+            db.AthleteProfiles.AddRange(athleteA, athleteB);
+            db.TrainingGroups.Add(group);
+            db.GroupAthletes.Add(new GroupAthlete { Group = group, AthleteProfile = athleteA });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(adminA, UserRole.SchoolAdmin);
+
+        var detail = await client.GetFromJsonAsync<AthleteDetailResponse>($"/api/school/athletes/{athleteA.Id}", JsonOptions);
+        using var otherSchoolResponse = await client.GetAsync($"/api/school/athletes/{athleteB.Id}");
+
+        Assert.NotNull(detail);
+        Assert.Equal(athleteAUser.Email, detail.Email);
+        Assert.Equal(parentA.Email, detail.ParentEmail);
+        Assert.Equal("555 111 22 33", detail.ParentPhone);
+        var athleteGroup = Assert.Single(detail.Groups);
+        Assert.Equal(group.Id, athleteGroup.Id);
+        Assert.Equal(group.Name, athleteGroup.Name);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, otherSchoolResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task CoachCannotGetSchoolAdminAthleteDetails()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-detail@example.com", "Coach", "password", UserRole.Coach);
+        var athleteUser = TestUsers.Create(schoolId, "athlete-detail@example.com", "Athlete", "password", UserRole.Athlete);
+        var athlete = CreateAthleteProfile(schoolId, athleteUser, "Detail", "Athlete");
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Detail Access School", "detail-access"));
+            db.Users.AddRange(coach, athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+
+        using var response = await client.GetAsync($"/api/school/athletes/{athlete.Id}");
+
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private static School CreateSchool(Guid id, string name, string code)
     {
         return new School
