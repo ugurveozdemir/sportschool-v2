@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Empty, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Button, Empty, Form, Input, Modal, Popconfirm, Segmented, Select, Space, Table, Tag, Typography, message } from "antd";
 import { useState } from "react";
 import { ApiError } from "../../app/api/apiClient";
 import { listCoaches } from "./coachesApi";
@@ -23,13 +23,21 @@ const rangeStart = new Date();
 rangeStart.setHours(0, 0, 0, 0);
 const rangeEnd = new Date(rangeStart);
 rangeEnd.setDate(rangeEnd.getDate() + 90);
+const pastRangeStart = new Date(rangeStart);
+pastRangeStart.setDate(pastRangeStart.getDate() - 90);
+
+type TrainingPeriod = "upcoming" | "past";
 
 export function TrainingsPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<TrainingFormValues>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTraining, setEditingTraining] = useState<Training | null>(null);
-  const trainingsQuery = useQuery({ queryKey: ["school", "trainings", "upcoming"], queryFn: () => listTrainings(rangeStart, rangeEnd) });
+  const [period, setPeriod] = useState<TrainingPeriod>("upcoming");
+  const trainingsQuery = useQuery({
+    queryKey: ["school", "trainings", period],
+    queryFn: () => period === "upcoming" ? listTrainings(rangeStart, rangeEnd) : listTrainings(pastRangeStart, rangeStart)
+  });
   const groupsQuery = useQuery({ queryKey: ["school", "groups"], queryFn: listGroups });
   const coachesQuery = useQuery({ queryKey: ["school", "coaches"], queryFn: listCoaches });
   const recurrence = Form.useWatch("recurrence", form);
@@ -89,22 +97,36 @@ export function TrainingsPage() {
     form.resetFields();
   }
 
+  const trainings = period === "past" ? [...(trainingsQuery.data ?? [])].reverse() : trainingsQuery.data ?? [];
+
   return (
     <div>
       <div className="page-heading">
         <div>
           <Typography.Title level={2}>Antrenmanlar</Typography.Title>
-          <Typography.Paragraph type="secondary">Önümüzdeki 90 günün antrenman programını yönetin.</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">
+            {period === "upcoming" ? "Önümüzdeki 90 günün antrenman programını yönetin." : "Son 90 günün tamamlanan antrenmanlarını görüntüleyin."}
+          </Typography.Paragraph>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Antrenman planla</Button>
       </div>
 
+      <Segmented<TrainingPeriod>
+        className="training-period-selector"
+        value={period}
+        options={[
+          { label: "Yaklaşan", value: "upcoming" },
+          { label: "Geçmiş (90 gün)", value: "past" }
+        ]}
+        onChange={setPeriod}
+      />
+
       <Table<Training>
         rowKey="id"
         loading={trainingsQuery.isLoading}
-        dataSource={trainingsQuery.data ?? []}
+        dataSource={trainings}
         pagination={{ pageSize: 12, showSizeChanger: false }}
-        locale={{ emptyText: <Empty description="Yaklaşan antrenman bulunmuyor." /> }}
+        locale={{ emptyText: <Empty description={period === "upcoming" ? "Yaklaşan antrenman bulunmuyor." : "Son 90 günde antrenman bulunmuyor."} /> }}
         columns={[
           { title: "Tarih", key: "date", render: (_, training) => <>{formatDateTime(training.startsAt)}<br /><Typography.Text type="secondary">{formatTime(training.startsAt)} – {formatTime(training.endsAt)}</Typography.Text></> },
           { title: "Antrenman", dataIndex: "title", key: "title", render: (title: string, training) => <><Typography.Text strong>{title}</Typography.Text>{training.location && <><br /><Typography.Text type="secondary">{training.location}</Typography.Text></>}</> },

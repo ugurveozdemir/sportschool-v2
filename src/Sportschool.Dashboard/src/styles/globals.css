@@ -162,6 +162,10 @@ body {
   gap: 16px;
 }
 
+.training-period-selector {
+  margin-bottom: 16px;
+}
+
 .full-width {
   width: 100%;
 }
