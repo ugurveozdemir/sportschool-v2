@@ -1,6 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { useCallback } from "react";
+import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import { useFeed } from "@/features/feed/api";
@@ -18,6 +20,13 @@ import { formatDate } from "@/shared/utils/date";
 export default function FeedScreen() {
   const { session } = useSession();
   const feedQuery = useFeed(Boolean(session));
+  const { refetch } = feedQuery;
+
+  useFocusEffect(useCallback(() => {
+    if (session) {
+      void refetch();
+    }
+  }, [refetch, session]));
 
   if (feedQuery.isLoading) {
     return <LoadingState label="Videolar yükleniyor" />;
@@ -25,7 +34,12 @@ export default function FeedScreen() {
 
   const videos = feedQuery.data?.pages.flatMap((page) => page.items) ?? [];
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} contentStyle={styles.content}>
+    <ScreenShell
+      title={getShellTitle(session)}
+      navItems={getMobileNav(session)}
+      contentStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={feedQuery.isRefetching} onRefresh={() => void refetch()} tintColor={colors.primary} />}
+    >
       <View style={styles.heading}>
         <Text style={styles.title}>Akademi Videoları</Text>
         <Text style={styles.subtitle}>Okulundaki sporcuların güncel performans videoları.</Text>

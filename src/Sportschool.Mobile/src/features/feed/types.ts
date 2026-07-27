@@ -6,7 +6,7 @@ export type AthleteFeedVideo = {
   athleteProfileImageUrl: string | null;
   videoUrl: string;
   caption: string | null;
-  status: "Uploaded" | "Ready" | "Failed";
+  status: "Processing" | "Ready" | "Failed";
   isPublished: boolean;
   createdAt: string;
   publishedAt: string | null;

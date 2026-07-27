@@ -1,8 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
 import { router, usePathname } from "expo-router";
-import type { PropsWithChildren, ReactNode } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, type RefreshControlProps, type ViewStyle } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
@@ -20,7 +20,7 @@ export type NavItem = {
   match: string;
 };
 
-export function ScreenShell({ children, title, avatar, navItems, contentStyle }: PropsWithChildren<{ title: string; avatar?: ReactNode; navItems?: NavItem[]; contentStyle?: ViewStyle }>) {
+export function ScreenShell({ children, title, avatar, navItems, contentStyle, refreshControl }: PropsWithChildren<{ title: string; avatar?: ReactNode; navItems?: NavItem[]; contentStyle?: ViewStyle; refreshControl?: ReactElement<RefreshControlProps> }>) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -28,6 +28,7 @@ export function ScreenShell({ children, title, avatar, navItems, contentStyle }:
       <TopBar title={title} avatar={avatar} />
       <ScrollView
         contentContainerStyle={[styles.content, navItems ? { paddingBottom: 104 + insets.bottom } : styles.contentBottom, contentStyle]}
+        refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
       >
         {children}
