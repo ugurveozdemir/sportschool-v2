@@ -51,13 +51,13 @@ public sealed class PaymentEndpointTests : IAsyncLifetime
 
         using var response = await client.PutAsJsonAsync(
             $"/api/school/athletes/{athleteId}/payments/2026/6",
-            new SavePaymentRequest(1500m, null, PaymentStatus.Paid, null));
+            new SavePaymentRequest(1500m, PaymentStatus.Paid, null));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var payment = await response.Content.ReadFromJsonAsync<PaymentResponse>(JsonOptions);
         Assert.NotNull(payment);
         Assert.Equal(PaymentStatus.Paid, payment!.EffectiveStatus);
-        Assert.Equal(1500m, payment.AmountPaid);
+        Assert.Equal(1500m, payment.Amount);
         Assert.Equal(0m, payment.Balance);
     }
 
@@ -72,7 +72,7 @@ public sealed class PaymentEndpointTests : IAsyncLifetime
 
         using var response = await client.PutAsJsonAsync(
             $"/api/school/athletes/{otherAthleteId}/payments/2026/6",
-            new SavePaymentRequest(1000m, null, PaymentStatus.Paid, null));
+            new SavePaymentRequest(1000m, PaymentStatus.Paid, null));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

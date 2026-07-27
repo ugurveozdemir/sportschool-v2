@@ -63,7 +63,6 @@ export type PaymentResponse = {
   year: number;
   month: number;
   amount: number;
-  amountPaid: number;
   balance: number;
   status: PaymentStatus;
   effectiveStatus: PaymentStatus;

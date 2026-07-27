@@ -150,7 +150,6 @@ export type SchoolMonthlyPaymentResponse = {
   month: number;
   paymentId: string | null;
   amount: number | null;
-  amountPaid: number | null;
   balance: number | null;
   monthlyFeeOverride: number | null;
   isActive: boolean;
@@ -161,7 +160,6 @@ export type SchoolMonthlyPaymentResponse = {
 
 export type SavePaymentRequest = {
   amount: number;
-  amountPaid: number | null;
   status: PaymentStatus;
   paidOn: string | null;
 };

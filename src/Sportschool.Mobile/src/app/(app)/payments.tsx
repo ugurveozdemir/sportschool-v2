@@ -51,7 +51,7 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
   const paymentsQuery = useSchoolMonthlyPayments(year, month);
   const rows = paymentsQuery.data ?? [];
 
-  const collected = rows.reduce((sum, row) => sum + (row.amountPaid ?? 0), 0);
+  const collected = rows.reduce((sum, row) => sum + (row.effectiveStatus === "Paid" ? row.amount ?? 0 : 0), 0);
   const pending = rows.reduce((sum, row) => sum + (row.effectiveStatus === "Paid" ? 0 : row.balance ?? row.amount ?? 0), 0);
 
   const visibleRows = rows.filter((row) => {
@@ -205,7 +205,7 @@ function CoachPaymentRow({ row, onPress }: { row: SchoolMonthlyPaymentResponse; 
   const paid = row.effectiveStatus === "Paid";
   const hasAmount = row.amount !== null;
   const initials = row.athleteName.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
-  const displayAmount = paid ? row.amountPaid ?? 0 : row.balance ?? row.amount ?? 0;
+  const displayAmount = paid ? row.amount ?? 0 : row.balance ?? row.amount ?? 0;
 
   return (
     <Pressable onPress={onPress} style={[styles.personRow, !paid && hasAmount && styles.personRowDanger]}>
@@ -292,7 +292,6 @@ function PaymentEditorModal({
           athleteProfileId: payment.athleteProfileId,
           request: {
             amount,
-            amountPaid: paid ? amount : 0,
             status: paid ? "Paid" : "Pending",
             paidOn: paid ? new Date().toISOString().slice(0, 10) : null
           }
@@ -347,7 +346,7 @@ function MemberPayments({ session, payments }: { session: ReturnType<typeof useS
   const unpaid = payments.filter((payment) => payment.effectiveStatus !== "Paid");
   const paid = payments.filter((payment) => payment.effectiveStatus === "Paid");
   const totalDue = unpaid.reduce((sum, payment) => sum + payment.balance, 0);
-  const totalPaid = paid.reduce((sum, payment) => sum + payment.amountPaid, 0);
+  const totalPaid = paid.reduce((sum, payment) => sum + payment.amount, 0);
   const nextPayment = unpaid[0] ?? payments[0];
 
   return (
@@ -419,7 +418,7 @@ function MemberPaymentRow({ payment }: { payment: PaymentResponse }) {
         </View>
       </View>
       <View style={styles.rowRight}>
-        <Text style={styles.rowAmount}>{formatMoney(paid ? payment.amountPaid : payment.balance)}</Text>
+        <Text style={styles.rowAmount}>{formatMoney(paid ? payment.amount : payment.balance)}</Text>
         <Pill label={getPaymentLabel(payment.effectiveStatus)} tone={paid ? "success" : "danger"} />
       </View>
     </SurfaceCard>
