@@ -36,14 +36,18 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
 function sendRequest(path: string, options: RequestOptions): Promise<Response> {
   const session = getStoredSession();
   const headers = new Headers({ Accept: "application/json" });
+  const isFormData = options.body instanceof FormData;
+  const body = options.body instanceof FormData
+    ? options.body
+    : options.body === undefined ? undefined : JSON.stringify(options.body);
 
-  if (options.body !== undefined) headers.set("Content-Type", "application/json");
+  if (options.body !== undefined && !isFormData) headers.set("Content-Type", "application/json");
   if (options.auth !== false && session?.accessToken) headers.set("Authorization", `Bearer ${session.accessToken}`);
 
   return fetch(path, {
     method: options.method ?? "GET",
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
+    body
   });
 }
 

@@ -136,6 +136,10 @@ body {
   margin: 0;
 }
 
+.profile-image-actions {
+  margin-top: 12px;
+}
+
 .athlete-detail-grid {
   display: grid;
   gap: 16px;
@@ -145,6 +149,51 @@ body {
 
 .athlete-groups-card {
   margin-top: 16px;
+}
+
+.athlete-videos-card {
+  margin-top: 16px;
+}
+
+.athlete-video-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.athlete-video-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.athlete-video-player {
+  background: #111827;
+  border-radius: 6px;
+  display: block;
+  max-height: 280px;
+  width: 100%;
+}
+
+.athlete-video-meta {
+  margin-top: 12px;
+}
+
+.athlete-video-caption {
+  margin: 12px 0;
+}
+
+.athlete-video-actions {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.visually-hidden {
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
 }
 
 .temporary-password-control {
