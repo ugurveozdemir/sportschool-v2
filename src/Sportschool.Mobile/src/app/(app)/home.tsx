@@ -8,7 +8,7 @@ import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useMemberAnnouncements, useUnreadAnnouncementCount } from "@/features/announcements/api";
 import type { AnnouncementResponse } from "@/features/announcements/types";
-import { useCoachSummary } from "@/features/coach/api";
+import { useCoachSummary, useCoachTrainings } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
 import { useAttendance, useGroups, useProfile, useReports, useTrainings } from "@/features/me/api";
 import type { AthleteReportResponse, AttendanceResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
@@ -42,6 +42,7 @@ export default function HomeScreen() {
   const announcementsQuery = useMemberAnnouncements(!isCoach, true);
   const unreadCountQuery = useUnreadAnnouncementCount(!isCoach);
   const coachSummaryQuery = useCoachSummary(isCoach);
+  const coachTrainingsQuery = useCoachTrainings(isCoach);
   const { refetch: refetchProfile } = profileQuery;
 
   useFocusEffect(useCallback(() => {
@@ -56,7 +57,16 @@ export default function HomeScreen() {
   }, [isCoach, queryClient, refetchProfile]));
 
   if (isCoach) {
-    return <CoachHome sessionName={session?.fullName} summary={coachSummaryQuery.data} navItems={navItems} shellTitle={shellTitle} isSchoolAdmin={isSchoolAdmin} />;
+    return (
+      <CoachHome
+        isSchoolAdmin={isSchoolAdmin}
+        navItems={navItems}
+        sessionName={session?.fullName}
+        shellTitle={shellTitle}
+        summary={coachSummaryQuery.data}
+        trainings={coachTrainingsQuery.data ?? []}
+      />
+    );
   }
 
   const profile = profileQuery.data;
@@ -108,9 +118,9 @@ function hasStarted(training: CoachTrainingItem) {
   return new Date(training.startsAt).getTime() <= Date.now();
 }
 
-function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }: { sessionName?: string; summary?: CoachSummaryResponse; navItems: ReturnType<typeof getMobileNav>; shellTitle: string; isSchoolAdmin: boolean }) {
+function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSchoolAdmin }: { sessionName?: string; summary?: CoachSummaryResponse; trainings: CoachTrainingItem[]; navItems: ReturnType<typeof getMobileNav>; shellTitle: string; isSchoolAdmin: boolean }) {
   const todayTrainings = summary?.todayTrainings ?? [];
-  const nextTraining = todayTrainings[0];
+  const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now());
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const openAttendance = () => {
@@ -146,7 +156,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }
       </View>
 
       <View style={styles.coachSectionHeader}>
-        <Text style={styles.coachSectionTitle}>Sıradaki Antrenmanlar</Text>
+        <Text style={styles.coachSectionTitle}>Sıradaki Antrenman</Text>
         <Pressable onPress={() => router.push("/calendar")} style={styles.coachSectionLink}>
           <Text style={styles.coachSectionLinkText}>Antrenman Programı</Text>
           <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primaryContainer} />
@@ -157,29 +167,12 @@ function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }
         <CoachTrainingHero training={nextTraining} />
       ) : (
         <SurfaceCard style={styles.coachEmptyCard}>
-          <EmptyState title="Bugün antrenman yok" description="Bugün için atanmış antrenman bulunmuyor." />
+          <EmptyState title="Yaklaşan antrenman yok" description="Önümüzdeki 14 gün için atanmış antrenman bulunmuyor." />
           <Pressable onPress={() => router.push("/calendar")} style={styles.coachOutlineButton}>
             <Text style={styles.coachOutlineButtonText}>Antrenman programını aç</Text>
           </Pressable>
         </SurfaceCard>
       )}
-
-      {todayTrainings.length > 1 ? (
-        <View style={styles.coachOtherTrainings}>
-          {todayTrainings.slice(1).map((training) => (
-            <Pressable key={training.id} onPress={() => router.push(`/trainings/${training.id}`)} style={styles.coachTrainingRow}>
-              <View style={styles.coachTrainingTime}>
-                <Text style={styles.coachTrainingTimeText}>{formatTime(training.startsAt)}</Text>
-              </View>
-              <View style={styles.flexOne}>
-                <Text style={styles.coachTrainingRowTitle}>{training.title}</Text>
-                <Text style={styles.coachTrainingRowMeta}>{training.groups.map((group) => group.name).join(", ")}</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={25} color={colors.onSurfaceVariant} />
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
 
       <View style={styles.coachMenu}>
         <CoachMenuAction
@@ -779,7 +772,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
   coachMenuLabelHighlighted: { color: colors.onPrimary },
-  coachOtherTrainings: { gap: spacing.sm },
   coachOutlineButton: {
     alignItems: "center",
     borderColor: colors.primary,
@@ -807,27 +799,6 @@ const styles = StyleSheet.create({
     padding: spacing.md
   },
   coachStatValue: { ...typography.display, color: colors.primaryContainer },
-  coachTrainingRow: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceContainer,
-    borderColor: colors.outlineVariant,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  coachTrainingRowMeta: { ...typography.body, color: colors.onSurfaceVariant },
-  coachTrainingRowTitle: { ...typography.title, color: colors.onSurface },
-  coachTrainingTime: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceContainerHigh,
-    borderRadius: radius.sm,
-    justifyContent: "center",
-    minHeight: 46,
-    paddingHorizontal: spacing.sm
-  },
-  coachTrainingTimeText: { ...typography.label, color: colors.primaryContainer },
   coachWelcome: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   coachWelcomeName: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   coachWelcomeTitle: { ...typography.headline, color: colors.onSurface },
