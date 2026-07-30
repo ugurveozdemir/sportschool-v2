@@ -221,13 +221,15 @@ function GroupCard({ athleteCount, group }: { athleteCount: number; group: Schoo
           <View style={styles.groupIconWrap}>
             <AcademyLogoAvatar size={42} />
           </View>
-          <View style={styles.flexOne}>
+          <View style={styles.groupCopy}>
             <Text style={styles.groupTitle}>{group.name}</Text>
             {group.description?.trim() ? (
               <Text style={styles.groupDesc} numberOfLines={2}>{group.description}</Text>
             ) : null}
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={colors.outline} />
+          <View style={styles.groupAction}>
+            <MaterialCommunityIcons name="chevron-right" size={26} color={colors.outline} />
+          </View>
         </View>
         <View style={styles.groupCardFooter}>
           <Pill label={`${athleteCount} SPORCU`} tone="neutral" />
@@ -315,9 +317,11 @@ const styles = StyleSheet.create({
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
   groupCard: { gap: spacing.md, minHeight: 120, justifyContent: "space-between" },
-  groupCardMain: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
-  groupCardFooter: { flexDirection: "row", gap: spacing.sm, justifyContent: "flex-start" },
-  groupDesc: { ...typography.bodyLarge, color: colors.primaryContainer, marginTop: spacing.xs },
+  groupAction: { alignItems: "center", height: 50, justifyContent: "center", width: 50 },
+  groupCardMain: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  groupCardFooter: { flexDirection: "row", justifyContent: "center" },
+  groupCopy: { alignItems: "center", flex: 1 },
+  groupDesc: { ...typography.body, color: colors.primaryContainer, marginTop: spacing.xs, textAlign: "center" },
   groupIconWrap: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -328,7 +332,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 50
   },
-  groupTitle: { ...typography.title, color: colors.onSurface, fontSize: 17 },
+  groupTitle: { ...typography.headline, color: colors.onSurface, textAlign: "center" },
   headerBlock: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   iconAction: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   improvement: { ...typography.body, color: colors.onSurfaceVariant },
