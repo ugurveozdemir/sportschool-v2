@@ -11,6 +11,7 @@ node_modules/
 src/Sportschool.Api/wwwroot/dashboard/
 reference_project/
 mobile_project/
+src/Sportschool.Mobile/stitch_gold_academy_manager/
 src/Sportschool.Api/AppData/
 
 # Local agent instructions
