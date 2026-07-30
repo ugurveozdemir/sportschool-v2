@@ -30,12 +30,12 @@ export function Button({ label, onPress, disabled, variant = "primary" }: Button
 }
 
 const styles = StyleSheet.create({
-  button: { alignItems: "center", borderRadius: radius.md, justifyContent: "center", padding: spacing.md },
+  button: { alignItems: "center", borderRadius: radius.sm, justifyContent: "center", minHeight: 52, padding: spacing.md },
   disabled: { opacity: 0.55 },
   label: { ...typography.title },
-  outline: { backgroundColor: colors.surface, borderColor: colors.outlineVariant, borderWidth: 1 },
+  outline: { backgroundColor: "transparent", borderColor: colors.primary, borderWidth: 2 },
   outlineLabel: { color: colors.primary },
   pressed: { transform: [{ scale: 0.98 }] },
-  primary: { backgroundColor: colors.primary },
+  primary: { backgroundColor: colors.primaryContainer },
   primaryLabel: { color: colors.onPrimary }
 });

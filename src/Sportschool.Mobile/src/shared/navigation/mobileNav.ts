@@ -2,12 +2,9 @@ import type { NavItem } from "@/shared/components/MobileUi";
 import type { Session } from "@/shared/types/session";
 
 const coachNav: NavItem[] = [
-  { label: "Dashboard", icon: "view-dashboard-outline", href: "/home", match: "/home" },
-  { label: "Takvim", icon: "calendar-month-outline", href: "/calendar", match: "/calendar" },
-  { label: "Gruplar", icon: "account-group-outline", href: "/development", match: "/development" },
-  { label: "Sporcular", icon: "account-multiple-outline", href: "/attendance", match: "/attendance" },
-  { label: "Videolar", icon: "play-box-multiple-outline", href: "/feed", match: "/feed" },
-  { label: "Ödemeler", icon: "cash-multiple", href: "/payments", match: "/payments" }
+  { label: "Home", icon: "home-outline", href: "/home", match: "/home" },
+  { label: "Groups", icon: "account-group-outline", href: "/development", match: "/development" },
+  { label: "Profile", icon: "account-outline", href: "/profile", match: "/profile" }
 ];
 
 const athleteNav: NavItem[] = [
@@ -40,10 +37,10 @@ export function getMobileNav(session: Session | null) {
 
 export function getShellTitle(session: Session | null) {
   if (session?.loginRole === "SchoolAdmin") {
-    return "Okul Yönetimi";
+    return "TÜRK OCAĞI LİMASOL";
   }
   if (session?.roles.includes("Coach")) {
-    return "Akademi Pro";
+    return "TÜRK OCAĞI LİMASOL";
   }
   if (session?.roles.includes("Parent")) {
     return "Akademi Takibi";

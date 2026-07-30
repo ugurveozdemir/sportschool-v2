@@ -1,4 +1,9 @@
 import { Inter_400Regular, Inter_600SemiBold, Inter_700Bold, useFonts } from "@expo-google-fonts/inter";
+import {
+  HankenGrotesk_600SemiBold,
+  HankenGrotesk_700Bold,
+  HankenGrotesk_800ExtraBold
+} from "@expo-google-fonts/hanken-grotesk";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -15,7 +20,14 @@ import { colors } from "@/shared/design/colors";
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_600SemiBold, Inter_700Bold });
+  const [fontsLoaded] = useFonts({
+    HankenGrotesk_600SemiBold,
+    HankenGrotesk_700Bold,
+    HankenGrotesk_800ExtraBold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold
+  });
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -33,7 +45,7 @@ export default function RootLayout() {
         <AppDataRefresher />
         <SessionProvider>
           <AthleteSelectionProvider>
-            <StatusBar style="dark" backgroundColor={colors.background} />
+            <StatusBar style="light" backgroundColor={colors.background} />
             <Stack screenOptions={{ headerShown: false }} />
           </AthleteSelectionProvider>
         </SessionProvider>

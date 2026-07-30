@@ -40,9 +40,24 @@ export function ScreenShell({ children, title, avatar, navItems, contentStyle, r
 
 export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode }) {
   const { session } = useSession();
-  const isMember = !session?.roles.includes("Coach") && !session?.roles.includes("SchoolAdmin");
+  const isManager = session?.loginRole === "SchoolAdmin" || session?.roles.includes("Coach");
+  const isMember = !isManager;
   const unreadQuery = useUnreadAnnouncementCount(isMember);
   const hasUnread = isMember && (unreadQuery.data?.count ?? 0) > 0;
+
+  if (isManager) {
+    return (
+      <View style={styles.topBar}>
+        <Pressable accessibilityLabel="Profil menüsü" onPress={() => router.push("/profile")} style={styles.topBarButton}>
+          <MaterialCommunityIcons name="menu" size={28} color={colors.onSurfaceVariant} />
+        </Pressable>
+        <Text numberOfLines={1} style={styles.topTitle}>{title}</Text>
+        <Pressable accessibilityLabel="Sporcu ara" onPress={() => router.push("/attendance")} style={styles.topBarButton}>
+          <MaterialCommunityIcons name="magnify" size={29} color={colors.onSurfaceVariant} />
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.topBar}>
@@ -71,7 +86,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
         const active = pathname.includes(item.match);
         return (
           <Pressable key={item.match} onPress={() => router.push(item.href)} style={[styles.navItem, active && styles.navItemActive]}>
-            <MaterialCommunityIcons name={item.icon} size={26} color={active ? colors.onPrimaryContainer : colors.onSurfaceVariant} />
+            <MaterialCommunityIcons name={item.icon} size={26} color={active ? colors.onPrimary : colors.onSurfaceVariant} />
             <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
           </Pressable>
         );
@@ -108,7 +123,7 @@ export function SectionTitle({ title, action }: { title: string; action?: string
 }
 
 export function MetricTile({ icon, label, value, tone = "primary" }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: string; tone?: "primary" | "success" | "danger" | "warning" }) {
-  const color = tone === "success" ? colors.secondary : tone === "danger" ? colors.error : tone === "warning" ? "#ad8d5b" : colors.primary;
+  const color = tone === "success" ? colors.secondary : tone === "danger" ? colors.error : tone === "warning" ? colors.primaryFixedDim : colors.primaryContainer;
   return (
     <SurfaceCard style={styles.metricTile}>
       <MaterialCommunityIcons name={icon} size={22} color={color} />
@@ -119,8 +134,8 @@ export function MetricTile({ icon, label, value, tone = "primary" }: { icon: key
 }
 
 export function InitialsAvatar({ label, size = 42, tone = "light" }: { label: string; size?: number; tone?: "dark" | "light" | "green" | "red" }) {
-  const backgroundColor = tone === "dark" ? colors.primaryContainer : tone === "green" ? colors.secondary : tone === "red" ? colors.errorContainer : colors.primaryFixed;
-  const color = tone === "dark" || tone === "green" ? colors.onPrimary : tone === "red" ? colors.onErrorContainer : colors.primary;
+  const backgroundColor = tone === "dark" ? colors.surfaceContainerHigh : tone === "green" ? colors.secondaryContainer : tone === "red" ? colors.errorContainer : colors.primaryContainer;
+  const color = tone === "dark" ? colors.primary : tone === "green" ? colors.onSecondaryContainer : tone === "red" ? colors.onErrorContainer : colors.onPrimary;
   return (
     <View style={[styles.initialsAvatar, { width: size, height: size, borderRadius: size / 2, backgroundColor }]}>
       <Text style={[styles.initialsText, { color }]}>{label}</Text>
@@ -187,9 +202,9 @@ export function BarChart({ values }: { values: number[] }) {
 
 const pillStyles = {
   primary: { wrap: { backgroundColor: colors.primaryContainer }, text: { color: colors.onPrimary } },
-  success: { wrap: { backgroundColor: "rgba(104,253,179,0.22)" }, text: { color: colors.secondary } },
+  success: { wrap: { backgroundColor: "rgba(52,211,153,0.16)" }, text: { color: colors.secondary } },
   danger: { wrap: { backgroundColor: colors.errorContainer }, text: { color: colors.onErrorContainer } },
-  warning: { wrap: { backgroundColor: "rgba(229,193,138,0.35)" }, text: { color: "#7a5800" } },
+  warning: { wrap: { backgroundColor: "rgba(250,204,21,0.16)" }, text: { color: colors.primaryContainer } },
   neutral: { wrap: { backgroundColor: colors.surfaceContainerLow }, text: { color: colors.onSurfaceVariant } }
 } as const;
 
@@ -200,7 +215,7 @@ const styles = StyleSheet.create({
   accentWarning: { backgroundColor: colors.tertiaryFixedDim },
   bottomNav: {
     alignItems: "center",
-    backgroundColor: colors.surfaceContainerLow,
+    backgroundColor: colors.surfaceContainer,
     borderTopColor: colors.outlineVariant,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
@@ -209,18 +224,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     left: 0,
-    paddingHorizontal: spacing.sm,
+    minHeight: 76,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     position: "absolute",
     right: 0
   },
   card: {
-    backgroundColor: colors.surfaceContainerLowest,
+    backgroundColor: colors.surfaceContainer,
     borderColor: colors.outlineVariant,
     borderRadius: radius.lg,
     borderWidth: 1,
     overflow: "hidden",
-    padding: spacing.lg
+    padding: spacing.md
   },
   cardAccent: { bottom: 0, left: 0, position: "absolute", top: 0, width: 5 },
   chartBar: { borderTopLeftRadius: 4, borderTopRightRadius: 4, width: "100%" },
@@ -230,7 +246,7 @@ const styles = StyleSheet.create({
   chartLabelActive: { color: colors.primary },
   chartWrap: { gap: spacing.md },
   circularScore: { alignItems: "center", gap: spacing.sm },
-  content: { gap: spacing.xl, padding: spacing.lg },
+  content: { gap: spacing.lg, padding: spacing.md },
   contentBottom: { paddingBottom: spacing.xl },
   iconButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
   initialsAvatar: { alignItems: "center", justifyContent: "center" },
@@ -239,22 +255,23 @@ const styles = StyleSheet.create({
   metricLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   metricTile: { flex: 1, gap: spacing.sm, minHeight: 112 },
   metricValue: { ...typography.headline },
-  navItem: { alignItems: "center", borderRadius: radius.lg, gap: 2, minWidth: 64, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
-  navItemActive: { backgroundColor: colors.primaryContainer },
+  navItem: { alignItems: "center", borderRadius: radius.lg, gap: 2, minWidth: 86, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  navItemActive: { backgroundColor: colors.primary },
   navLabel: { ...typography.label, color: colors.onSurfaceVariant, letterSpacing: 0.4, textAlign: "center" },
-  navLabelActive: { color: colors.onPrimaryContainer },
+  navLabelActive: { color: colors.onPrimary },
   notificationDot: { backgroundColor: colors.error, borderRadius: 5, height: 10, position: "absolute", right: 8, top: 7, width: 10 },
   pill: { alignItems: "center", alignSelf: "flex-start", borderRadius: radius.full, flexDirection: "row", gap: 5, paddingHorizontal: spacing.md, paddingVertical: 6 },
   pillText: { ...typography.label },
   scoreCenter: { alignItems: "center", bottom: 0, justifyContent: "center", left: 0, position: "absolute", right: 0, top: 0 },
   scoreLabel: { ...typography.label, color: colors.onSurfaceVariant, textAlign: "center" },
   scoreNumber: { ...typography.title, color: colors.primary },
-  sectionAction: { ...typography.label, color: colors.primary },
+  sectionAction: { ...typography.label, color: colors.primaryContainer },
   sectionHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  sectionTitle: { ...typography.title, color: colors.primary },
+  sectionTitle: { ...typography.title, color: colors.onSurface },
   shell: { backgroundColor: colors.background, flex: 1 },
-  topBar: { alignItems: "center", backgroundColor: colors.background, borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", height: 64, justifyContent: "space-between", paddingHorizontal: spacing.lg },
+  topBar: { alignItems: "center", backgroundColor: colors.background, borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", height: 64, justifyContent: "space-between", paddingHorizontal: spacing.md },
+  topBarButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   topActions: { alignItems: "center", flexDirection: "row", justifyContent: "flex-end", width: 88 },
   topLead: { alignItems: "flex-start", height: 42, justifyContent: "center", width: 88 },
-  topTitle: { ...typography.title, color: colors.primary, flex: 1, textAlign: "center" }
+  topTitle: { ...typography.headline, color: colors.primary, flex: 1, textAlign: "center" }
 });

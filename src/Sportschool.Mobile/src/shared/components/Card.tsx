@@ -10,8 +10,8 @@ export function Card({ children, style }: PropsWithChildren<{ style?: ViewStyle 
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: "#f1f5f9",
+    backgroundColor: colors.surfaceContainer,
+    borderColor: colors.outlineVariant,
     borderRadius: radius.lg,
     borderWidth: 1,
     padding: spacing.lg

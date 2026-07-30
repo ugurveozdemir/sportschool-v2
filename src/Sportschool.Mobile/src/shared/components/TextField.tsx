@@ -23,15 +23,16 @@ const styles = StyleSheet.create({
   error: { ...typography.label, color: colors.error },
   input: {
     ...typography.bodyLarge,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceContainerHigh,
     borderColor: colors.outlineVariant,
     borderRadius: radius.sm,
     borderWidth: 1,
     color: colors.onSurface,
     paddingHorizontal: spacing.md,
+    minHeight: 52,
     paddingVertical: spacing.md
   },
   inputError: { borderColor: colors.error },
-  label: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
+  label: { ...typography.label, color: colors.onSurfaceVariant },
   wrap: { gap: spacing.xs }
 });
