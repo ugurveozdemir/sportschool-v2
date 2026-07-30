@@ -18,7 +18,7 @@ export function AthleteSelectionProvider({ children }: PropsWithChildren) {
   const { session } = useSession();
   const isMember = !!session && !session.roles.includes("Coach") && !session.roles.includes("SchoolAdmin") && !session.roles.includes("PlatformOwner");
   const athletesQuery = useMyAthletes(isMember);
-  const athletes = athletesQuery.data ?? [];
+  const athletes = useMemo(() => athletesQuery.data ?? [], [athletesQuery.data]);
   const [selectedAthleteProfileId, setSelectedAthleteProfileId] = useState<string | null>(null);
 
   useEffect(() => {
