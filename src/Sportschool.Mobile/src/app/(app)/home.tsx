@@ -10,7 +10,7 @@ import { useMemberAnnouncements, useUnreadAnnouncementCount } from "@/features/a
 import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
-import { useAttendance, useGroups, usePayments, useProfile, useReports, useTrainings } from "@/features/me/api";
+import { useAttendance, useGroups, useProfile, useReports, useTrainings } from "@/features/me/api";
 import type { AthleteReportResponse, AttendanceResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
@@ -37,7 +37,6 @@ export default function HomeScreen() {
   const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
   const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
-  const paymentsQuery = usePayments(!isCoach, selectedAthleteProfileId);
   const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const announcementsQuery = useMemberAnnouncements(!isCoach, true);
   const unreadCountQuery = useUnreadAnnouncementCount(!isCoach);
@@ -63,10 +62,8 @@ export default function HomeScreen() {
   const trainings = trainingsQuery.data ?? [];
   const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now()) ?? trainings[0];
   const todayTrainingCount = trainings.filter((training) => isSameDay(training.startsAt)).length;
-  const payments = paymentsQuery.data ?? [];
   const announcements = announcementsQuery.data ?? [];
   const attendance = attendanceQuery.data ?? [];
-  const unpaidCount = payments.filter((payment) => payment.effectiveStatus !== "Paid").length;
   const reports = reportsQuery.data ?? [];
   const latestReport = reports[0];
   const previousReport = reports[1];
@@ -112,6 +109,7 @@ function hasStarted(training: CoachTrainingItem) {
 
 function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }: { sessionName?: string; summary?: CoachSummaryResponse; navItems: ReturnType<typeof getMobileNav>; shellTitle: string; isSchoolAdmin: boolean }) {
   const todayTrainings = summary?.todayTrainings ?? [];
+  const nextTraining = todayTrainings[0];
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const openAttendance = () => {
@@ -138,46 +136,89 @@ function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }
 
   return (
     <ScreenShell title={shellTitle} navItems={navItems}>
-      <View style={styles.welcomeRow}>
-        <View>
-          <Text style={styles.dateText}>{new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", weekday: "long" }).format(new Date())}</Text>
-          <Text style={styles.displayTitle}>Merhaba, {sessionName?.split(" ")[0] ?? (isSchoolAdmin ? "Yönetici" : "Koç")}</Text>
+      <View style={styles.coachWelcome}>
+        <InitialsAvatar label={nameInitials(sessionName ?? "Koç")} size={64} tone="dark" />
+        <View style={styles.flexOne}>
+          <Text style={styles.coachWelcomeTitle}>Hoş Geldin, {isSchoolAdmin ? "Yönetici" : "Antrenör"}</Text>
+          <Text style={styles.coachWelcomeName}>{sessionName ?? "Akademi Ekibi"}</Text>
         </View>
-        <InitialsAvatar label="KÇ" size={54} tone="dark" />
       </View>
 
-      <View style={styles.sectionStack}>
-        <SectionTitle title="Bugünkü Etkinlikler" />
-        {todayTrainings.length > 0 ? (
-          todayTrainings.map((training) => (
-            <EventCard
-              key={training.id}
-              accent="secondary"
-              icon="run"
-              kicker={`${formatTime(training.startsAt)} • ${training.location ?? "Konum girilmedi"}`}
-              title={training.title}
-              description={training.notes?.trim() || undefined}
-              onPress={() => router.push(`/trainings/${training.id}`)}
-            />
-          ))
-        ) : (
-          <SurfaceCard>
-            <EmptyState title="Bugün antrenman yok" description="Bugün için atanmış antrenman bulunmuyor." />
-          </SurfaceCard>
-        )}
+      <View style={styles.coachSectionHeader}>
+        <Text style={styles.coachSectionTitle}>Sıradaki Antrenmanlar</Text>
+        <Pressable onPress={() => router.push("/calendar")} style={styles.coachSectionLink}>
+          <Text style={styles.coachSectionLinkText}>Antrenman Programı</Text>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primaryContainer} />
+        </Pressable>
       </View>
 
-      <View style={styles.sectionStack}>
-        <SectionTitle title="Hızlı Aksiyonlar" />
-        <View style={styles.quickGrid}>
-          <QuickAction
-            label="Yoklama Al"
-            icon="clipboard-check-outline"
-            primary
-            onPress={openAttendance}
-          />
-          <QuickAction label="Ödeme Kaydet" icon="cash-multiple" tone="green" onPress={() => router.push("/payments")} />
-          <QuickAction label="Duyuru Yayınla" icon="bullhorn-outline" tone="dark" onPress={() => router.push("/announcements")} />
+      {nextTraining ? (
+        <CoachTrainingHero training={nextTraining} />
+      ) : (
+        <SurfaceCard style={styles.coachEmptyCard}>
+          <EmptyState title="Bugün antrenman yok" description="Bugün için atanmış antrenman bulunmuyor." />
+          <Pressable onPress={() => router.push("/calendar")} style={styles.coachOutlineButton}>
+            <Text style={styles.coachOutlineButtonText}>Antrenman programını aç</Text>
+          </Pressable>
+        </SurfaceCard>
+      )}
+
+      {todayTrainings.length > 1 ? (
+        <View style={styles.coachOtherTrainings}>
+          {todayTrainings.slice(1).map((training) => (
+            <Pressable key={training.id} onPress={() => router.push(`/trainings/${training.id}`)} style={styles.coachTrainingRow}>
+              <View style={styles.coachTrainingTime}>
+                <Text style={styles.coachTrainingTimeText}>{formatTime(training.startsAt)}</Text>
+              </View>
+              <View style={styles.flexOne}>
+                <Text style={styles.coachTrainingRowTitle}>{training.title}</Text>
+                <Text style={styles.coachTrainingRowMeta}>{training.groups.map((group) => group.name).join(", ")}</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={25} color={colors.onSurfaceVariant} />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      <View style={styles.coachMenu}>
+        <CoachMenuAction
+          icon="clipboard-check-outline"
+          label="YOKLAMA AL"
+          onPress={openAttendance}
+        />
+        <CoachMenuAction
+          highlighted
+          icon="soccer"
+          label="ANTRENMANLAR"
+          onPress={() => router.push("/calendar")}
+        />
+        <CoachMenuAction
+          icon="chart-box-outline"
+          label="RAPORLAMA"
+          onPress={() => router.push("/attendance")}
+        />
+        <CoachMenuAction
+          highlighted
+          icon="cash-multiple"
+          label="ÖDEMELER"
+          onPress={() => router.push("/payments")}
+        />
+        <CoachMenuAction
+          icon="bullhorn-outline"
+          label="DUYURULAR"
+          onPress={() => router.push("/announcements")}
+        />
+      </View>
+
+      <View style={styles.coachStats}>
+        <View style={styles.coachStat}>
+          <Text style={styles.coachStatValue}>{summary?.weekTrainingCount ?? 0}</Text>
+          <Text style={styles.coachStatLabel}>BU HAFTA ANTRENMAN</Text>
+        </View>
+        <View style={styles.coachStatDivider} />
+        <View style={styles.coachStat}>
+          <Text style={styles.coachStatValue}>{summary?.athleteCount ?? 0}</Text>
+          <Text style={styles.coachStatLabel}>AKTİF SPORCU</Text>
         </View>
       </View>
 
@@ -189,6 +230,94 @@ function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }
       />
     </ScreenShell>
   );
+}
+
+function CoachTrainingHero({ training }: { training: CoachTrainingItem }) {
+  const date = new Date(training.startsAt);
+  const day = new Intl.DateTimeFormat("tr-TR", { day: "2-digit" }).format(date);
+  const month = new Intl.DateTimeFormat("tr-TR", { month: "short" }).format(date).replace(".", "");
+  const weekday = new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(date);
+  const groups = training.groups.map((group) => group.name).join(", ");
+
+  return (
+    <View style={styles.coachHero}>
+      <View style={styles.coachHeroGlow} />
+      <View style={styles.coachHeroDate}>
+        <Text style={styles.coachHeroDateText}>{day} {month}</Text>
+        <Text style={styles.coachHeroTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
+      </View>
+      <Text style={styles.coachHeroWeekday}>{weekday.toLocaleUpperCase("tr-TR")}</Text>
+      <View style={styles.coachHeroDetails}>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Antrenman</Text>
+          <Text style={styles.coachHeroDetailValue}>: {training.title}</Text>
+        </View>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Sporcu Grubu</Text>
+          <Text style={styles.coachHeroDetailValue}>: {groups || "Grup atanmamış"}</Text>
+        </View>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Sporcu Sayısı</Text>
+          <Text style={styles.coachHeroDetailValue}>: {training.totalAthletes}</Text>
+        </View>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Konum</Text>
+          <Text style={styles.coachHeroDetailValue}>: {training.location ?? "Belirtilmedi"}</Text>
+        </View>
+      </View>
+      <Pressable onPress={() => router.push(`/trainings/${training.id}`)} style={styles.coachHeroButton}>
+        <Text style={styles.coachHeroButtonText}>Detayı Gör</Text>
+        <MaterialCommunityIcons name="arrow-right" size={28} color={colors.onPrimary} />
+      </Pressable>
+    </View>
+  );
+}
+
+function CoachMenuAction({
+  highlighted = false,
+  icon,
+  label,
+  onPress
+}: {
+  highlighted?: boolean;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.coachMenuAction,
+        highlighted && styles.coachMenuActionHighlighted,
+        pressed && styles.coachMenuActionPressed
+      ]}
+    >
+      <View style={[styles.coachMenuIcon, highlighted && styles.coachMenuIconHighlighted]}>
+        <MaterialCommunityIcons
+          name={icon}
+          size={29}
+          color={highlighted ? colors.onPrimary : colors.onSurface}
+        />
+      </View>
+      <Text style={[styles.coachMenuLabel, highlighted && styles.coachMenuLabelHighlighted]}>{label}</Text>
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={27}
+        color={highlighted ? colors.onPrimary : colors.onSurfaceVariant}
+      />
+    </Pressable>
+  );
+}
+
+function nameInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toLocaleUpperCase("tr-TR");
 }
 
 function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visible: boolean; trainings: CoachTrainingItem[]; onClose: () => void; onSelect: (training: CoachTrainingItem) => void }) {
@@ -477,39 +606,6 @@ function AttendanceStat({ label, value, color }: { label: string; value: number;
   );
 }
 
-function EventCard({ accent, icon, kicker, title, description, onPress }: {
-  accent: "primary" | "secondary";
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  kicker: string;
-  title: string;
-  description?: string;
-  onPress?: () => void;
-}) {
-  const content = (
-    <SurfaceCard accent={accent} style={styles.eventCard}>
-      <View style={styles.eventIconCircle}>
-        <MaterialCommunityIcons name={icon} size={28} color={accent === "secondary" ? colors.secondary : colors.primary} />
-      </View>
-      <View style={styles.flexOne}>
-        <Text style={[styles.eventKicker, accent === "secondary" && styles.greenText]}>{kicker}</Text>
-        <Text style={styles.eventTitle}>{title}</Text>
-        {description ? <Text style={styles.eventDescription}>{description}</Text> : null}
-      </View>
-      <MaterialCommunityIcons name="chevron-right" size={30} color={colors.outlineVariant} />
-    </SurfaceCard>
-  );
-
-  if (!onPress) {
-    return content;
-  }
-
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${title} detayını aç`} onPress={onPress}>
-      {content}
-    </Pressable>
-  );
-}
-
 function QuickAction({ label, icon, primary, badge, tone, onPress }: { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; primary?: boolean; badge?: boolean; tone?: "green" | "dark"; onPress?: () => void }) {
   const highlighted = primary || tone;
   const content = (
@@ -605,6 +701,145 @@ const styles = StyleSheet.create({
   cardHeaderRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   cardInsetHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", padding: spacing.lg },
   cardTitle: { ...typography.headline, color: colors.primary },
+  coachEmptyCard: { gap: spacing.md },
+  coachHero: {
+    backgroundColor: colors.surfaceContainer,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    gap: spacing.md,
+    overflow: "hidden",
+    padding: spacing.md
+  },
+  coachHeroButton: {
+    alignItems: "center",
+    backgroundColor: colors.primaryContainer,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "center",
+    marginBottom: -spacing.md,
+    marginHorizontal: -spacing.md,
+    marginTop: spacing.sm,
+    minHeight: 58
+  },
+  coachHeroButtonText: { ...typography.title, color: colors.onPrimary },
+  coachHeroDate: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    backgroundColor: colors.surfaceContainerHigh,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.md
+  },
+  coachHeroDateText: {
+    color: colors.primaryContainer,
+    fontFamily: "HankenGrotesk_800ExtraBold",
+    fontSize: 38,
+    lineHeight: 44
+  },
+  coachHeroDetailLabel: { ...typography.body, color: colors.onSurfaceVariant, width: 112 },
+  coachHeroDetails: { gap: spacing.sm },
+  coachHeroDetailRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm },
+  coachHeroDetailValue: { ...typography.body, color: colors.onSurface, flex: 1 },
+  coachHeroGlow: {
+    backgroundColor: "rgba(250,204,21,0.08)",
+    borderRadius: radius.full,
+    height: 220,
+    position: "absolute",
+    right: -90,
+    top: -80,
+    width: 220
+  },
+  coachHeroTime: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
+  coachHeroWeekday: { ...typography.label, color: colors.primary, letterSpacing: 1.4 },
+  coachMenu: { gap: spacing.md },
+  coachMenuAction: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceContainerHigh,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 96,
+    padding: spacing.md
+  },
+  coachMenuActionHighlighted: {
+    backgroundColor: colors.primaryContainer,
+    borderColor: colors.primaryContainer
+  },
+  coachMenuActionPressed: { transform: [{ scale: 0.985 }] },
+  coachMenuIcon: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    height: 52,
+    justifyContent: "center",
+    width: 52
+  },
+  coachMenuIconHighlighted: { backgroundColor: "rgba(60,47,0,0.16)" },
+  coachMenuLabel: {
+    ...typography.title,
+    color: colors.onSurface,
+    flex: 1,
+    fontFamily: "HankenGrotesk_700Bold",
+    letterSpacing: 0.5
+  },
+  coachMenuLabelHighlighted: { color: colors.onPrimary },
+  coachOtherTrainings: { gap: spacing.sm },
+  coachOutlineButton: {
+    alignItems: "center",
+    borderColor: colors.primary,
+    borderRadius: radius.sm,
+    borderWidth: 2,
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md
+  },
+  coachOutlineButtonText: { ...typography.bodyLarge, color: colors.primary },
+  coachSectionHeader: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" },
+  coachSectionLink: { alignItems: "center", flexDirection: "row" },
+  coachSectionLinkText: { ...typography.body, color: colors.primaryContainer },
+  coachSectionTitle: { ...typography.headline, color: colors.onSurface, flex: 1 },
+  coachStat: { alignItems: "center", flex: 1, gap: spacing.xs },
+  coachStatDivider: { backgroundColor: colors.outlineVariant, height: 45, width: 1 },
+  coachStatLabel: { ...typography.label, color: colors.onSurfaceVariant, textAlign: "center" },
+  coachStats: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceContainer,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    padding: spacing.md
+  },
+  coachStatValue: { ...typography.display, color: colors.primaryContainer },
+  coachTrainingRow: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceContainer,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md
+  },
+  coachTrainingRowMeta: { ...typography.body, color: colors.onSurfaceVariant },
+  coachTrainingRowTitle: { ...typography.title, color: colors.onSurface },
+  coachTrainingTime: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: radius.sm,
+    justifyContent: "center",
+    minHeight: 46,
+    paddingHorizontal: spacing.sm
+  },
+  coachTrainingTimeText: { ...typography.label, color: colors.primaryContainer },
+  coachWelcome: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  coachWelcomeName: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
+  coachWelcomeTitle: { ...typography.headline, color: colors.onSurface },
   childSwitch: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, borderRadius: radius.full, borderWidth: 1, flexDirection: "row", padding: 4 },
   childSwitchActive: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.sm },
   childSwitchActiveText: { ...typography.label, color: colors.onPrimary },
