@@ -1,4 +1,3 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -15,7 +14,7 @@ import {
 import type { LoginMode } from "@/shared/constants/roles";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
-import { fontFamily, typography } from "@/shared/design/typography";
+import { fontFamily } from "@/shared/design/typography";
 
 const academyLogo = require("../../../logo/sportschool_logo.png");
 
@@ -79,13 +78,6 @@ export default function RoleScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Text style={styles.version}>0.1.0</Text>
-        <View style={styles.footerInstruction}>
-          <Text style={styles.footerText}>Rolünü seç</Text>
-          <MaterialCommunityIcons name="arrow-right" size={24} color={colors.onPrimary} />
-        </View>
-      </View>
     </SafeAreaView>
   );
 }
@@ -110,23 +102,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md
-  },
-  footer: {
-    alignItems: "center",
-    backgroundColor: colors.primaryContainer,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 58,
-    paddingHorizontal: spacing.lg
-  },
-  footerInstruction: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm
-  },
-  footerText: {
-    ...typography.bodyLarge,
-    color: colors.onPrimary
   },
   hero: {
     alignItems: "center",
@@ -196,10 +171,6 @@ const styles = StyleSheet.create({
     letterSpacing: -1.1,
     lineHeight: 32,
     textAlign: "center"
-  },
-  version: {
-    ...typography.bodyLarge,
-    color: colors.onPrimary
   },
   watermark: {
     height: 630,
