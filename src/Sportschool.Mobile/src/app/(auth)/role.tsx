@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   leftShade: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(250,204,21,0.80)",
+    backgroundColor: colors.primaryContainer,
     right: "45%"
   },
   logo: {
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "absolute",
     right: 0,
-    width: "100%"
+    width: "68%"
   },
   roleTitle: {
     color: colors.onPrimary,
