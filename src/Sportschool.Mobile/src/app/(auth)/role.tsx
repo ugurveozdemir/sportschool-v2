@@ -86,7 +86,6 @@ export default function RoleScreen() {
           <MaterialCommunityIcons name="arrow-right" size={24} color={colors.onPrimary} />
         </View>
       </View>
-      <View style={styles.footerAccent} />
     </SafeAreaView>
   );
 }
@@ -119,10 +118,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     minHeight: 58,
     paddingHorizontal: spacing.lg
-  },
-  footerAccent: {
-    backgroundColor: "#111113",
-    height: 7
   },
   footerInstruction: {
     alignItems: "center",
