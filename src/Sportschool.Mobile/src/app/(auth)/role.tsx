@@ -50,7 +50,7 @@ export default function RoleScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.brand}>
           <Image resizeMode="contain" source={academyLogo} style={styles.logo} />
-          <Text style={styles.academyLabel}>FUTBOL AKADEMİSİ</Text>
+          <Text style={styles.academyLabel}>TÜRK OCAĞI LİMASOL FUTBOL AKADEMİSİ</Text>
         </View>
 
         <View style={styles.hero}>
