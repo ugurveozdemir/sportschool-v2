@@ -284,12 +284,12 @@ const styles = StyleSheet.create({
   cardTitle: { ...typography.title, color: colors.primary },
   cardTitleWrap: { flex: 1, gap: spacing.sm },
   content: { ...typography.bodyLarge, color: colors.onSurface, lineHeight: 23 },
-  createButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, height: 48, justifyContent: "center", width: 48 },
+  createButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
   expiredCard: { opacity: 0.72 },
   formStack: { gap: spacing.md, paddingBottom: spacing.lg },
   headerRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   headerText: { flex: 1, gap: spacing.xs },
-  iconButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: "center", width: 38 },
+  iconButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 44, justifyContent: "center", width: 44 },
   list: { gap: spacing.md },
   meta: { ...typography.label, color: colors.onSurfaceVariant },
   metaStack: { gap: 3 },
@@ -298,5 +298,5 @@ const styles = StyleSheet.create({
   modalTitle: { ...typography.headline, color: colors.primary },
   pageTitle: { ...typography.display, color: colors.primary },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
-  textArea: { minHeight: 132 }
+  textArea: { minHeight: 110 }
 });

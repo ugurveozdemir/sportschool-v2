@@ -85,7 +85,7 @@ export default function CoachAthleteDetailScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
         </Pressable>
         <View style={styles.identity}>
-          <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={initials(name)} size={108} tone="dark" />
+          <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={initials(name)} size={84} tone="dark" />
           <Text style={styles.title}>{name}</Text>
           <Text style={styles.subtitle}>{athlete.groups.join(", ") || "Grup ataması yok"}</Text>
           <View style={styles.pillRow}>

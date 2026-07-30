@@ -60,7 +60,7 @@ export default function ProfileScreen() {
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       <View style={styles.profileHero}>
         <View style={styles.avatarWrap}>
-          {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={128} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={128} tone="dark" />}
+          {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={96} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={96} tone="dark" />}
           <View style={styles.verifiedBadge}>
             <MaterialCommunityIcons name={isCoach ? "whistle-outline" : "check-decagram"} size={18} color={colors.onSecondaryContainer} />
           </View>

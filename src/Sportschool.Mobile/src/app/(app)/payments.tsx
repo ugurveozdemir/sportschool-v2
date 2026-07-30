@@ -244,7 +244,7 @@ function CoachPaymentRow({ row, onPress }: { row: SchoolMonthlyPaymentResponse; 
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.personRow, pressed && styles.personRowPressed]}>
-      <InitialsAvatar label={initials || "?"} size={52} tone={paid ? "light" : "red"} />
+      <InitialsAvatar label={initials || "?"} size={44} tone={paid ? "light" : "red"} />
       <View style={styles.flexOne}>
         <Text style={styles.rowTitle}>{row.athleteName}</Text>
         <Text style={styles.rowSubtitle}>{hasAmount ? formatMoney(displayAmount) : "Aidat tutarı girilmedi"}</Text>
@@ -393,7 +393,7 @@ function MemberPayments({ session, payments }: { session: ReturnType<typeof useS
   const nextPayment = unpaid[0] ?? payments[0];
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "A"} size={42} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "A"} size={38} tone="dark" />}>
       <View style={styles.headerBlock}>
         <Text style={styles.title}>Ödemeler ve Aidat</Text>
         <Text style={styles.subtitle}>Finansal durumunu takip et.</Text>
@@ -478,9 +478,9 @@ const styles = StyleSheet.create({
   flexOne: { flex: 1 },
   headerBlock: { gap: spacing.sm },
   helperText: { ...typography.body, color: colors.onSurfaceVariant },
-  iconButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: "center", width: 38 },
+  iconButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 44, justifyContent: "center", width: 44 },
   list: { gap: spacing.md },
-  monthChip: { borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, minWidth: 132, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  monthChip: { borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, minWidth: 116, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   monthChipSelected: { backgroundColor: colors.primaryContainer, borderColor: colors.primaryContainer },
   monthChips: { gap: spacing.sm, paddingRight: spacing.md },
   monthChipText: { ...typography.label, color: colors.onSurfaceVariant, textAlign: "center", textTransform: "capitalize" },
@@ -495,25 +495,25 @@ const styles = StyleSheet.create({
   paymentSummary: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, gap: spacing.xs, padding: spacing.lg },
   paymentSummaryAmount: { ...typography.label, color: colors.onSurfaceVariant, marginTop: spacing.sm },
   paymentSummaryNumbers: { alignItems: "baseline", flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
-  paymentSummaryPaid: { ...typography.display, color: colors.primaryContainer, fontSize: 56, lineHeight: 62 },
+  paymentSummaryPaid: { ...typography.display, color: colors.primaryContainer, fontSize: 46, lineHeight: 52 },
   paymentSummarySubtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   paymentSummaryTitle: { ...typography.headline, color: colors.onSurface },
   paymentSummaryTotal: { ...typography.title, color: colors.onSurfaceVariant },
-  personRow: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 96, padding: spacing.md },
+  personRow: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 82, padding: spacing.md },
   personRowPressed: { borderColor: colors.primaryContainer, transform: [{ scale: 0.99 }] },
   rowAmount: { ...typography.title, color: colors.primary },
   rowLead: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   rowRight: { alignItems: "flex-end", gap: spacing.xs },
   rowSubtitle: { ...typography.body, color: colors.onSurfaceVariant },
   rowTitle: { ...typography.title, color: colors.primary },
-  searchField: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 58, paddingHorizontal: spacing.md },
+  searchField: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 48, paddingHorizontal: spacing.md },
   searchInput: { ...typography.bodyLarge, color: colors.onSurface, flex: 1, paddingVertical: spacing.sm },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginTop: spacing.xs },
   toggleLabel: { ...typography.title, color: colors.onSurface },
   toggleRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   summaryCard: { gap: spacing.md },
   summaryGrid: { gap: spacing.sm },
-  summaryIcon: { alignItems: "center", borderRadius: radius.full, height: 42, justifyContent: "center", width: 42 },
+  summaryIcon: { alignItems: "center", borderRadius: radius.full, height: 38, justifyContent: "center", width: 38 },
   summaryLabel: { ...typography.body, color: colors.onSurfaceVariant },
   summaryTop: { alignItems: "flex-start", flexDirection: "row", justifyContent: "space-between" },
   summaryValue: { ...typography.headline },

@@ -65,7 +65,7 @@ function FeedVideoCard({ video }: { video: AthleteFeedVideo }) {
   return (
     <SurfaceCard style={styles.card}>
       <View style={styles.authorRow}>
-        <ProfileAvatar uri={video.athleteProfileImageUrl ? resolveApiUrl(video.athleteProfileImageUrl) : null} label={video.athleteFirstName.slice(0, 1)} size={42} tone="dark" />
+        <ProfileAvatar uri={video.athleteProfileImageUrl ? resolveApiUrl(video.athleteProfileImageUrl) : null} label={video.athleteFirstName.slice(0, 1)} size={38} tone="dark" />
         <View style={styles.authorText}>
           <Text style={styles.authorName}>{athleteName}</Text>
           <Text style={styles.date}>{formatDate(video.publishedAt ?? video.createdAt)}</Text>
@@ -91,5 +91,5 @@ const styles = StyleSheet.create({
   loadMoreText: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.body, color: colors.onSurfaceVariant },
   title: { ...typography.headline, color: colors.primary },
-  video: { backgroundColor: colors.primary, borderRadius: radius.md, height: 230, overflow: "hidden", width: "100%" }
+  video: { backgroundColor: colors.primary, borderRadius: radius.md, height: 195, overflow: "hidden", width: "100%" }
 });

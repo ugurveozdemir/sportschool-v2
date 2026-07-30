@@ -95,7 +95,7 @@ export default function CalendarScreen() {
   }
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={isCoach ? undefined : <InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "E"} size={42} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={isCoach ? undefined : <InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "E"} size={38} tone="dark" />}>
       {isCoach ? (
         <CoachCalendar
           markedDates={markedDates}
@@ -965,18 +965,18 @@ function getDaysInMonth(date: Date) {
 
 const styles = StyleSheet.create({
   addButton: { paddingVertical: spacing.sm },
-  addLink: { ...typography.label, color: colors.secondary, fontSize: 14 },
+  addLink: { ...typography.label, color: colors.secondary, fontSize: 13 },
   calendarArrows: { flexDirection: "row", gap: spacing.sm },
-  calendarCard: { gap: spacing.lg, minHeight: 430 },
+  calendarCard: { gap: spacing.lg, minHeight: 360 },
   calendarHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   checkbox: { alignItems: "center", borderColor: colors.outline, borderRadius: 6, borderWidth: 1, height: 24, justifyContent: "center", width: 24 },
   checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   circleButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 46, justifyContent: "center", width: 46 },
-  closeButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
+  closeButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   coachTitle: { ...typography.headline, color: colors.primary },
-  dayCell: { alignItems: "center", flexBasis: `${100 / 7}%`, height: 52, justifyContent: "center" },
+  dayCell: { alignItems: "center", flexBasis: `${100 / 7}%`, height: 46, justifyContent: "center" },
   dayCellRound: { borderRadius: radius.full },
-  dayInner: { alignItems: "center", height: 46, justifyContent: "center", width: 46 },
+  dayInner: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
   daySelected: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.16, shadowRadius: 7, shadowOffset: { height: 4, width: 0 } },
   dayText: { ...typography.bodyLarge, color: colors.primary },
   dayTextInactive: { color: colors.outlineVariant },
@@ -1012,7 +1012,7 @@ const styles = StyleSheet.create({
   timePickerOverlay: { alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)", bottom: 0, justifyContent: "center", left: 0, position: "absolute", right: 0, top: 0, zIndex: 1000 },
   timePickerCard: { backgroundColor: colors.surface, borderRadius: radius.lg, gap: spacing.md, padding: spacing.lg, width: "80%" },
   timePickerTitle: { ...typography.title, color: colors.primary, textAlign: "center" },
-  pickerColumns: { flexDirection: "row", gap: spacing.lg, height: 200 },
+  pickerColumns: { flexDirection: "row", gap: spacing.lg, height: 180 },
   pickerColumn: { flex: 1 },
   columnLabel: { ...typography.label, color: colors.outline, marginBottom: spacing.xs, textAlign: "center" },
   columnScroll: { borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1 },
@@ -1051,14 +1051,14 @@ const styles = StyleSheet.create({
   dayCard: { gap: spacing.md },
   dayCardToday: { borderColor: colors.primary, borderWidth: 1.5 },
   dayCardHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  dateBadge: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 52, justifyContent: "center", width: 52 },
+  dateBadge: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 46, justifyContent: "center", width: 46 },
   dateBadgeToday: { backgroundColor: colors.primary },
   dateBadgeWeekday: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   dateBadgeNumber: { ...typography.title, color: colors.primary },
   dateBadgeTextToday: { color: colors.onPrimary },
   dayName: { ...typography.title, color: colors.onSurface },
   dayCount: { ...typography.body, color: colors.onSurfaceVariant },
-  dayAddButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, height: 38, justifyContent: "center", width: 38 },
+  dayAddButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
   dayEmpty: { ...typography.body, color: colors.outline, paddingLeft: spacing.xs },
   dayItems: { gap: spacing.sm },
   agendaItem: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.md, padding: spacing.md },
@@ -1071,7 +1071,7 @@ const styles = StyleSheet.create({
   flexOne: { flex: 1 },
   detailBody: { gap: spacing.md },
   detailRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  detailIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 40, justifyContent: "center", width: 40 },
+  detailIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 36, justifyContent: "center", width: 36 },
   detailLabel: { ...typography.label, color: colors.onSurfaceVariant },
   detailValue: { ...typography.bodyLarge, color: colors.onSurface },
   repeatRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },

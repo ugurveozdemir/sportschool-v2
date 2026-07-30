@@ -148,7 +148,7 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
   return (
     <ScreenShell title={shellTitle} navItems={navItems}>
       <View style={styles.coachWelcome}>
-        <AcademyLogoAvatar size={64} />
+        <AcademyLogoAvatar size={54} />
         <View style={styles.flexOne}>
           <Text style={styles.coachWelcomeTitle}>Hoş Geldin, {isSchoolAdmin ? "Yönetici" : "Antrenör"}</Text>
           <Text style={styles.coachWelcomeName}>{sessionName ?? "Akademi Ekibi"}</Text>
@@ -261,7 +261,7 @@ function CoachTrainingHero({ training }: { training: CoachTrainingItem }) {
       </View>
       <Pressable onPress={() => router.push(`/trainings/${training.id}`)} style={styles.coachHeroButton}>
         <Text style={styles.coachHeroButtonText}>Detayı Gör</Text>
-        <MaterialCommunityIcons name="arrow-right" size={28} color={colors.onPrimary} />
+        <MaterialCommunityIcons name="arrow-right" size={24} color={colors.onPrimary} />
       </Pressable>
     </View>
   );
@@ -290,14 +290,14 @@ function CoachMenuAction({
       <View style={[styles.coachMenuIcon, highlighted && styles.coachMenuIconHighlighted]}>
         <MaterialCommunityIcons
           name={icon}
-          size={29}
+          size={25}
           color={highlighted ? colors.onPrimary : colors.onSurface}
         />
       </View>
       <Text style={[styles.coachMenuLabel, highlighted && styles.coachMenuLabelHighlighted]}>{label}</Text>
       <MaterialCommunityIcons
         name="chevron-right"
-        size={27}
+        size={24}
         color={highlighted ? colors.onPrimary : colors.onSurfaceVariant}
       />
     </Pressable>
@@ -352,7 +352,7 @@ function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visi
 function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTraining, groupCount, attendance, announcementCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; profileImageUrl?: string | null; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; latestReport?: AthleteReportResponse }) {
   const stats = attendanceStats(attendance);
   return (
-    <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={profileImageUrl ? resolveApiUrl(profileImageUrl) : null} label={firstName.slice(0, 1)} size={42} tone="dark" />}>
+    <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={profileImageUrl ? resolveApiUrl(profileImageUrl) : null} label={firstName.slice(0, 1)} size={38} tone="dark" />}>
       <View style={styles.headerBlock}>
         <Text style={styles.displayTitle}>Merhaba, {firstName}</Text>
         <Text style={styles.subtitle}>Performansına odaklan, sınırlarını zorla.</Text>
@@ -378,7 +378,7 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
       <SurfaceCard style={styles.sectionStack}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.iconTitleRow}>
-            <MaterialCommunityIcons name="chart-line" size={28} color={colors.secondary} />
+            <MaterialCommunityIcons name="chart-line" size={24} color={colors.secondary} />
             <Text style={styles.cardTitle}>Gelişim Özeti</Text>
           </View>
           <Pressable onPress={() => router.push("/development")}>
@@ -414,7 +414,7 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
   const previousScore = previousReport ? round1(averageScore([previousReport.speedScore, previousReport.strengthScore, previousReport.dribblingScore, previousReport.shootingScore])) : null;
   const trend = score !== null && previousScore !== null ? round1(score - previousScore) : null;
   return (
-    <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={selectedAthlete?.profileImageUrl ? resolveApiUrl(selectedAthlete.profileImageUrl) : null} label={childName.slice(0, 1)} size={42} tone="light" />}>
+    <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={selectedAthlete?.profileImageUrl ? resolveApiUrl(selectedAthlete.profileImageUrl) : null} label={childName.slice(0, 1)} size={38} tone="light" />}>
       <View style={styles.headerBlockSmallGap}>
         <Text style={styles.parentTitle}>Günaydın, {parentName}</Text>
         <Text style={styles.subtitle}>Bugün {todayTrainingCount > 0 ? `${todayTrainingCount} antrenman` : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
@@ -448,7 +448,7 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
           <>
             <Text style={styles.smallMeta}>{[nextTrainingGroup, nextTraining.title].filter(Boolean).join(" • ")}</Text>
             <View style={styles.parentInfoBox}>
-              <InitialsAvatar label="◷" size={48} tone="dark" />
+              <InitialsAvatar label="◷" size={42} tone="dark" />
               <View>
                 <Text style={styles.kickerDark}>Zaman</Text>
                 <Text style={styles.infoTitle}>{formatRelativeDay(nextTraining.startsAt)} • {formatTime(nextTraining.startsAt)} - {formatTime(nextTraining.endsAt)}</Text>
@@ -456,7 +456,7 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
             </View>
             {nextTraining.location ? (
               <View style={styles.parentInfoBox}>
-                <InitialsAvatar label="⌖" size={48} tone="light" />
+                <InitialsAvatar label="⌖" size={42} tone="light" />
                 <View>
                   <Text style={styles.kickerDark}>Tesis</Text>
                   <Text style={styles.infoTitle}>{nextTraining.location}</Text>
@@ -617,7 +617,7 @@ function HeroTrainingCard({ training }: { training: TrainingResponse }) {
   const groupName = trainingGroupName(training);
   return (
     <View style={styles.heroCard}>
-      <MaterialCommunityIcons name="soccer" size={190} color="rgba(255,255,255,0.09)" style={styles.heroIcon} />
+      <MaterialCommunityIcons name="soccer" size={160} color="rgba(255,255,255,0.09)" style={styles.heroIcon} />
       <View style={styles.iconTitleRow}>
         <MaterialCommunityIcons name="clock-outline" size={20} color={colors.secondaryContainer} />
         <Text style={styles.heroKicker}>Sıradaki Antrenman</Text>
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     marginBottom: -spacing.md,
     marginHorizontal: -spacing.md,
     marginTop: spacing.sm,
-    minHeight: 58
+    minHeight: 50
   },
   coachHeroButtonText: { ...typography.title, color: colors.onPrimary },
   coachHeroDate: {
@@ -720,21 +720,21 @@ const styles = StyleSheet.create({
   coachHeroDateText: {
     color: colors.primaryContainer,
     fontFamily: "HankenGrotesk_800ExtraBold",
-    fontSize: 38,
-    lineHeight: 44
+    fontSize: 32,
+    lineHeight: 38
   },
-  coachHeroDetailLabel: { ...typography.body, color: colors.onSurfaceVariant, width: 112 },
+  coachHeroDetailLabel: { ...typography.body, color: colors.onSurfaceVariant, width: 96 },
   coachHeroDetails: { gap: spacing.sm },
   coachHeroDetailRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm },
   coachHeroDetailValue: { ...typography.body, color: colors.onSurface, flex: 1 },
   coachHeroGlow: {
     backgroundColor: "rgba(250,204,21,0.08)",
     borderRadius: radius.full,
-    height: 220,
+    height: 180,
     position: "absolute",
     right: -90,
     top: -80,
-    width: 220
+    width: 180
   },
   coachHeroTime: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   coachHeroWeekday: { ...typography.label, color: colors.primary, letterSpacing: 1.4 },
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    minHeight: 96,
+    minHeight: 80,
     padding: spacing.md
   },
   coachMenuActionHighlighted: {
@@ -759,9 +759,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
     borderRadius: radius.full,
-    height: 52,
+    height: 44,
     justifyContent: "center",
-    width: 52
+    width: 44
   },
   coachMenuIconHighlighted: { backgroundColor: "rgba(60,47,0,0.16)" },
   coachMenuLabel: {
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
   coachSectionLinkText: { ...typography.body, color: colors.primaryContainer },
   coachSectionTitle: { ...typography.headline, color: colors.onSurface, flex: 1 },
   coachStat: { alignItems: "center", flex: 1, gap: spacing.xs },
-  coachStatDivider: { backgroundColor: colors.outlineVariant, height: 45, width: 1 },
+  coachStatDivider: { backgroundColor: colors.outlineVariant, height: 38, width: 1 },
   coachStatLabel: { ...typography.label, color: colors.onSurfaceVariant, textAlign: "center" },
   coachStats: {
     alignItems: "center",
@@ -815,7 +815,7 @@ const styles = StyleSheet.create({
   displayTitle: { ...typography.display, color: colors.primary },
   emptyAnnouncement: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, padding: spacing.lg },
   eventCard: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingLeft: spacing.xl },
-  eventIconCircle: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 62, justifyContent: "center", width: 62 },
+  eventIconCircle: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 52, justifyContent: "center", width: 52 },
   eventDescription: { ...typography.body, color: colors.onSurfaceVariant, marginTop: 3 },
   eventKicker: { ...typography.label, color: colors.primary, textTransform: "uppercase" },
   eventTitle: { ...typography.headline, color: colors.primary },
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   iconTitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   infoTitle: { ...typography.title, color: colors.primary },
   kickerDark: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
-  largeWhite: { ...typography.display, color: colors.onPrimary, fontSize: 48, lineHeight: 56 },
+  largeWhite: { ...typography.display, color: colors.onPrimary, fontSize: 42, lineHeight: 48 },
   linkText: { ...typography.label, color: colors.primary },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
   metricsRow: { flexDirection: "row", gap: spacing.md },
@@ -854,14 +854,14 @@ const styles = StyleSheet.create({
   progressLabel: { ...typography.label, color: colors.onPrimary },
   progressTrack: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: radius.full, height: 7, overflow: "hidden" },
   progressWrap: { gap: 4 },
-  quickAction: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radius.lg, borderWidth: 1, flex: 1, gap: spacing.sm, minHeight: 130, justifyContent: "center", padding: spacing.sm },
+  quickAction: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radius.lg, borderWidth: 1, flex: 1, gap: spacing.sm, minHeight: 110, justifyContent: "center", padding: spacing.sm },
   quickActionDark: { backgroundColor: "#2f343d", borderColor: "#2f343d" },
   quickActionGreen: { backgroundColor: "#00472d", borderColor: "#00472d" },
   quickActionPrimary: { backgroundColor: colors.primary },
   quickGrid: { flexDirection: "row", gap: spacing.md },
-  quickIconCircle: { alignItems: "center", backgroundColor: colors.primaryFixed, borderRadius: radius.full, height: 54, justifyContent: "center", width: 54 },
+  quickIconCircle: { alignItems: "center", backgroundColor: colors.primaryFixed, borderRadius: radius.full, height: 46, justifyContent: "center", width: 46 },
   quickIconHighlight: { backgroundColor: "rgba(255,255,255,0.16)" },
-  quickText: { ...typography.label, color: colors.primary, fontSize: 14, lineHeight: 18, textAlign: "center" },
+  quickText: { ...typography.label, color: colors.primary, fontSize: 13, lineHeight: 17, textAlign: "center" },
   quickTextPrimary: { color: colors.onPrimary },
   redText: { color: colors.errorContainer },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },

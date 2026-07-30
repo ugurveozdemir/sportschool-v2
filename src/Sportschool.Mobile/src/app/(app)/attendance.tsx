@@ -69,7 +69,7 @@ export default function AttendanceScreen() {
   const records = attendanceQuery.data ?? [];
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={42} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={38} tone="dark" />}>
       <View style={styles.headerBlock}>
         <Text style={styles.title}>Yoklama</Text>
         <Text style={styles.subtitle}>Antrenman katılım geçmişin.</Text>
@@ -105,7 +105,7 @@ function AthleteRow({ athlete }: { athlete: CoachAthleteListItem }) {
   return (
     <Pressable onPress={() => router.push({ pathname: "/athletes/[athleteProfileId]", params: { athleteProfileId: athlete.athleteProfileId } })}>
       <SurfaceCard style={styles.athleteCard}>
-        <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={initials(name)} size={58} tone="light" />
+        <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={initials(name)} size={46} tone="light" />
         <View style={styles.flexOne}>
           <Text style={styles.athleteName}>{name}</Text>
           <Text style={styles.rowMeta}>{athlete.groups.join(", ") || "Grup ataması yok"}</Text>

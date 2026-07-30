@@ -210,9 +210,9 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
                       {isSelected && <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} />}
                     </View>
                     {athlete.profileImageUrl ? (
-                      <ProfileAvatar uri={resolveApiUrl(athlete.profileImageUrl)} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
+                      <ProfileAvatar uri={resolveApiUrl(athlete.profileImageUrl)} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={36} tone="dark" />
                     ) : (
-                      <AcademyLogoAvatar size={40} />
+                      <AcademyLogoAvatar size={36} />
                     )}
                     <View style={styles.flexOne}>
                       <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
@@ -263,11 +263,11 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
                     <ProfileAvatar
                       uri={resolveApiUrl(athlete.profileImageUrl)}
                       label={`${athlete.firstName[0]}${athlete.lastName[0]}`}
-                      size={52}
+                      size={44}
                       tone="dark"
                     />
                   ) : (
-                    <AcademyLogoAvatar size={52} />
+                    <AcademyLogoAvatar size={44} />
                   )}
                   <Text style={styles.athleteIndex}>{index + 1}</Text>
                   <View style={styles.flexOne}>
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: "row", gap: spacing.sm },
   addChip: { alignItems: "center", backgroundColor: colors.primaryContainer, borderRadius: radius.sm, flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   addChipText: { ...typography.label, color: colors.onPrimary },
-  athleteCard: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 104, padding: spacing.md },
+  athleteCard: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 84, padding: spacing.md },
   athleteCardPressed: { borderColor: colors.primaryContainer, transform: [{ scale: 0.99 }] },
   athleteIndex: { ...typography.title, color: colors.surfaceVariant, minWidth: 20, textAlign: "center" },
   athleteList: { gap: spacing.md },
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   editActions: { flexDirection: "row", gap: spacing.sm },
   flexOne: { flex: 1 },
   headerCopy: { alignItems: "center", flex: 1 },
-  headerCount: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, height: 40, justifyContent: "center", width: 40 },
+  headerCount: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, height: 36, justifyContent: "center", width: 36 },
   headerCountText: { ...typography.label, color: colors.primaryContainer },
   headerGroupName: { ...typography.body, color: colors.onSurfaceVariant, maxWidth: 230 },
   headingText: { ...typography.headline, color: colors.primary, textAlign: "center" },
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   parentToggle: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   parentToggleText: { ...typography.bodyLarge, color: colors.onSurface },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
-  removeButton: { alignItems: "center", height: 36, justifyContent: "center", width: 36 },
+  removeButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   rosterSection: { gap: spacing.lg },
   sectionHeader: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "space-between" },
   toggleThumb: { backgroundColor: colors.onSurfaceVariant, borderRadius: radius.full, height: 18, transform: [{ translateX: 0 }], width: 18 },

@@ -48,11 +48,11 @@ export default function RoleScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.watermark}>
-        <AcademyLogoAvatar size={360} />
+        <AcademyLogoAvatar size={300} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <AcademyLogoAvatar size={104} />
+          <AcademyLogoAvatar size={88} />
           <Text style={styles.brandName}>{brand.name}</Text>
           <Text style={styles.title}>Giriş rolünü seç</Text>
           <Text style={styles.subtitle}>Devam etmek için hesabına uygun alanı seç.</Text>
@@ -68,12 +68,12 @@ export default function RoleScreen() {
               <ImageBackground source={role.image} resizeMode="cover" style={styles.roleImage} imageStyle={styles.roleImageRadius}>
                 <View style={styles.roleOverlay} />
                 <View style={styles.roleCopy}>
-                  <AcademyLogoAvatar size={52} />
+                  <AcademyLogoAvatar size={44} />
                   <View style={styles.roleText}>
                     <Text style={styles.roleTitle}>{role.title}</Text>
                     <Text style={styles.roleSubtitle}>{role.subtitle}</Text>
                   </View>
-                  <MaterialCommunityIcons name="chevron-right" size={30} color={colors.primary} />
+                  <MaterialCommunityIcons name="chevron-right" size={26} color={colors.primary} />
                 </View>
               </ImageBackground>
             </Pressable>
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   brandName: {
     color: colors.primary,
     fontFamily: fontFamily.headingExtraBold,
-    fontSize: 29,
+    fontSize: 25,
     letterSpacing: -0.5,
     textAlign: "center"
   },
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
     borderRadius: radius.lg,
     borderWidth: 1,
-    height: 142,
+    height: 124,
     overflow: "hidden"
   },
   roleCopy: {

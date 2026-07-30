@@ -66,7 +66,7 @@ export default function LoginScreen() {
         >
           <View style={styles.brand}>
             <View style={styles.logoCircle}>
-              <AcademyLogoAvatar size={116} />
+              <AcademyLogoAvatar size={92} />
             </View>
             <Text style={styles.brandName}>{brand.name}</Text>
           </View>
@@ -81,7 +81,7 @@ export default function LoginScreen() {
               render={({ field, fieldState }) => (
                 <View style={styles.fieldWrap}>
                   <View style={[styles.field, fieldState.error && styles.fieldError]}>
-                    <MaterialCommunityIcons name="account-outline" size={26} color={colors.onSurfaceVariant} />
+                    <MaterialCommunityIcons name="account-outline" size={22} color={colors.onSurfaceVariant} />
                     <View style={styles.fieldInputWrap}>
                       <Text style={styles.fieldLabel}>E-posta</Text>
                       <TextInput
@@ -108,7 +108,7 @@ export default function LoginScreen() {
               render={({ field, fieldState }) => (
                 <View style={styles.fieldWrap}>
                   <View style={[styles.field, fieldState.error && styles.fieldError]}>
-                    <MaterialCommunityIcons name="key-outline" size={27} color={colors.onSurfaceVariant} />
+                    <MaterialCommunityIcons name="key-outline" size={23} color={colors.onSurfaceVariant} />
                     <View style={styles.fieldInputWrap}>
                       <Text style={styles.fieldLabel}>Şifre</Text>
                       <TextInput
@@ -130,7 +130,7 @@ export default function LoginScreen() {
                     >
                       <MaterialCommunityIcons
                         name={passwordVisible ? "eye-off-outline" : "eye-outline"}
-                        size={28}
+                        size={24}
                         color={colors.onSurfaceVariant}
                       />
                     </Pressable>
@@ -150,11 +150,11 @@ export default function LoginScreen() {
               ]}
             >
               <Text style={styles.loginButtonText}>{loginMutation.isPending ? "GİRİŞ YAPILIYOR" : "GİRİŞ YAP"}</Text>
-              <MaterialCommunityIcons name="arrow-right" size={30} color={colors.onPrimary} />
+              <MaterialCommunityIcons name="arrow-right" size={26} color={colors.onPrimary} />
             </Pressable>
 
             <Pressable onPress={() => router.replace("/role")} style={styles.switchRole}>
-              <MaterialCommunityIcons name="account-switch-outline" size={20} color={colors.primaryContainer} />
+              <MaterialCommunityIcons name="account-switch-outline" size={18} color={colors.primaryContainer} />
               <Text style={styles.switchRoleText}>Rol seçimine dön</Text>
             </Pressable>
           </View>
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   brandName: {
     color: colors.onSurface,
     fontFamily: fontFamily.headingExtraBold,
-    fontSize: 34,
+    fontSize: 29,
     letterSpacing: -0.8,
     lineHeight: 37,
     textAlign: "center"
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    minHeight: 74,
+    minHeight: 60,
     paddingHorizontal: spacing.md
   },
   fieldError: { borderColor: colors.error },
@@ -224,12 +224,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     justifyContent: "center",
     marginTop: spacing.sm,
-    minHeight: 64
+    minHeight: 52
   },
   loginButtonText: {
     color: colors.onPrimary,
     fontFamily: fontFamily.headingBold,
-    fontSize: 22,
+    fontSize: 18,
     letterSpacing: 1.3
   },
   logoCircle: {
@@ -238,9 +238,9 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceVariant,
     borderRadius: radius.full,
     borderWidth: 4,
-    height: 140,
+    height: 112,
     justifyContent: "center",
-    width: 140
+    width: 112
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -265,8 +265,8 @@ const styles = StyleSheet.create({
   title: {
     ...typography.display,
     color: colors.onSurface,
-    fontSize: 36,
-    lineHeight: 44,
+    fontSize: 30,
+    lineHeight: 36,
     textAlign: "center"
   }
 });

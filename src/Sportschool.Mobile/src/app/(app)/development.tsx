@@ -147,7 +147,7 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
     : [40, 55, 45, 70, 60, 85];
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={42} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={38} tone="dark" />}>
       <View style={styles.headerBlock}>
         <Text style={styles.title}>Gelişim</Text>
         <Text style={styles.subtitle}>Performans metrikleri, grafik ve antrenör yorumları.</Text>
@@ -219,7 +219,7 @@ function GroupCard({ athleteCount, group }: { athleteCount: number; group: Schoo
       <SurfaceCard style={styles.groupCard}>
         <View style={styles.groupCardMain}>
           <View style={styles.groupIconWrap}>
-            <AcademyLogoAvatar size={48} />
+            <AcademyLogoAvatar size={42} />
           </View>
           <View style={styles.flexOne}>
             <Text style={styles.groupTitle}>{group.name}</Text>
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
-  groupCard: { gap: spacing.lg, minHeight: 168, justifyContent: "space-between" },
+  groupCard: { gap: spacing.lg, minHeight: 142, justifyContent: "space-between" },
   groupCardMain: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
   groupCardFooter: { flexDirection: "row", gap: spacing.sm, justifyContent: "flex-start" },
   groupDesc: { ...typography.bodyLarge, color: colors.primaryContainer, marginTop: spacing.xs },
@@ -325,13 +325,13 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
     borderRadius: radius.full,
     borderWidth: 1,
-    height: 56,
+    height: 50,
     justifyContent: "center",
-    width: 56
+    width: 50
   },
-  groupTitle: { ...typography.title, color: colors.onSurface, fontSize: 19 },
+  groupTitle: { ...typography.title, color: colors.onSurface, fontSize: 17 },
   headerBlock: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
-  iconAction: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
+  iconAction: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   improvement: { ...typography.body, color: colors.onSurfaceVariant },
   legendDot: { borderRadius: 4, height: 8, width: 8 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   skillCard: { gap: spacing.md },
   skillList: { gap: spacing.sm },
   skillRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  skillIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 38, justifyContent: "center", width: 38 },
+  skillIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 36, justifyContent: "center", width: 36 },
   skillLabel: { ...typography.bodyLarge, color: colors.onSurface, flex: 1 },
   skillValue: { ...typography.title, color: colors.primary },
   skillDelta: { alignItems: "center", flexDirection: "row", gap: 2, minWidth: 48, justifyContent: "flex-end" },

@@ -183,7 +183,7 @@ export default function TrainingDetailScreen() {
       <SurfaceCard style={styles.attendanceSummary}>
         <Text style={styles.groupSummaryTitle}>Katılım Özeti</Text>
         <View style={styles.attendanceSummaryContent}>
-          <CircularScore color={colors.primary} label="Katılım" size={82} value={attendanceRate} />
+          <CircularScore color={colors.primary} label="Katılım" size={70} value={attendanceRate} />
           <View style={styles.attendanceNumbers}>
             <Text style={styles.attendanceCount}>{presentCount} <Text style={styles.attendanceTotal}>/ {athletes.length}</Text></Text>
             <Text style={styles.mutedText}>Sporcu katılıyor</Text>
@@ -259,7 +259,7 @@ function AttendanceRow({ athlete, status, disabled = false, onChange }: {
   return (
     <View style={styles.attendanceRow}>
       <View style={styles.attendanceHeader}>
-        <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={42} tone="dark" />
+        <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={38} tone="dark" />
         <View style={styles.flexOne}>
           <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
           <Text style={styles.athleteMeta}>Veli: {athlete.parentFullName}</Text>
@@ -446,11 +446,11 @@ const styles = StyleSheet.create({
   attendanceHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   attendanceRow: { backgroundColor: colors.surface, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, gap: spacing.sm, padding: spacing.md },
   backButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
-  bodyText: { ...typography.bodyLarge, color: colors.onSurface, lineHeight: 24 },
+  bodyText: { ...typography.bodyLarge, color: colors.onSurface },
   card: { gap: spacing.md },
   checkbox: { alignItems: "center", borderColor: colors.outline, borderRadius: 6, borderWidth: 1, height: 24, justifyContent: "center", width: 24 },
   checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  closeButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
+  closeButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   detailHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   editButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   eyebrow: { ...typography.label, color: colors.secondary, textTransform: "uppercase" },
@@ -493,12 +493,12 @@ const styles = StyleSheet.create({
   statusGroup: { flexDirection: "row", gap: spacing.xs },
   statusGroupDisabled: { opacity: 0.45 },
   summaryCard: { gap: spacing.lg },
-  summaryIcon: { alignItems: "center", backgroundColor: "rgba(104,253,179,0.22)", borderRadius: radius.lg, height: 52, justifyContent: "center", width: 52 },
+  summaryIcon: { alignItems: "center", backgroundColor: "rgba(104,253,179,0.22)", borderRadius: radius.lg, height: 44, justifyContent: "center", width: 44 },
   summaryTop: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   trainingDate: { gap: spacing.xs },
   trainingDateFull: { ...typography.body, color: colors.onSurfaceVariant, textAlign: "right" },
   trainingDateLine: { alignItems: "baseline", flexDirection: "row", gap: spacing.xs },
-  trainingDay: { color: colors.primary, fontFamily: "HankenGrotesk_800ExtraBold", fontSize: 54, lineHeight: 58 },
+  trainingDay: { color: colors.primary, fontFamily: "HankenGrotesk_800ExtraBold", fontSize: 44, lineHeight: 48 },
   trainingDivider: { backgroundColor: colors.outlineVariant, height: 1 },
   trainingLocation: { alignItems: "center", flexDirection: "row", gap: spacing.xs, marginTop: spacing.xs },
   trainingMonth: { ...typography.title, color: colors.onSurfaceVariant },
