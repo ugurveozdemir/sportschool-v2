@@ -12,6 +12,7 @@ import { useCoachSummary } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
 import { useAttendance, useGroups, useProfile, useReports, useTrainings } from "@/features/me/api";
 import type { AthleteReportResponse, AttendanceResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
+import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
@@ -137,7 +138,7 @@ function CoachHome({ sessionName, summary, navItems, shellTitle, isSchoolAdmin }
   return (
     <ScreenShell title={shellTitle} navItems={navItems}>
       <View style={styles.coachWelcome}>
-        <InitialsAvatar label={nameInitials(sessionName ?? "Koç")} size={64} tone="dark" />
+        <AcademyLogoAvatar size={64} />
         <View style={styles.flexOne}>
           <Text style={styles.coachWelcomeTitle}>Hoş Geldin, {isSchoolAdmin ? "Yönetici" : "Antrenör"}</Text>
           <Text style={styles.coachWelcomeName}>{sessionName ?? "Akademi Ekibi"}</Text>
@@ -308,16 +309,6 @@ function CoachMenuAction({
       />
     </Pressable>
   );
-}
-
-function nameInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toLocaleUpperCase("tr-TR");
 }
 
 function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visible: boolean; trainings: CoachTrainingItem[]; onClose: () => void; onSelect: (training: CoachTrainingItem) => void }) {

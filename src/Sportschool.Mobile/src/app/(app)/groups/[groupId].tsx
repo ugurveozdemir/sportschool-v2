@@ -14,6 +14,7 @@ import {
   useUpdateSchoolGroup
 } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
+import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
@@ -208,7 +209,11 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
                     <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
                       {isSelected && <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} />}
                     </View>
-                    <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
+                    {athlete.profileImageUrl ? (
+                      <ProfileAvatar uri={resolveApiUrl(athlete.profileImageUrl)} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
+                    ) : (
+                      <AcademyLogoAvatar size={40} />
+                    )}
                     <View style={styles.flexOne}>
                       <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
                       <Text style={styles.athleteMeta}>Veli: {athlete.parentFullName}</Text>
@@ -254,12 +259,16 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
                   onPress={() => router.push(`/athletes/${athlete.id}`)}
                   style={({ pressed }) => [styles.athleteCard, pressed && styles.athleteCardPressed]}
                 >
-                  <ProfileAvatar
-                    uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null}
-                    label={`${athlete.firstName[0]}${athlete.lastName[0]}`}
-                    size={52}
-                    tone="dark"
-                  />
+                  {athlete.profileImageUrl ? (
+                    <ProfileAvatar
+                      uri={resolveApiUrl(athlete.profileImageUrl)}
+                      label={`${athlete.firstName[0]}${athlete.lastName[0]}`}
+                      size={52}
+                      tone="dark"
+                    />
+                  ) : (
+                    <AcademyLogoAvatar size={52} />
+                  )}
                   <Text style={styles.athleteIndex}>{index + 1}</Text>
                   <View style={styles.flexOne}>
                     <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>

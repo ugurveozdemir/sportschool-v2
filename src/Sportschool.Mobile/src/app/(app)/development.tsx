@@ -9,6 +9,7 @@ import { useCoachGroups, useCreateSchoolGroup, useSchoolGroups } from "@/feature
 import type { SchoolGroupResponse } from "@/features/coach/types";
 import { useReports } from "@/features/me/api";
 import type { AthleteReportResponse } from "@/features/me/types";
+import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
@@ -218,7 +219,7 @@ function GroupCard({ athleteCount, group }: { athleteCount: number; group: Schoo
       <SurfaceCard style={styles.groupCard}>
         <View style={styles.groupCardMain}>
           <View style={styles.groupIconWrap}>
-            <InitialsAvatar label={groupCode(group.name)} size={48} tone="dark" />
+            <AcademyLogoAvatar size={48} />
           </View>
           <View style={styles.flexOne}>
             <Text style={styles.groupTitle}>{group.name}</Text>
@@ -304,11 +305,6 @@ function averageScore(report: AthleteReportResponse) {
 
 function round1(value: number) {
   return Math.round(value * 10) / 10;
-}
-
-function groupCode(name: string) {
-  const match = name.match(/U\d+/i)?.[0];
-  return (match ?? name.split(" ").map((part) => part[0]).join("")).slice(0, 3).toUpperCase();
 }
 
 const styles = StyleSheet.create({
