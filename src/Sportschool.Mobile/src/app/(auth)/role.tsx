@@ -58,7 +58,7 @@ export default function RoleScreen() {
           <Text style={styles.title}>KIBRIS&apos;IN{"\n"}BİR NUMARALISI</Text>
           <Text style={styles.subtitle}>
             Futbol eğitimi ile kişisel gelişim eğitimleri{"\n"}
-            Türkiye&apos;de ilk kez{"\n"}
+            Kıbrıs&apos;ta ilk kez{"\n"}
             <Text style={styles.subtitleStrong}>Türk Ocağı Elit Futbol Akademisi&apos;nde.</Text>
           </Text>
         </View>
