@@ -223,14 +223,13 @@ function GroupCard({ athleteCount, group }: { athleteCount: number; group: Schoo
           </View>
           <View style={styles.flexOne}>
             <Text style={styles.groupTitle}>{group.name}</Text>
-            <Text style={styles.groupDesc} numberOfLines={2}>
-              {group.description ?? "Grup açıklaması eklenmemiş"}
-            </Text>
+            {group.description?.trim() ? (
+              <Text style={styles.groupDesc} numberOfLines={2}>{group.description}</Text>
+            ) : null}
           </View>
           <MaterialCommunityIcons name="chevron-right" size={24} color={colors.outline} />
         </View>
         <View style={styles.groupCardFooter}>
-          <Pill label={group.isActive ? "AKTİF" : "PASİF"} tone="neutral" />
           <Pill label={`${athleteCount} SPORCU`} tone="neutral" />
         </View>
       </SurfaceCard>
@@ -315,7 +314,7 @@ const styles = StyleSheet.create({
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
-  groupCard: { gap: spacing.lg, minHeight: 142, justifyContent: "space-between" },
+  groupCard: { gap: spacing.md, minHeight: 120, justifyContent: "space-between" },
   groupCardMain: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
   groupCardFooter: { flexDirection: "row", gap: spacing.sm, justifyContent: "flex-start" },
   groupDesc: { ...typography.bodyLarge, color: colors.primaryContainer, marginTop: spacing.xs },
