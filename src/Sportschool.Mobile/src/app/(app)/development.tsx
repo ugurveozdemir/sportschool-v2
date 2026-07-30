@@ -5,7 +5,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "rea
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
-import { useCoachGroups, useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
+import { useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
 import { useReports } from "@/features/me/api";
 import type { AthleteReportResponse } from "@/features/me/types";
@@ -13,7 +13,7 @@ import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { BarChart, InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { BarChart, InitialsAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -44,9 +44,8 @@ export default function DevelopmentScreen() {
   const { selectedAthleteProfileId } = useAthleteSelection();
   const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const schoolGroupsQuery = useSchoolGroups(isCoach);
-  const coachGroupsQuery = useCoachGroups(isCoach);
 
-  if (isCoach && (schoolGroupsQuery.isLoading || coachGroupsQuery.isLoading)) {
+  if (isCoach && schoolGroupsQuery.isLoading) {
     return <LoadingState label="Gruplar yükleniyor" />;
   }
 
@@ -55,8 +54,7 @@ export default function DevelopmentScreen() {
   }
 
   if (isCoach) {
-    const athleteCounts = new Map((coachGroupsQuery.data ?? []).map((group) => [group.id, group.athleteCount]));
-    return <CoachTeams session={session} groups={schoolGroupsQuery.data ?? []} athleteCounts={athleteCounts} />;
+    return <CoachTeams session={session} groups={schoolGroupsQuery.data ?? []} />;
   }
 
   return <DevelopmentReports session={session} reports={reportsQuery.data ?? []} />;
@@ -64,12 +62,10 @@ export default function DevelopmentScreen() {
 
 function CoachTeams({
   session,
-  groups,
-  athleteCounts
+  groups
 }: {
   session: ReturnType<typeof useSession>["session"];
   groups: SchoolGroupResponse[];
-  athleteCounts: Map<string, number>;
 }) {
   const createGroup = useCreateSchoolGroup();
   const [form, setForm] = useState(emptyGroupForm);
@@ -121,7 +117,6 @@ function CoachTeams({
           groups.map((group) => (
             <GroupCard
               key={group.id}
-              athleteCount={athleteCounts.get(group.id) ?? 0}
               group={group}
             />
           ))
@@ -213,7 +208,7 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
   );
 }
 
-function GroupCard({ athleteCount, group }: { athleteCount: number; group: SchoolGroupResponse }) {
+function GroupCard({ group }: { group: SchoolGroupResponse }) {
   return (
     <Pressable onPress={() => router.push(`/groups/${group.id}`)}>
       <SurfaceCard style={styles.groupCard}>
@@ -230,9 +225,6 @@ function GroupCard({ athleteCount, group }: { athleteCount: number; group: Schoo
           <View style={styles.groupAction}>
             <MaterialCommunityIcons name="chevron-right" size={26} color={colors.outline} />
           </View>
-        </View>
-        <View style={styles.groupCardFooter}>
-          <Pill label={`${athleteCount} SPORCU`} tone="neutral" />
         </View>
       </SurfaceCard>
     </Pressable>
@@ -316,10 +308,9 @@ const styles = StyleSheet.create({
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
-  groupCard: { gap: spacing.md, minHeight: 120, justifyContent: "space-between" },
+  groupCard: { justifyContent: "center", minHeight: 82 },
   groupAction: { alignItems: "center", height: 50, justifyContent: "center", width: 50 },
   groupCardMain: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
-  groupCardFooter: { flexDirection: "row", justifyContent: "center" },
   groupCopy: { alignItems: "center", flex: 1 },
   groupDesc: { ...typography.body, color: colors.primaryContainer, marginTop: spacing.xs, textAlign: "center" },
   groupIconWrap: {
@@ -332,7 +323,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 50
   },
-  groupTitle: { ...typography.headline, color: colors.onSurface, textAlign: "center" },
+  groupTitle: { ...typography.headline, color: colors.onSurface, fontSize: 24, lineHeight: 29, textAlign: "center" },
   headerBlock: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   iconAction: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   improvement: { ...typography.body, color: colors.onSurfaceVariant },
