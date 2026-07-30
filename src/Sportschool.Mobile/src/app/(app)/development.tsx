@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
-  groupCard: { justifyContent: "center", minHeight: 82 },
+  groupCard: { backgroundColor: colors.surfaceContainerLowest, justifyContent: "center", minHeight: 82 },
   groupAction: { alignItems: "center", height: 50, justifyContent: "center", width: 50 },
   groupCardMain: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   groupCopy: { alignItems: "center", flex: 1 },
