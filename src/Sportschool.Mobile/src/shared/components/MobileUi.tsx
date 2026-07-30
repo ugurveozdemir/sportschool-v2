@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import Svg, { Circle } from "react-native-svg";
 
 import { useUnreadAnnouncementCount } from "@/features/announcements/api";
+import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { AkademiLogo } from "@/shared/components/AkademiLogo";
 import { useSession } from "@/core/sessionProvider";
 import { colors } from "@/shared/design/colors";
@@ -48,9 +49,9 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
   if (isManager) {
     return (
       <View style={styles.topBar}>
-        <Pressable accessibilityLabel="Profil menüsü" onPress={() => router.push("/profile")} style={styles.topBarButton}>
-          <MaterialCommunityIcons name="menu" size={28} color={colors.onSurfaceVariant} />
-        </Pressable>
+        <View style={styles.topBarButton}>
+          <AcademyLogoAvatar size={38} />
+        </View>
         <Text numberOfLines={1} style={styles.topTitle}>{title}</Text>
         <Pressable accessibilityLabel="Sporcu ara" onPress={() => router.push("/attendance")} style={styles.topBarButton}>
           <MaterialCommunityIcons name="magnify" size={29} color={colors.onSurfaceVariant} />
