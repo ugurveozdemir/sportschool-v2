@@ -11,7 +11,7 @@ import {
   type ImageSourcePropType
 } from "react-native";
 
-import { AkademiLogo } from "@/shared/components/AkademiLogo";
+import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { brand } from "@/shared/constants/brand";
 import type { LoginMode } from "@/shared/constants/roles";
 import { colors } from "@/shared/design/colors";
@@ -22,28 +22,24 @@ const roles: {
   mode: LoginMode;
   title: string;
   subtitle: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
   image: ImageSourcePropType;
 }[] = [
   {
     mode: "Athlete",
     title: "Sporcu",
     subtitle: "Antrenman ve gelişim paneli",
-    icon: "run",
     image: require("../../assets/role-athletes.png")
   },
   {
     mode: "Coach",
     title: "Antrenör",
     subtitle: "Takım ve akademi yönetimi",
-    icon: "whistle-outline",
     image: require("../../assets/role-coaches.png")
   },
   {
     mode: "Parent",
     title: "Veli",
     subtitle: "Sporcu takibi ve ödemeler",
-    icon: "account-heart-outline",
     image: require("../../assets/role-parents.png")
   }
 ];
@@ -52,11 +48,11 @@ export default function RoleScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.watermark}>
-        <AkademiLogo size={360} />
+        <AcademyLogoAvatar size={360} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <AkademiLogo size={104} />
+          <AcademyLogoAvatar size={104} />
           <Text style={styles.brandName}>{brand.name}</Text>
           <Text style={styles.title}>Giriş rolünü seç</Text>
           <Text style={styles.subtitle}>Devam etmek için hesabına uygun alanı seç.</Text>
@@ -72,9 +68,7 @@ export default function RoleScreen() {
               <ImageBackground source={role.image} resizeMode="cover" style={styles.roleImage} imageStyle={styles.roleImageRadius}>
                 <View style={styles.roleOverlay} />
                 <View style={styles.roleCopy}>
-                  <View style={styles.roleIcon}>
-                    <MaterialCommunityIcons name={role.icon} size={27} color={colors.onPrimary} />
-                  </View>
+                  <AcademyLogoAvatar size={52} />
                   <View style={styles.roleText}>
                     <Text style={styles.roleTitle}>{role.title}</Text>
                     <Text style={styles.roleSubtitle}>{role.subtitle}</Text>
@@ -115,14 +109,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.md
-  },
-  roleIcon: {
-    alignItems: "center",
-    backgroundColor: colors.primaryContainer,
-    borderRadius: radius.full,
-    height: 52,
-    justifyContent: "center",
-    width: 52
   },
   roleImage: { flex: 1 },
   roleImageRadius: { borderRadius: radius.lg },
