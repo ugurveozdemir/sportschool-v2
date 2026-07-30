@@ -49,14 +49,17 @@ export default function RoleScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.brand}>
           <Image resizeMode="contain" source={academyLogo} style={styles.logo} />
-          <Text style={styles.academyLabel}>TÜRK OCAĞI LİMASOL FUTBOL AKADEMİSİ</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={styles.academyLabel}>
+            TÜRK OCAĞI LİMASOL ELİT FUTBOL AKADEMİSİ
+          </Text>
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.title}>KIBRIS&apos;IN{"\n"}EN İYİ FUTBOL AKADEMİSİ</Text>
+          <Text style={styles.title}>KIBRIS&apos;IN{"\n"}BİR NUMARALISI</Text>
           <Text style={styles.subtitle}>
-            Futbol eğitimi ve kişisel gelişim{"\n"}
-            <Text style={styles.subtitleStrong}>Türk Ocağı Limasol&apos;da.</Text>
+            Futbol eğitimi ile kişisel gelişim eğitimleri{"\n"}
+            Türkiye&apos;de ilk kez{"\n"}
+            <Text style={styles.subtitleStrong}>Türk Ocağı Elit Futbol Akademisi&apos;nde.</Text>
           </Text>
         </View>
 
