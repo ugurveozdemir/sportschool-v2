@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import {
@@ -17,7 +17,7 @@ import type { SchoolGroupResponse } from "@/features/coach/types";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
@@ -59,6 +59,7 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
   const deleteGroup = useDeleteSchoolGroup();
 
   const [showAddView, setShowAddView] = useState(false);
+  const [showParents, setShowParents] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
@@ -140,39 +141,39 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
     ]);
   }
 
-  const code = groupCode(group.name);
-
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
-      {/* Header */}
       <View style={styles.detailHeader}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
         </Pressable>
-        <View style={styles.identity}>
-          <InitialsAvatar label={code} size={108} tone="dark" />
-          <Text style={styles.headingText}>{group.name}</Text>
-          <Text style={styles.mutedText}>{group.description ?? "Açıklama eklenmemiş"}</Text>
-          <View style={styles.pillRow}>
-            <Pill label={group.isActive ? "Aktif" : "Pasif"} tone="neutral" icon="account-group-outline" />
-            <Pill label={`${currentAthletes.length} Sporcu`} tone="success" icon="account-multiple-outline" />
-          </View>
+        <View style={styles.headerCopy}>
+          <Text style={styles.headingText}>Sporcular</Text>
+          <Text numberOfLines={1} style={styles.headerGroupName}>{group.name}</Text>
+        </View>
+        <View style={styles.headerCount}>
+          <Text style={styles.headerCountText}>{currentAthletes.length}</Text>
         </View>
       </View>
 
-      {/* Actions */}
       <View style={styles.actionsRow}>
-        <Pressable onPress={() => { setIsEditing(true); setEditName(group.name); setEditDescription(group.description ?? ""); }} style={styles.actionChip}>
+        <Pressable
+          onPress={() => {
+            setIsEditing(true);
+            setEditName(group.name);
+            setEditDescription(group.description ?? "");
+          }}
+          style={styles.actionChip}
+        >
           <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.primary} />
-          <Text style={styles.actionChipText}>Düzenle</Text>
+          <Text style={styles.actionChipText}>Grubu Düzenle</Text>
         </Pressable>
         <Pressable onPress={confirmDelete} style={[styles.actionChip, styles.actionChipDanger]}>
           <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.error} />
-          <Text style={[styles.actionChipText, styles.actionChipDangerText]}>Sil</Text>
+          <Text style={[styles.actionChipText, styles.actionChipDangerText]}>Grubu Sil</Text>
         </Pressable>
       </View>
 
-      {/* Edit Section */}
       {isEditing && (
         <SurfaceCard style={styles.card}>
           <SectionTitle title="Grubu Düzenle" />
@@ -185,7 +186,6 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
         </SurfaceCard>
       )}
 
-      {/* Athletes Section */}
       {showAddView ? (
         <SurfaceCard style={styles.card}>
           <View style={styles.sectionHeader}>
@@ -227,72 +227,111 @@ function GroupDetail({ session, group }: { session: ReturnType<typeof useSession
           )}
         </SurfaceCard>
       ) : (
-        <SurfaceCard style={styles.card}>
+        <View style={styles.rosterSection}>
           <View style={styles.sectionHeader}>
-            <SectionTitle title="Sporcular" />
+            <Pressable onPress={() => setShowParents((current) => !current)} style={styles.parentToggle}>
+              <View style={[styles.toggleTrack, showParents && styles.toggleTrackActive]}>
+                <View style={[styles.toggleThumb, showParents && styles.toggleThumbActive]} />
+              </View>
+              <Text style={styles.parentToggleText}>Velileri Göster</Text>
+            </Pressable>
             <Pressable onPress={() => setShowAddView(true)} style={styles.addChip}>
               <MaterialCommunityIcons name="plus" size={16} color={colors.onPrimary} />
-              <Text style={styles.addChipText}>Ekle</Text>
+              <Text style={styles.addChipText}>Sporcu Ekle</Text>
             </Pressable>
           </View>
           {groupAthletesQuery.isLoading ? (
             <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
           ) : currentAthletes.length === 0 ? (
-            <EmptyState title="Sporcu yok" description="Bu grupta henüz sporcu bulunmuyor." />
+            <SurfaceCard>
+              <EmptyState title="Sporcu yok" description="Bu grupta henüz sporcu bulunmuyor." />
+            </SurfaceCard>
           ) : (
-            currentAthletes.map((athlete) => (
-              <View key={athlete.id} style={styles.athleteRow}>
-                <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={`${athlete.firstName[0]}${athlete.lastName[0]}`} size={40} tone="dark" />
-                <View style={styles.flexOne}>
-                  <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
-                  <Text style={styles.athleteMeta}>{athlete.parentFullName}</Text>
-                </View>
+            <View style={styles.athleteList}>
+              {currentAthletes.map((athlete, index) => (
                 <Pressable
-                  accessibilityLabel={`${athlete.firstName} sporcusunu çıkar`}
-                  disabled={removeAthlete.isPending}
-                  onPress={() => confirmRemove(athlete.id, `${athlete.firstName} ${athlete.lastName}`)}
-                  style={styles.removeButton}
+                  key={athlete.id}
+                  onPress={() => router.push(`/athletes/${athlete.id}`)}
+                  style={({ pressed }) => [styles.athleteCard, pressed && styles.athleteCardPressed]}
                 >
-                  <MaterialCommunityIcons name="account-minus-outline" size={20} color={colors.error} />
+                  <ProfileAvatar
+                    uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null}
+                    label={`${athlete.firstName[0]}${athlete.lastName[0]}`}
+                    size={52}
+                    tone="dark"
+                  />
+                  <Text style={styles.athleteIndex}>{index + 1}</Text>
+                  <View style={styles.flexOne}>
+                    <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
+                    {showParents ? (
+                      <View style={styles.parentInfo}>
+                        <MaterialCommunityIcons name="account-heart-outline" size={17} color={colors.onSurfaceVariant} />
+                        <Text style={styles.athleteMeta}>{athlete.parentFullName}</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.athleteMeta}>Profili görüntüle</Text>
+                    )}
+                  </View>
+                  <Pressable
+                    accessibilityLabel={`${athlete.firstName} sporcusunu gruptan çıkar`}
+                    disabled={removeAthlete.isPending}
+                    hitSlop={8}
+                    onPress={() => confirmRemove(athlete.id, `${athlete.firstName} ${athlete.lastName}`)}
+                    style={styles.removeButton}
+                  >
+                    <MaterialCommunityIcons name="account-minus-outline" size={21} color={colors.error} />
+                  </Pressable>
+                  <MaterialCommunityIcons name="chevron-right" size={27} color={colors.onSurfaceVariant} />
                 </Pressable>
-              </View>
-            ))
+              ))}
+            </View>
           )}
-        </SurfaceCard>
+        </View>
       )}
     </ScreenShell>
   );
 }
 
-function groupCode(name: string) {
-  const match = name.match(/U\d+/i)?.[0];
-  return (match ?? name.split(" ").map((part) => part[0]).join("")).slice(0, 3).toUpperCase();
-}
-
 const styles = StyleSheet.create({
-  actionChip: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  actionChipDanger: { backgroundColor: colors.errorContainer },
+  actionChip: { alignItems: "center", backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, borderRadius: radius.sm, borderWidth: 1, flex: 1, flexDirection: "row", gap: spacing.xs, justifyContent: "center", paddingHorizontal: spacing.sm, paddingVertical: spacing.md },
+  actionChipDanger: { backgroundColor: "rgba(147,0,10,0.22)", borderColor: colors.errorContainer },
   actionChipDangerText: { color: colors.error },
   actionChipText: { ...typography.label, color: colors.primary },
   actionsRow: { flexDirection: "row", gap: spacing.sm },
-  addChip: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  addChip: { alignItems: "center", backgroundColor: colors.primaryContainer, borderRadius: radius.sm, flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   addChipText: { ...typography.label, color: colors.onPrimary },
+  athleteCard: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 104, padding: spacing.md },
+  athleteCardPressed: { borderColor: colors.primaryContainer, transform: [{ scale: 0.99 }] },
+  athleteIndex: { ...typography.title, color: colors.surfaceVariant, minWidth: 20, textAlign: "center" },
+  athleteList: { gap: spacing.md },
   athleteMeta: { ...typography.body, color: colors.onSurfaceVariant },
-  athleteName: { ...typography.title, color: colors.onSurface, fontSize: 15 },
+  athleteName: { ...typography.title, color: colors.onSurface },
   athleteRow: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
-  backButton: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
+  backButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   backChip: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   card: { gap: spacing.md },
   checkbox: { alignItems: "center", borderColor: colors.outline, borderRadius: radius.sm, borderWidth: 2, height: 24, justifyContent: "center", width: 24 },
   checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  detailHeader: { gap: spacing.md },
+  detailHeader: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   editActions: { flexDirection: "row", gap: spacing.sm },
   flexOne: { flex: 1 },
+  headerCopy: { alignItems: "center", flex: 1 },
+  headerCount: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, height: 40, justifyContent: "center", width: 40 },
+  headerCountText: { ...typography.label, color: colors.primaryContainer },
+  headerGroupName: { ...typography.body, color: colors.onSurfaceVariant, maxWidth: 230 },
   headingText: { ...typography.headline, color: colors.primary, textAlign: "center" },
   identity: { alignItems: "center", gap: spacing.sm },
   loader: { paddingVertical: spacing.xl },
   mutedText: { ...typography.bodyLarge, color: colors.onSurfaceVariant, textAlign: "center" },
+  parentInfo: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
+  parentToggle: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  parentToggleText: { ...typography.bodyLarge, color: colors.onSurface },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
   removeButton: { alignItems: "center", height: 36, justifyContent: "center", width: 36 },
-  sectionHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" }
+  rosterSection: { gap: spacing.lg },
+  sectionHeader: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "space-between" },
+  toggleThumb: { backgroundColor: colors.onSurfaceVariant, borderRadius: radius.full, height: 18, transform: [{ translateX: 0 }], width: 18 },
+  toggleThumbActive: { backgroundColor: colors.onPrimary, transform: [{ translateX: 16 }] },
+  toggleTrack: { backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, justifyContent: "center", padding: 3, width: 42 },
+  toggleTrackActive: { backgroundColor: colors.primaryContainer, borderColor: colors.primaryContainer }
 });
