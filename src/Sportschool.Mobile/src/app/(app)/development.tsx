@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 50
   },
-  groupTitle: { ...typography.headline, color: colors.onSurface, fontSize: 24, lineHeight: 29, textAlign: "center" },
+  groupTitle: { ...typography.headline, color: colors.onSurface, fontSize: 27, lineHeight: 32, textAlign: "center" },
   headerBlock: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   iconAction: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   improvement: { ...typography.body, color: colors.onSurfaceVariant },
