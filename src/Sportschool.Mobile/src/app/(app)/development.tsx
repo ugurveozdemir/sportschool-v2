@@ -5,14 +5,14 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "rea
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
-import { useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
+import { useCoachGroups, useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
 import { useReports } from "@/features/me/api";
 import type { AthleteReportResponse } from "@/features/me/types";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { BarChart, InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { BarChart, InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -43,8 +43,9 @@ export default function DevelopmentScreen() {
   const { selectedAthleteProfileId } = useAthleteSelection();
   const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
   const schoolGroupsQuery = useSchoolGroups(isCoach);
+  const coachGroupsQuery = useCoachGroups(isCoach);
 
-  if (isCoach && schoolGroupsQuery.isLoading) {
+  if (isCoach && (schoolGroupsQuery.isLoading || coachGroupsQuery.isLoading)) {
     return <LoadingState label="Gruplar yükleniyor" />;
   }
 
@@ -53,13 +54,22 @@ export default function DevelopmentScreen() {
   }
 
   if (isCoach) {
-    return <CoachTeams session={session} groups={schoolGroupsQuery.data ?? []} />;
+    const athleteCounts = new Map((coachGroupsQuery.data ?? []).map((group) => [group.id, group.athleteCount]));
+    return <CoachTeams session={session} groups={schoolGroupsQuery.data ?? []} athleteCounts={athleteCounts} />;
   }
 
   return <DevelopmentReports session={session} reports={reportsQuery.data ?? []} />;
 }
 
-function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession>["session"]; groups: SchoolGroupResponse[] }) {
+function CoachTeams({
+  session,
+  groups,
+  athleteCounts
+}: {
+  session: ReturnType<typeof useSession>["session"];
+  groups: SchoolGroupResponse[];
+  athleteCounts: Map<string, number>;
+}) {
   const createGroup = useCreateSchoolGroup();
   const [form, setForm] = useState(emptyGroupForm);
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -94,19 +104,11 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       <View style={styles.headerBlock}>
-        <View>
-          <Text style={styles.title}>Gruplar</Text>
-          <Text style={styles.subtitle}>Kulüpteki aktif grupları yönet.</Text>
-        </View>
+        <Text style={styles.title}>Sporcu Gruplarım</Text>
         <Pressable onPress={openCreateForm} style={styles.primaryButton}>
           <MaterialCommunityIcons name="plus" size={20} color={colors.onPrimary} />
           <Text style={styles.primaryButtonText}>Yeni Grup Ekle</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.metricsRow}>
-        <MetricTile icon="shield-account-outline" label="Grup" value={`${groups.length}`} />
-        <MetricTile icon="check-circle-outline" label="Aktif" value={`${groups.filter((group) => group.isActive).length}`} tone="success" />
       </View>
 
       <View style={styles.list}>
@@ -115,7 +117,13 @@ function CoachTeams({ session, groups }: { session: ReturnType<typeof useSession
             <EmptyState title="Grup yok" description="Henüz aktif grup bulunmuyor." />
           </SurfaceCard>
         ) : (
-          groups.map((group) => <GroupCard key={group.id} group={group} />)
+          groups.map((group) => (
+            <GroupCard
+              key={group.id}
+              athleteCount={athleteCounts.get(group.id) ?? 0}
+              group={group}
+            />
+          ))
         )}
       </View>
       <GroupFormModal
@@ -204,12 +212,14 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
   );
 }
 
-function GroupCard({ group }: { group: SchoolGroupResponse }) {
+function GroupCard({ athleteCount, group }: { athleteCount: number; group: SchoolGroupResponse }) {
   return (
     <Pressable onPress={() => router.push(`/groups/${group.id}`)}>
       <SurfaceCard style={styles.groupCard}>
         <View style={styles.groupCardMain}>
-          <InitialsAvatar label={groupCode(group.name)} size={60} tone="dark" />
+          <View style={styles.groupIconWrap}>
+            <InitialsAvatar label={groupCode(group.name)} size={48} tone="dark" />
+          </View>
           <View style={styles.flexOne}>
             <Text style={styles.groupTitle}>{group.name}</Text>
             <Text style={styles.groupDesc} numberOfLines={2}>
@@ -219,7 +229,8 @@ function GroupCard({ group }: { group: SchoolGroupResponse }) {
           <MaterialCommunityIcons name="chevron-right" size={24} color={colors.outline} />
         </View>
         <View style={styles.groupCardFooter}>
-          <Pill label={group.isActive ? "Aktif" : "Pasif"} tone="neutral" icon="account-group-outline" />
+          <Pill label={group.isActive ? "AKTİF" : "PASİF"} tone="neutral" />
+          <Pill label={`${athleteCount} SPORCU`} tone="neutral" />
         </View>
       </SurfaceCard>
     </Pressable>
@@ -308,19 +319,28 @@ const styles = StyleSheet.create({
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
-  groupCard: { gap: spacing.md },
-  groupCardMain: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  groupCardFooter: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "flex-start", paddingTop: spacing.md },
-  groupTitle: { ...typography.title, color: colors.primary, fontSize: 18 },
-  groupDesc: { ...typography.body, color: colors.onSurfaceVariant },
-  headerBlock: { gap: spacing.md },
+  groupCard: { gap: spacing.lg, minHeight: 168, justifyContent: "space-between" },
+  groupCardMain: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
+  groupCardFooter: { flexDirection: "row", gap: spacing.sm, justifyContent: "flex-start" },
+  groupDesc: { ...typography.bodyLarge, color: colors.primaryContainer, marginTop: spacing.xs },
+  groupIconWrap: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    height: 56,
+    justifyContent: "center",
+    width: 56
+  },
+  groupTitle: { ...typography.title, color: colors.onSurface, fontSize: 19 },
+  headerBlock: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   iconAction: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
   improvement: { ...typography.body, color: colors.onSurfaceVariant },
   legendDot: { borderRadius: 4, height: 8, width: 8 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
   legendRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, justifyContent: "center" },
   list: { gap: spacing.md },
-  metricsRow: { flexDirection: "row", gap: spacing.sm },
   skillCard: { gap: spacing.md },
   skillList: { gap: spacing.sm },
   skillRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
@@ -338,11 +358,11 @@ const styles = StyleSheet.create({
   modalContent: { gap: spacing.md, paddingBottom: spacing.xl },
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.lg },
   modalTitle: { ...typography.headline, color: colors.primary },
-  primaryButton: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  primaryButton: { alignItems: "center", backgroundColor: colors.primaryContainer, borderRadius: radius.sm, flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   primaryButtonText: { ...typography.label, color: colors.onPrimary },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
   sectionHeading: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginTop: spacing.xs },
   summary: { ...typography.bodyLarge, color: colors.onSurface },
-  title: { ...typography.headline, color: colors.primary }
+  title: { ...typography.headline, color: colors.onSurface, flex: 1 }
 });
