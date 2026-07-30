@@ -11,7 +11,7 @@ import type { AttendanceStatus } from "@/shared/constants/domain";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { CircularScore, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
@@ -113,6 +113,11 @@ export default function TrainingDetailScreen() {
     : notStartedYet
       ? `Yoklama, antrenman başladığında (${formatTime(training.startsAt)}) açılır.`
       : "Yoklama penceresi kapandı. Yoklama yalnızca antrenmanın yapıldığı gün alınabilir.";
+  const startsAt = new Date(training.startsAt);
+  const day = new Intl.DateTimeFormat("tr-TR", { day: "2-digit" }).format(startsAt);
+  const month = new Intl.DateTimeFormat("tr-TR", { month: "short" }).format(startsAt).replace(".", "");
+  const presentCount = athletes.filter((athlete) => (statuses[athlete.athleteProfileId] ?? "Present") === "Present").length;
+  const attendanceRate = athletes.length === 0 ? 0 : Math.round((presentCount / athletes.length) * 100);
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
@@ -121,50 +126,78 @@ export default function TrainingDetailScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
         </Pressable>
         <View style={styles.headerCopy}>
-          <Text style={styles.eyebrow}>Antrenman Detayı</Text>
-          <Text style={styles.headingText}>{training.title}</Text>
-          <Text style={styles.mutedText}>{formatTrainingDate(training.startsAt)} · {formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
+          <Text style={styles.headingText}>Antrenman Detayı</Text>
         </View>
         <Pressable accessibilityLabel="Antrenmanı düzenle" onPress={() => setIsEditVisible(true)} style={styles.editButton}>
-          <MaterialCommunityIcons name="pencil-outline" size={20} color={colors.primary} />
+          <MaterialCommunityIcons name="dots-vertical" size={24} color={colors.primary} />
         </Pressable>
       </View>
 
-      <SurfaceCard style={styles.summaryCard}>
-        <View style={styles.summaryTop}>
-          <View style={styles.summaryIcon}>
-            <MaterialCommunityIcons name="soccer-field" size={28} color={colors.secondary} />
-          </View>
-          <View style={styles.flexOne}>
-            <Text style={styles.sectionLabel}>Konum</Text>
-            <Text style={styles.primaryText}>{training.location ?? "Konum girilmedi"}</Text>
-          </View>
-        </View>
-        <View style={styles.pillRow}>
-          <Pill label={`${training.groups.length} grup`} tone="primary" icon="account-group-outline" />
-          <Pill label={`${athletes.length} sporcu`} tone="success" icon="account-multiple-outline" />
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.card}>
-        <SectionTitle title="Açıklama" />
-        <Text style={notes ? styles.bodyText : styles.mutedText}>{notes || "Bu antrenman için açıklama eklenmemiş."}</Text>
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.card}>
-        <SectionTitle title="Katılan Gruplar" />
-        <View style={styles.groupList}>
-          {training.groups.map((group) => (
-            <View key={group.id} style={styles.groupRow}>
-              <MaterialCommunityIcons name="account-group-outline" size={20} color={colors.primary} />
-              <Text style={styles.primaryText}>{group.name}</Text>
+      <SurfaceCard style={styles.trainingSummary}>
+        <View style={styles.trainingSummaryTop}>
+          <View style={styles.trainingDate}>
+            <View style={styles.trainingDateLine}>
+              <Text style={styles.trainingDay}>{day}</Text>
+              <Text style={styles.trainingMonth}>{month}</Text>
             </View>
-          ))}
+            <View style={styles.trainingTimeLine}>
+              <MaterialCommunityIcons name="clock-outline" size={19} color={colors.primary} />
+              <Text style={styles.trainingTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
+            </View>
+          </View>
+          <View style={styles.trainingStatus}>
+            <Pill label={notStartedYet ? "PLANLANDI" : "AKTİF"} tone="primary" />
+            <Text style={styles.trainingDateFull}>{formatTrainingDate(training.startsAt)}</Text>
+          </View>
+        </View>
+        <View style={styles.trainingDivider} />
+        <View style={styles.trainingTitleRow}>
+          <View style={styles.flexOne}>
+            <Text style={styles.trainingTitle}>{training.title}</Text>
+            <View style={styles.trainingLocation}>
+              <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.onSurfaceVariant} />
+              <Text style={styles.mutedText}>{training.location ?? "Konum girilmedi"}</Text>
+            </View>
+          </View>
+          <MaterialCommunityIcons name="dumbbell" size={25} color={colors.primary} />
         </View>
       </SurfaceCard>
 
-      <SurfaceCard style={styles.card}>
-        <SectionTitle title="Yoklama" />
+      <SurfaceCard style={styles.groupSummary}>
+        <View style={styles.groupSummaryHeader}>
+          <Text style={styles.groupSummaryTitle}>Sporcu Grubu</Text>
+          <MaterialCommunityIcons name="account-group" size={25} color={colors.onSurfaceVariant} />
+        </View>
+        <Text style={styles.groupNames}>
+          {training.groups.map((group) => group.name).join(", ") || "Grup atanmamış"}
+        </Text>
+        <Text style={styles.groupCount}>{athletes.length} sporcu</Text>
+        {notes ? (
+          <View style={styles.notesBox}>
+            <Text style={styles.notesLabel}>ANTRENMAN NOTU</Text>
+            <Text style={styles.bodyText}>{notes}</Text>
+          </View>
+        ) : null}
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.attendanceSummary}>
+        <Text style={styles.groupSummaryTitle}>Katılım Özeti</Text>
+        <View style={styles.attendanceSummaryContent}>
+          <CircularScore color={colors.primary} label="Katılım" size={82} value={attendanceRate} />
+          <View style={styles.attendanceNumbers}>
+            <Text style={styles.attendanceCount}>{presentCount} <Text style={styles.attendanceTotal}>/ {athletes.length}</Text></Text>
+            <Text style={styles.mutedText}>Sporcu katılıyor</Text>
+          </View>
+        </View>
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.rosterCard}>
+        <View style={styles.rosterHeader}>
+          <Text style={styles.rosterTitle}>Sporcu Listesi</Text>
+          <View style={styles.rosterCount}>
+            <Text style={styles.rosterCountText}>{athletes.length} Sporcu</Text>
+          </View>
+        </View>
         {athletes.length === 0 ? (
           <EmptyState title="Oyuncu yok" description="Bu antrenmana bağlı gruplarda aktif oyuncu bulunmuyor." />
         ) : (
@@ -402,30 +435,40 @@ function toggleGroupId(groupIds: string[], groupId: string) {
 }
 
 const styles = StyleSheet.create({
+  attendanceCount: { ...typography.display, color: colors.onSurface },
+  attendanceNumbers: { flex: 1, gap: spacing.xs },
+  attendanceSummary: { gap: spacing.md },
+  attendanceSummaryContent: { alignItems: "center", flexDirection: "row", gap: spacing.lg },
+  attendanceTotal: { ...typography.title, color: colors.onSurfaceVariant },
   athleteList: { gap: spacing.sm },
   athleteMeta: { ...typography.body, color: colors.onSurfaceVariant },
   athleteName: { ...typography.bodyLarge, color: colors.primary, fontFamily: "Inter_700Bold" },
   attendanceHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  attendanceRow: { borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, gap: spacing.sm, paddingVertical: spacing.md },
-  backButton: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
+  attendanceRow: { backgroundColor: colors.surface, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, gap: spacing.sm, padding: spacing.md },
+  backButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   bodyText: { ...typography.bodyLarge, color: colors.onSurface, lineHeight: 24 },
   card: { gap: spacing.md },
   checkbox: { alignItems: "center", borderColor: colors.outline, borderRadius: 6, borderWidth: 1, height: 24, justifyContent: "center", width: 24 },
   checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   closeButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
-  detailHeader: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
-  editButton: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, height: 44, justifyContent: "center", width: 44 },
+  detailHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  editButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   eyebrow: { ...typography.label, color: colors.secondary, textTransform: "uppercase" },
   flexOne: { flex: 1 },
+  groupCount: { ...typography.body, color: colors.onSurfaceVariant },
   groupList: { gap: spacing.sm },
+  groupNames: { ...typography.headline, color: colors.primary },
   groupOption: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
   groupOptionActive: { backgroundColor: colors.surfaceContainerLow },
   groupOptionText: { ...typography.bodyLarge, color: colors.onSurface },
   groupOptionTextActive: { color: colors.primary, fontFamily: "Inter_700Bold" },
   groupPickerSection: { gap: spacing.xs },
   groupRow: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.sm, padding: spacing.md },
-  headerCopy: { flex: 1, gap: spacing.xs },
-  headingText: { ...typography.headline, color: colors.primary },
+  groupSummary: { gap: spacing.sm },
+  groupSummaryHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  groupSummaryTitle: { ...typography.title, color: colors.onSurface },
+  headerCopy: { alignItems: "center", flex: 1, gap: spacing.xs },
+  headingText: { ...typography.headline, color: colors.primary, textAlign: "center" },
   inputRow: { gap: spacing.md },
   modalBackdrop: { backgroundColor: "rgba(0, 0, 0, 0.32)", flex: 1, justifyContent: "flex-end" },
   modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: "88%", padding: spacing.lg },
@@ -433,11 +476,18 @@ const styles = StyleSheet.create({
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.lg },
   modalTitle: { ...typography.headline, color: colors.primary },
   mutedText: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
+  notesBox: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, gap: spacing.xs, marginTop: spacing.sm, paddingTop: spacing.md },
+  notesLabel: { ...typography.label, color: colors.onSurfaceVariant },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   primaryText: { ...typography.bodyLarge, color: colors.primary },
+  rosterCard: { gap: spacing.md },
+  rosterCount: { backgroundColor: colors.surfaceVariant, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  rosterCountText: { ...typography.label, color: colors.onSurfaceVariant },
+  rosterHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  rosterTitle: { ...typography.title, color: colors.onSurface },
   sectionLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   statusChip: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, flexGrow: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
-  statusChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  statusChipSelected: { backgroundColor: colors.primaryContainer, borderColor: colors.primaryContainer },
   statusChipText: { ...typography.label, color: colors.onSurfaceVariant },
   statusChipTextSelected: { color: colors.onPrimary },
   statusGroup: { flexDirection: "row", gap: spacing.xs },
@@ -445,6 +495,20 @@ const styles = StyleSheet.create({
   summaryCard: { gap: spacing.lg },
   summaryIcon: { alignItems: "center", backgroundColor: "rgba(104,253,179,0.22)", borderRadius: radius.lg, height: 52, justifyContent: "center", width: 52 },
   summaryTop: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  trainingDate: { gap: spacing.xs },
+  trainingDateFull: { ...typography.body, color: colors.onSurfaceVariant, textAlign: "right" },
+  trainingDateLine: { alignItems: "baseline", flexDirection: "row", gap: spacing.xs },
+  trainingDay: { color: colors.primary, fontFamily: "HankenGrotesk_800ExtraBold", fontSize: 54, lineHeight: 58 },
+  trainingDivider: { backgroundColor: colors.outlineVariant, height: 1 },
+  trainingLocation: { alignItems: "center", flexDirection: "row", gap: spacing.xs, marginTop: spacing.xs },
+  trainingMonth: { ...typography.title, color: colors.onSurfaceVariant },
+  trainingStatus: { alignItems: "flex-end", gap: spacing.sm },
+  trainingSummary: { gap: spacing.md },
+  trainingSummaryTop: { alignItems: "flex-start", flexDirection: "row", justifyContent: "space-between" },
+  trainingTime: { ...typography.bodyLarge, color: colors.onSurface },
+  trainingTimeLine: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
+  trainingTitle: { ...typography.headline, color: colors.onSurface },
+  trainingTitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   timeRow: { flexDirection: "row", gap: spacing.md },
   warningText: { ...typography.bodyLarge, color: colors.error }
 });
