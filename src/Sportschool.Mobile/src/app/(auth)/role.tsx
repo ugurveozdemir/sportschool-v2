@@ -44,7 +44,7 @@ const roles: {
 export default function RoleScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <Image resizeMode="contain" source={academyLogo} style={styles.watermark} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -93,7 +93,7 @@ export default function RoleScreen() {
 
 const styles = StyleSheet.create({
   academyLabel: {
-    color: "#171719",
+    color: colors.primaryContainer,
     fontFamily: fontFamily.headingExtraBold,
     fontSize: 12,
     letterSpacing: 1.5
@@ -180,21 +180,22 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5
   },
   safeArea: {
-    backgroundColor: "#F5F4F0",
+    backgroundColor: colors.background,
     flex: 1
   },
   subtitle: {
-    color: "#26262A",
+    color: colors.onSurface,
     fontFamily: fontFamily.regular,
     fontSize: 14,
     lineHeight: 20,
     textAlign: "center"
   },
   subtitleStrong: {
+    color: colors.primaryContainer,
     fontFamily: fontFamily.bold
   },
   title: {
-    color: "#111113",
+    color: colors.onSurface,
     fontFamily: fontFamily.headingExtraBold,
     fontSize: 29,
     letterSpacing: -1.1,
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
   },
   watermark: {
     height: 630,
-    opacity: 0.035,
+    opacity: 0.06,
     position: "absolute",
     right: -145,
     top: 72,
