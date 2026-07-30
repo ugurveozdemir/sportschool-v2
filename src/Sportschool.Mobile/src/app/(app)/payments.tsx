@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Alert, Modal, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
@@ -11,7 +11,7 @@ import type { PaymentResponse } from "@/features/me/types";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, MetricTile, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { InitialsAvatar, Pill, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -45,6 +45,7 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [filter, setFilter] = useState<PaymentFilter>("all");
+  const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<SchoolMonthlyPaymentResponse | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -52,9 +53,13 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
   const rows = paymentsQuery.data ?? [];
 
   const collected = rows.reduce((sum, row) => sum + (row.effectiveStatus === "Paid" ? row.amount ?? 0 : 0), 0);
-  const pending = rows.reduce((sum, row) => sum + (row.effectiveStatus === "Paid" ? 0 : row.balance ?? row.amount ?? 0), 0);
+  const paidCount = rows.filter((row) => row.effectiveStatus === "Paid").length;
+  const normalizedSearch = search.trim().toLocaleLowerCase("tr-TR");
 
   const visibleRows = rows.filter((row) => {
+    if (normalizedSearch && !row.athleteName.toLocaleLowerCase("tr-TR").includes(normalizedSearch)) {
+      return false;
+    }
     if (filter === "paid") {
       return row.effectiveStatus === "Paid";
     }
@@ -64,38 +69,66 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
     return true;
   });
 
-  const goToMonth = (delta: number) => {
-    const next = new Date(year, month - 1 + delta, 1);
-    setYear(next.getFullYear());
-    setMonth(next.getMonth() + 1);
+  const selectMonth = (nextYear: number, nextMonth: number) => {
+    setYear(nextYear);
+    setMonth(nextMonth);
   };
+  const monthOptions = buildMonthOptions(year, month);
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       <View style={styles.headerBlock}>
         <View style={styles.titleRow}>
           <View style={styles.flexOne}>
-            <Text style={styles.title}>Ödeme Takibi</Text>
-            <Text style={styles.subtitle}>Aylık aidat durumlarını takip et.</Text>
+            <Text style={styles.title}>Ödemeler</Text>
+            <Text style={styles.subtitle}>Aylık aidat takip ve yönetimi</Text>
           </View>
           <Pressable accessibilityLabel="Ödeme ayarları" onPress={() => setSettingsOpen(true)} style={styles.iconButton}>
-            <MaterialCommunityIcons name="cog-outline" size={20} color={colors.primary} />
-          </Pressable>
-        </View>
-        <View style={styles.monthNav}>
-          <Pressable accessibilityLabel="Önceki ay" onPress={() => goToMonth(-1)} style={styles.monthNavButton}>
-            <MaterialCommunityIcons name="chevron-left" size={22} color={colors.primary} />
-          </Pressable>
-          <Text style={styles.monthLabel}>{formatMonth(year, month)}</Text>
-          <Pressable accessibilityLabel="Sonraki ay" onPress={() => goToMonth(1)} style={styles.monthNavButton}>
-            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+            <MaterialCommunityIcons name="cog-outline" size={22} color={colors.primary} />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.metricsRow}>
-        <MetricTile icon="wallet-outline" label="Tahsilat" value={formatMoney(collected)} tone="success" />
-        <MetricTile icon="clock-alert-outline" label="Bekleyen" value={formatMoney(pending)} tone="danger" />
+      <ScrollView
+        contentContainerStyle={styles.monthChips}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        {monthOptions.map((option) => {
+          const selected = option.year === year && option.month === month;
+          return (
+            <Pressable
+              key={`${option.year}-${option.month}`}
+              onPress={() => selectMonth(option.year, option.month)}
+              style={[styles.monthChip, selected && styles.monthChipSelected]}
+            >
+              <Text style={[styles.monthChipText, selected && styles.monthChipTextSelected]}>
+                {formatMonth(option.year, option.month)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.paymentSummary}>
+        <Text style={styles.paymentSummaryTitle}>{formatMonth(year, month)} Özeti</Text>
+        <Text style={styles.paymentSummarySubtitle}>Toplam tahsilat durumu</Text>
+        <View style={styles.paymentSummaryNumbers}>
+          <Text style={styles.paymentSummaryPaid}>{paidCount}</Text>
+          <Text style={styles.paymentSummaryTotal}>/ {rows.length} Ödendi</Text>
+        </View>
+        <Text style={styles.paymentSummaryAmount}>{formatMoney(collected)} tahsil edildi</Text>
+      </View>
+
+      <View style={styles.searchField}>
+        <MaterialCommunityIcons name="magnify" size={28} color={colors.onSurfaceVariant} />
+        <TextInput
+          onChangeText={setSearch}
+          placeholder="Sporcu ara..."
+          placeholderTextColor={colors.outline}
+          style={styles.searchInput}
+          value={search}
+        />
       </View>
 
       <View style={styles.filterRow}>
@@ -117,15 +150,17 @@ function CoachPayments({ session }: { session: ReturnType<typeof useSession>["se
           <EmptyState title="Sporcu yok" description="Bu okulda aktif sporcu bulunmuyor." />
         </SurfaceCard>
       ) : (
-        <SurfaceCard style={styles.tableCard}>
+        <View style={styles.paymentList}>
           {visibleRows.length === 0 ? (
-            <Text style={styles.emptyFilter}>Bu filtrede kayıt yok.</Text>
+            <SurfaceCard>
+              <Text style={styles.emptyFilter}>Arama veya filtreyle eşleşen kayıt yok.</Text>
+            </SurfaceCard>
           ) : (
             visibleRows.map((row) => (
               <CoachPaymentRow key={row.athleteProfileId} row={row} onPress={() => setEditing(row)} />
             ))
           )}
-        </SurfaceCard>
+        </View>
       )}
 
       <PaymentEditorModal payment={editing} year={year} month={month} onClose={() => setEditing(null)} />
@@ -208,22 +243,30 @@ function CoachPaymentRow({ row, onPress }: { row: SchoolMonthlyPaymentResponse; 
   const displayAmount = paid ? row.amount ?? 0 : row.balance ?? row.amount ?? 0;
 
   return (
-    <Pressable onPress={onPress} style={[styles.personRow, !paid && hasAmount && styles.personRowDanger]}>
-      <InitialsAvatar label={initials || "?"} size={44} tone={paid ? "light" : "red"} />
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.personRow, pressed && styles.personRowPressed]}>
+      <InitialsAvatar label={initials || "?"} size={52} tone={paid ? "light" : "red"} />
       <View style={styles.flexOne}>
         <Text style={styles.rowTitle}>{row.athleteName}</Text>
-        <Text style={styles.rowSubtitle}>{hasAmount ? getPaymentLabel(row.effectiveStatus) : "Tutar girilmedi"}</Text>
+        <Text style={styles.rowSubtitle}>{hasAmount ? formatMoney(displayAmount) : "Aidat tutarı girilmedi"}</Text>
       </View>
-      <View style={styles.rowRight}>
-        <Text style={[styles.rowAmount, !paid && hasAmount && styles.errorText]}>{hasAmount ? formatMoney(displayAmount) : "—"}</Text>
+      <View style={styles.coachRowRight}>
         <Pill
-          label={getPaymentLabel(row.effectiveStatus)}
+          label={paid ? "ÖDEDİ" : "ÖDEMEDİ"}
           tone={paid ? "success" : hasAmount ? "danger" : "neutral"}
-          icon={paid ? "check-circle-outline" : undefined}
         />
+        <View style={[styles.editCircle, paid && styles.editCirclePaid]}>
+          <MaterialCommunityIcons name="pencil" size={22} color={paid ? colors.primaryContainer : colors.onSurfaceVariant} />
+        </View>
       </View>
     </Pressable>
   );
+}
+
+function buildMonthOptions(year: number, month: number) {
+  return [-2, -1, 0, 1, 2].map((offset) => {
+    const date = new Date(year, month - 1 + offset, 1);
+    return { year: date.getFullYear(), month: date.getMonth() + 1 };
+  });
 }
 
 function PaymentEditorModal({
@@ -426,31 +469,45 @@ function MemberPaymentRow({ payment }: { payment: PaymentResponse }) {
 }
 
 const styles = StyleSheet.create({
+  coachRowRight: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  editCircle: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 44, justifyContent: "center", width: 44 },
+  editCirclePaid: { borderColor: colors.primaryContainer },
   emptyFilter: { ...typography.body, color: colors.onSurfaceVariant, paddingVertical: spacing.md, textAlign: "center" },
   errorText: { color: colors.error },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   flexOne: { flex: 1 },
-  headerBlock: { gap: spacing.md },
+  headerBlock: { gap: spacing.sm },
   helperText: { ...typography.body, color: colors.onSurfaceVariant },
   iconButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: "center", width: 38 },
   list: { gap: spacing.md },
-  metricsRow: { flexDirection: "row", gap: spacing.sm },
+  monthChip: { borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, minWidth: 132, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  monthChipSelected: { backgroundColor: colors.primaryContainer, borderColor: colors.primaryContainer },
+  monthChips: { gap: spacing.sm, paddingRight: spacing.md },
+  monthChipText: { ...typography.label, color: colors.onSurfaceVariant, textAlign: "center", textTransform: "capitalize" },
+  monthChipTextSelected: { color: colors.onPrimary },
   modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, gap: spacing.md, padding: spacing.lg },
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   modalOverlay: { backgroundColor: "rgba(0, 0, 0, 0.4)", flex: 1, justifyContent: "flex-end" },
   modalSubtitle: { ...typography.body, color: colors.onSurfaceVariant },
   modalTitle: { ...typography.headline, color: colors.primary },
-  monthLabel: { ...typography.title, color: colors.primary, textAlign: "center", textTransform: "capitalize" },
-  monthNav: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "space-between" },
-  monthNavButton: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, height: 38, justifyContent: "center", width: 38 },
+  paymentList: { gap: spacing.md },
   paymentRow: { gap: spacing.md },
-  personRow: { alignItems: "center", borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
-  personRowDanger: { backgroundColor: "rgba(255, 218, 214, 0.25)", marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg },
+  paymentSummary: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, gap: spacing.xs, padding: spacing.lg },
+  paymentSummaryAmount: { ...typography.label, color: colors.onSurfaceVariant, marginTop: spacing.sm },
+  paymentSummaryNumbers: { alignItems: "baseline", flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
+  paymentSummaryPaid: { ...typography.display, color: colors.primaryContainer, fontSize: 56, lineHeight: 62 },
+  paymentSummarySubtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
+  paymentSummaryTitle: { ...typography.headline, color: colors.onSurface },
+  paymentSummaryTotal: { ...typography.title, color: colors.onSurfaceVariant },
+  personRow: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 96, padding: spacing.md },
+  personRowPressed: { borderColor: colors.primaryContainer, transform: [{ scale: 0.99 }] },
   rowAmount: { ...typography.title, color: colors.primary },
   rowLead: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   rowRight: { alignItems: "flex-end", gap: spacing.xs },
   rowSubtitle: { ...typography.body, color: colors.onSurfaceVariant },
   rowTitle: { ...typography.title, color: colors.primary },
+  searchField: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 58, paddingHorizontal: spacing.md },
+  searchInput: { ...typography.bodyLarge, color: colors.onSurface, flex: 1, paddingVertical: spacing.sm },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginTop: spacing.xs },
   toggleLabel: { ...typography.title, color: colors.onSurface },
   toggleRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
@@ -460,7 +517,6 @@ const styles = StyleSheet.create({
   summaryLabel: { ...typography.body, color: colors.onSurfaceVariant },
   summaryTop: { alignItems: "flex-start", flexDirection: "row", justifyContent: "space-between" },
   summaryValue: { ...typography.headline },
-  tableCard: { paddingVertical: 0 },
-  title: { ...typography.headline, color: colors.primary },
+  title: { ...typography.display, color: colors.onSurface },
   titleRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" }
 });
