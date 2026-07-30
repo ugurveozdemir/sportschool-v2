@@ -60,6 +60,35 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task CoachTrainings_WithoutDateRange_ReturnsNextOwnTraining()
+    {
+        var data = await SeedCoachScenarioAsync();
+        var futureStartsAt = DateTimeOffset.UtcNow.AddDays(2);
+        var futureTraining = new TrainingSession
+        {
+            SchoolId = data.Group.SchoolId,
+            CoachId = data.Coach.Id,
+            Title = "Next Coach Training",
+            StartsAt = futureStartsAt,
+            EndsAt = futureStartsAt.AddHours(1),
+            Recurrence = TrainingRecurrence.None,
+            Groups = { new TrainingSessionGroup { GroupId = data.Group.Id } }
+        };
+        await _factory.SeedAsync(db =>
+        {
+            db.TrainingSessions.Add(futureTraining);
+            return Task.CompletedTask;
+        });
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        var trainings = await client.GetFromJsonAsync<MobileCoachTrainingItem[]>("/api/mobile/coach/trainings");
+
+        Assert.NotNull(trainings);
+        Assert.Contains(trainings!, training => training.Id == futureTraining.Id);
+        Assert.DoesNotContain(trainings, training => training.Id == data.OtherCoachTraining.Id);
+    }
+
+    [Fact]
     public async Task AttendanceRoster_ReturnsNotFoundForAnotherCoachTraining()
     {
         var data = await SeedCoachScenarioAsync();

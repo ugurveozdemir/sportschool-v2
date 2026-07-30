@@ -306,8 +306,8 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var start = from ?? LocalDayRange.StartOfToday(timeZone);
-        var end = to ?? start.AddDays(14);
+        var start = (from ?? LocalDayRange.StartOfToday(timeZone)).ToUniversalTime();
+        var end = (to ?? start.AddDays(14)).ToUniversalTime();
         if (end <= start)
         {
             return Results.BadRequest();
@@ -317,10 +317,7 @@ public static class MobileCoachEndpoints
             .AsNoTracking()
             .Where(x => x.SchoolId == context.SchoolId
                 && x.CoachId == context.CoachId
-                && x.IsActive
-                && x.StartsAt >= start
-                && x.StartsAt < end)
-            .OrderBy(x => x.StartsAt)
+                && x.IsActive)
             .Select(x => new MobileCoachTrainingItem(
                 x.Id,
                 x.Title,
@@ -341,7 +338,12 @@ public static class MobileCoachEndpoints
                 x.Notes))
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(trainingRows);
+        var trainings = trainingRows
+            .Where(x => x.StartsAt >= start && x.StartsAt < end)
+            .OrderBy(x => x.StartsAt)
+            .ToList();
+
+        return Results.Ok(trainings);
     }
 
     private static async Task<IResult> GetAttendanceRosterAsync(
