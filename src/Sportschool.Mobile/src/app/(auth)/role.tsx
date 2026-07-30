@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import type { LoginMode } from "@/shared/constants/roles";
+import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { fontFamily, typography } from "@/shared/design/typography";
 
@@ -69,8 +70,6 @@ export default function RoleScreen() {
               style={({ pressed }) => [styles.roleCard, pressed && styles.roleCardPressed]}
             >
               <Image resizeMode="cover" source={role.image} style={styles.rolePhoto} />
-              <View style={styles.photoTint} />
-              <View style={styles.middleShade} />
               <View style={styles.leftShade} />
               <View style={styles.roleCopy}>
                 <Text style={styles.roleTitle}>{role.title}</Text>
@@ -84,7 +83,7 @@ export default function RoleScreen() {
         <Text style={styles.version}>0.1.0</Text>
         <View style={styles.footerInstruction}>
           <Text style={styles.footerText}>Rolünü seç</Text>
-          <MaterialCommunityIcons name="arrow-right" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-right" size={24} color={colors.onPrimary} />
         </View>
       </View>
       <View style={styles.footerAccent} />
@@ -115,14 +114,14 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
-    backgroundColor: "#082F55",
+    backgroundColor: colors.primaryContainer,
     flexDirection: "row",
     justifyContent: "space-between",
     minHeight: 58,
     paddingHorizontal: spacing.lg
   },
   footerAccent: {
-    backgroundColor: "#C49A33",
+    backgroundColor: "#111113",
     height: 7
   },
   footerInstruction: {
@@ -132,7 +131,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...typography.bodyLarge,
-    color: "#FFFFFF"
+    color: colors.onPrimary
   },
   hero: {
     alignItems: "center",
@@ -140,7 +139,7 @@ const styles = StyleSheet.create({
   },
   leftShade: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#083B68",
+    backgroundColor: colors.primaryContainer,
     right: "45%"
   },
   logo: {
@@ -148,17 +147,8 @@ const styles = StyleSheet.create({
     marginBottom: -6,
     width: 76
   },
-  middleShade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(8,59,104,0.72)",
-    right: "24%"
-  },
-  photoTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(3,37,67,0.22)"
-  },
   roleCard: {
-    backgroundColor: "#083B68",
+    backgroundColor: colors.primaryContainer,
     borderRadius: radius.lg,
     height: 112,
     overflow: "hidden"
@@ -184,7 +174,7 @@ const styles = StyleSheet.create({
     width: "68%"
   },
   roleTitle: {
-    color: "#FFFFFF",
+    color: colors.onPrimary,
     fontFamily: fontFamily.headingExtraBold,
     fontSize: 23,
     letterSpacing: -0.5
@@ -213,7 +203,7 @@ const styles = StyleSheet.create({
   },
   version: {
     ...typography.bodyLarge,
-    color: "#FFFFFF"
+    color: colors.onPrimary
   },
   watermark: {
     height: 630,
