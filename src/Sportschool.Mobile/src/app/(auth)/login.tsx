@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSession } from "@/core/sessionProvider";
 import { login } from "@/features/auth/api";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schemas";
-import { AkademiLogo } from "@/shared/components/AkademiLogo";
+import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { brand } from "@/shared/constants/brand";
 import type { LoginMode } from "@/shared/constants/roles";
 import { colors } from "@/shared/design/colors";
@@ -66,7 +66,7 @@ export default function LoginScreen() {
         >
           <View style={styles.brand}>
             <View style={styles.logoCircle}>
-              <AkademiLogo size={116} />
+              <AcademyLogoAvatar size={116} />
             </View>
             <Text style={styles.brandName}>{brand.name}</Text>
           </View>
