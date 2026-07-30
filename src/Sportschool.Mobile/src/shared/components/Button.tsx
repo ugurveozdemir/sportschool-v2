@@ -30,7 +30,7 @@ export function Button({ label, onPress, disabled, variant = "primary" }: Button
 }
 
 const styles = StyleSheet.create({
-  button: { alignItems: "center", borderRadius: radius.sm, justifyContent: "center", minHeight: 52, padding: spacing.md },
+  button: { alignItems: "center", borderRadius: radius.sm, justifyContent: "center", minHeight: 46, padding: spacing.md },
   disabled: { opacity: 0.55 },
   label: { ...typography.title },
   outline: { backgroundColor: "transparent", borderColor: colors.primary, borderWidth: 2 },

@@ -28,7 +28,7 @@ export function ScreenShell({ children, title, avatar, navItems, contentStyle, r
     <SafeAreaView edges={["top"]} style={styles.shell}>
       <TopBar title={title} avatar={avatar} />
       <ScrollView
-        contentContainerStyle={[styles.content, navItems ? { paddingBottom: 104 + insets.bottom } : styles.contentBottom, contentStyle]}
+        contentContainerStyle={[styles.content, navItems ? { paddingBottom: 94 + insets.bottom } : styles.contentBottom, contentStyle]}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
       >
@@ -50,11 +50,11 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
     return (
       <View style={styles.topBar}>
         <View style={styles.topBarButton}>
-          <AcademyLogoAvatar size={38} />
+          <AcademyLogoAvatar size={34} />
         </View>
         <Text numberOfLines={1} style={styles.topTitle}>{title}</Text>
         <Pressable accessibilityLabel="Sporcu ara" onPress={() => router.push("/attendance")} style={styles.topBarButton}>
-          <MaterialCommunityIcons name="magnify" size={29} color={colors.onSurfaceVariant} />
+          <MaterialCommunityIcons name="magnify" size={26} color={colors.onSurfaceVariant} />
         </Pressable>
       </View>
     );
@@ -66,10 +66,10 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
       <Text style={styles.topTitle}>{title}</Text>
       <View style={styles.topActions}>
         <Pressable accessibilityLabel="Profil" onPress={() => router.push("/profile")} style={styles.iconButton}>
-          <MaterialCommunityIcons name="account-outline" size={26} color={colors.primary} />
+          <MaterialCommunityIcons name="account-outline" size={24} color={colors.primary} />
         </Pressable>
         <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.iconButton}>
-          <MaterialCommunityIcons name="bell-outline" size={26} color={colors.primary} />
+          <MaterialCommunityIcons name="bell-outline" size={24} color={colors.primary} />
           {hasUnread ? <View style={styles.notificationDot} /> : null}
         </Pressable>
       </View>
@@ -87,7 +87,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
         const active = pathname.includes(item.match);
         return (
           <Pressable key={item.match} onPress={() => router.push(item.href)} style={[styles.navItem, active && styles.navItemActive]}>
-            <MaterialCommunityIcons name={item.icon} size={26} color={active ? colors.onPrimary : colors.onSurfaceVariant} />
+            <MaterialCommunityIcons name={item.icon} size={23} color={active ? colors.onPrimary : colors.onSurfaceVariant} />
             <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
           </Pressable>
         );
@@ -127,7 +127,7 @@ export function MetricTile({ icon, label, value, tone = "primary" }: { icon: key
   const color = tone === "success" ? colors.secondary : tone === "danger" ? colors.error : tone === "warning" ? colors.primaryFixedDim : colors.primaryContainer;
   return (
     <SurfaceCard style={styles.metricTile}>
-      <MaterialCommunityIcons name={icon} size={22} color={color} />
+      <MaterialCommunityIcons name={icon} size={20} color={color} />
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
     </SurfaceCard>
@@ -152,8 +152,8 @@ export function ProfileAvatar({ uri, label, size = 42, tone = "light" }: { uri?:
   return <Image accessibilityLabel={`${label} profil fotoğrafı`} source={{ uri }} style={[styles.profileAvatar, { width: size, height: size, borderRadius: size / 2 }]} />;
 }
 
-export function CircularScore({ value, label, color = colors.secondary, size = 68 }: { value: number; label: string; color?: string; size?: number }) {
-  const stroke = 6;
+export function CircularScore({ value, label, color = colors.secondary, size = 62 }: { value: number; label: string; color?: string; size?: number }) {
+  const stroke = 5;
   const radiusValue = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radiusValue;
   const dashOffset = circumference * (1 - Math.max(0, Math.min(value, 100)) / 100);
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     left: 0,
-    minHeight: 76,
+    minHeight: 68,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     position: "absolute",
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   cardAccent: { bottom: 0, left: 0, position: "absolute", top: 0, width: 5 },
   chartBar: { borderTopLeftRadius: 4, borderTopRightRadius: 4, width: "100%" },
-  chartBars: { alignItems: "flex-end", borderBottomColor: colors.surfaceContainerHigh, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, height: 180 },
+  chartBars: { alignItems: "flex-end", borderBottomColor: colors.surfaceContainerHigh, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, height: 160 },
   chartColumn: { alignItems: "center", flex: 1, gap: spacing.sm, height: "100%", justifyContent: "flex-end" },
   chartLabel: { ...typography.label, color: colors.onSurfaceVariant },
   chartLabelActive: { color: colors.primary },
@@ -249,14 +249,14 @@ const styles = StyleSheet.create({
   circularScore: { alignItems: "center", gap: spacing.sm },
   content: { gap: spacing.lg, padding: spacing.md },
   contentBottom: { paddingBottom: spacing.xl },
-  iconButton: { alignItems: "center", height: 42, justifyContent: "center", width: 42 },
+  iconButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   initialsAvatar: { alignItems: "center", justifyContent: "center" },
   initialsText: { ...typography.title },
   profileAvatar: { backgroundColor: colors.primaryFixed, resizeMode: "cover" },
   metricLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
-  metricTile: { flex: 1, gap: spacing.sm, minHeight: 112 },
+  metricTile: { flex: 1, gap: spacing.sm, minHeight: 96 },
   metricValue: { ...typography.headline },
-  navItem: { alignItems: "center", borderRadius: radius.lg, gap: 2, minWidth: 86, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  navItem: { alignItems: "center", borderRadius: radius.lg, gap: 2, minWidth: 78, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   navItemActive: { backgroundColor: colors.primary },
   navLabel: { ...typography.label, color: colors.onSurfaceVariant, letterSpacing: 0.4, textAlign: "center" },
   navLabelActive: { color: colors.onPrimary },
@@ -270,9 +270,9 @@ const styles = StyleSheet.create({
   sectionHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   sectionTitle: { ...typography.title, color: colors.onSurface },
   shell: { backgroundColor: colors.background, flex: 1 },
-  topBar: { alignItems: "center", backgroundColor: colors.background, borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", height: 64, justifyContent: "space-between", paddingHorizontal: spacing.md },
+  topBar: { alignItems: "center", backgroundColor: colors.background, borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", height: 58, justifyContent: "space-between", paddingHorizontal: spacing.md },
   topBarButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
-  topActions: { alignItems: "center", flexDirection: "row", justifyContent: "flex-end", width: 88 },
-  topLead: { alignItems: "flex-start", height: 42, justifyContent: "center", width: 88 },
+  topActions: { alignItems: "center", flexDirection: "row", justifyContent: "flex-end", width: 80 },
+  topLead: { alignItems: "flex-start", height: 44, justifyContent: "center", width: 80 },
   topTitle: { ...typography.headline, color: colors.primary, flex: 1, textAlign: "center" }
 });

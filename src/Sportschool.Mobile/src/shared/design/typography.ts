@@ -8,10 +8,10 @@ export const fontFamily = {
 } as const;
 
 export const typography = {
-  display: { fontFamily: fontFamily.headingExtraBold, fontSize: 32, lineHeight: 40, letterSpacing: -0.64 },
-  headline: { fontFamily: fontFamily.headingBold, fontSize: 24, lineHeight: 32 },
-  title: { fontFamily: fontFamily.headingSemibold, fontSize: 20, lineHeight: 28 },
-  bodyLarge: { fontFamily: fontFamily.regular, fontSize: 16, lineHeight: 24 },
-  body: { fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20 },
+  display: { fontFamily: fontFamily.headingExtraBold, fontSize: 28, lineHeight: 34, letterSpacing: -0.56 },
+  headline: { fontFamily: fontFamily.headingBold, fontSize: 20, lineHeight: 26 },
+  title: { fontFamily: fontFamily.headingSemibold, fontSize: 17, lineHeight: 23 },
+  bodyLarge: { fontFamily: fontFamily.regular, fontSize: 15, lineHeight: 21 },
+  body: { fontFamily: fontFamily.regular, fontSize: 13, lineHeight: 18 },
   label: { fontFamily: fontFamily.bold, fontSize: 12, lineHeight: 16, letterSpacing: 0.6 }
 } as const;

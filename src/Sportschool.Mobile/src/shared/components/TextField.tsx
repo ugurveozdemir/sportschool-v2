@@ -29,8 +29,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.onSurface,
     paddingHorizontal: spacing.md,
-    minHeight: 52,
-    paddingVertical: spacing.md
+    minHeight: 46,
+    paddingVertical: spacing.sm
   },
   inputError: { borderColor: colors.error },
   label: { ...typography.label, color: colors.onSurfaceVariant },
