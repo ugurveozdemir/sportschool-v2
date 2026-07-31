@@ -22,6 +22,18 @@ public sealed class TrainingSession
 
     public DateTimeOffset EndsAt { get; set; }
 
+    public DateTimeOffset? StartedAt { get; set; }
+
+    public Guid? StartedByUserId { get; set; }
+
+    public AppUser? StartedBy { get; set; }
+
+    public DateTimeOffset? CompletedAt { get; set; }
+
+    public Guid? CompletedByUserId { get; set; }
+
+    public AppUser? CompletedBy { get; set; }
+
     public TrainingRecurrence Recurrence { get; set; } = TrainingRecurrence.None;
 
     public DateOnly? RecurrenceEndsOn { get; set; }

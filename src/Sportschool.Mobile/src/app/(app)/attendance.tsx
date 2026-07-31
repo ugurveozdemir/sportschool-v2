@@ -81,13 +81,16 @@ export default function AttendanceScreen() {
           </SurfaceCard>
         ) : (
           records.map((record) => {
+            if (record.status === null) {
+              return null;
+            }
             const training = trainingsQuery.data?.find((item) => item.id === record.trainingSessionId);
-            const tone = record.status === "Present" ? "success" : record.status === "Late" || record.status === "Excused" ? "warning" : "danger";
+            const tone = record.status === "Present" ? "success" : "danger";
             return (
               <SurfaceCard key={record.id} style={styles.historyRow}>
                 <View style={styles.flexOne}>
                   <Text style={styles.rowTitle}>{training?.title ?? "Antrenman"}</Text>
-                  <Text style={styles.rowMeta}>{training ? `${formatDate(training.startsAt)} • ${formatTime(training.startsAt)}` : formatDate(record.recordedAt)}</Text>
+                  <Text style={styles.rowMeta}>{training ? `${formatDate(training.startsAt)} • ${formatTime(training.startsAt)}` : record.recordedAt ? formatDate(record.recordedAt) : "Tarih yok"}</Text>
                 </View>
                 <Pill label={getAttendanceLabel(record.status)} tone={tone} />
               </SurfaceCard>

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Common;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
@@ -64,13 +65,21 @@ public static class DashboardEndpoints
                 x.CoachId,
                 x.Coach.FullName,
                 x.Location,
-                x.Groups
-                    .SelectMany(group => group.Group.Athletes)
-                    .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
-                    .Select(a => a.AthleteProfileId)
-                    .Distinct()
-                    .Count(),
-                db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)))
+                x.StartedAt != null
+                    ? db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)
+                    : x.Groups
+                        .SelectMany(group => group.Group.Athletes)
+                        .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
+                        .Select(a => a.AthleteProfileId)
+                        .Distinct()
+                        .Count(),
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId,
+                db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id && a.Status != null),
+                db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id && a.Status == AttendanceStatus.Present),
+                db.TrainingAthleteReports.Count(report => report.TrainingSessionId == x.Id)))
             .ToListAsync(cancellationToken);
         var trainings = trainingRows
             .Where(x => x.StartsAt >= start && x.StartsAt < end)
@@ -144,7 +153,13 @@ public sealed record DashboardTrainingItem(
     string CoachName,
     string? Location,
     int TotalAthletes,
-    int RecordedAttendanceCount);
+    DateTimeOffset? StartedAt,
+    Guid? StartedByUserId,
+    DateTimeOffset? CompletedAt,
+    Guid? CompletedByUserId,
+    int RecordedAttendanceCount,
+    int PresentCount,
+    int RecordedReportCount);
 
 public sealed record DashboardRecentReport(
     Guid Id,

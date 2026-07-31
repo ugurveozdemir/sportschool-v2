@@ -122,7 +122,11 @@ public static class MobileReadEndpoints
                 x.Recurrence,
                 x.RecurrenceEndsOn,
                 x.Location,
-                x.Notes))
+                x.Notes,
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(trainings);
@@ -141,7 +145,9 @@ public static class MobileReadEndpoints
         }
 
         var attendance = await db.AttendanceRecords
-            .Where(x => x.SchoolId == profile.SchoolId && x.AthleteProfileId == profile.Id)
+            .Where(x => x.SchoolId == profile.SchoolId
+                && x.AthleteProfileId == profile.Id
+                && x.Status != null)
             .OrderByDescending(x => x.TrainingSession.StartsAt)
             .Select(x => AttendanceResponse.From(x))
             .ToListAsync(cancellationToken);
@@ -165,7 +171,8 @@ public static class MobileReadEndpoints
         var today = DateOnly.FromDateTime(LocalDayRange.StartOfToday(timeZone).DateTime);
         var existing = await db.StudentPayments
             .AsNoTracking()
-            .Where(x => x.SchoolId == profile.SchoolId && x.AthleteProfileId == profile.Id)
+            .Where(x => x.SchoolId == profile.SchoolId
+                && x.AthleteProfileId == profile.Id)
             .ToListAsync(cancellationToken);
 
         var school = await db.Schools

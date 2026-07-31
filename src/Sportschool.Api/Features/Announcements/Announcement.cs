@@ -1,4 +1,5 @@
 using Sportschool.Api.Features.Schools;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 
 namespace Sportschool.Api.Features.Announcements;
@@ -10,6 +11,10 @@ public sealed class Announcement
     public Guid SchoolId { get; set; }
 
     public School School { get; set; } = null!;
+
+    public Guid? TrainingSessionId { get; set; }
+
+    public TrainingSession? TrainingSession { get; set; }
 
     public required string Title { get; set; }
 

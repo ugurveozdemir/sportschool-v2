@@ -12,6 +12,7 @@ export const endpoints = {
   meAnnouncementsUnreadCount: "/api/me/announcements/unread-count",
   meAnnouncementsRead: "/api/me/announcements/read",
   meAthleteReports: "/api/me/athlete-reports",
+  meDevelopmentSummary: "/api/me/development-summary",
   feed: "/api/feed",
   schoolAnnouncements: "/api/school/announcements",
   schoolAnnouncement: (announcementId: string) => `/api/school/announcements/${announcementId}`,
@@ -35,5 +36,9 @@ export const endpoints = {
   coachTrainings: "/api/mobile/coach/trainings",
   coachAttendanceRoster: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance-roster`,
   coachAttendance: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance`,
-  coachAttendanceItem: (trainingId: string, athleteProfileId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance/${athleteProfileId}`
+  coachAttendanceItem: (trainingId: string, athleteProfileId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance/${athleteProfileId}`,
+  coachAttendanceBatch: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance`,
+  coachStartTraining: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/start`,
+  coachCompleteTraining: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/complete`,
+  coachTrainingReport: (trainingId: string, athleteProfileId: string) => `/api/mobile/coach/trainings/${trainingId}/athletes/${athleteProfileId}/report`
 } as const;

@@ -44,16 +44,20 @@ export type TrainingResponse = {
   recurrenceEndsOn: string | null;
   location: string | null;
   notes: string | null;
+  startedAt: string | null;
+  startedByUserId: string | null;
+  completedAt: string | null;
+  completedByUserId: string | null;
 };
 
 export type AttendanceResponse = {
   id: string;
   trainingSessionId: string;
   athleteProfileId: string;
-  status: AttendanceStatus;
-  recordedByUserId: string;
+  status: AttendanceStatus | null;
+  recordedByUserId: string | null;
   updatedByUserId: string | null;
-  recordedAt: string;
+  recordedAt: string | null;
   updatedAt: string | null;
 };
 
@@ -81,4 +85,44 @@ export type AthleteReportResponse = {
   shootingScore: number;
   createdAt: string;
   updatedAt: string | null;
+};
+
+export type TrainingReportResponse = {
+  id: string;
+  trainingSessionId: string;
+  athleteProfileId: string;
+  coachId: string;
+  trainingTitle: string;
+  trainingCompletedAt: string;
+  nutritionScore: number;
+  cognitiveDevelopmentScore: number;
+  disciplineScore: number;
+  physicalConditionScore: number;
+  psychologicalDevelopmentScore: number;
+  tacticalDevelopmentScore: number;
+  technicalDevelopmentScore: number;
+  coachNote: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type DevelopmentMetricAverages = {
+  nutrition: number;
+  cognitiveDevelopment: number;
+  discipline: number;
+  physicalCondition: number;
+  psychologicalDevelopment: number;
+  tacticalDevelopment: number;
+  technicalDevelopment: number;
+};
+
+export type DevelopmentSummaryResponse = {
+  athleteProfileId: string;
+  athleteName: string;
+  reportCount: number;
+  attendanceCount: number;
+  presentCount: number;
+  attendanceRate: number | null;
+  averages: DevelopmentMetricAverages | null;
+  reports: TrainingReportResponse[];
 };

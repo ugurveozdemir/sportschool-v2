@@ -7,8 +7,8 @@ import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
-import { useReports } from "@/features/me/api";
-import type { AthleteReportResponse } from "@/features/me/types";
+import { useDevelopmentSummary } from "@/features/me/api";
+import type { DevelopmentMetricAverages, DevelopmentSummaryResponse, TrainingReportResponse } from "@/features/me/types";
 import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -22,10 +22,13 @@ import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatDate } from "@/shared/utils/date";
 
 const scoreLabels = [
-  ["Hız", "speedScore", "run-fast"],
-  ["Güç", "strengthScore", "arm-flex-outline"],
-  ["Dribling", "dribblingScore", "soccer"],
-  ["Şut", "shootingScore", "target"]
+  ["Beslenme", "nutrition", "food-apple-outline"],
+  ["Bilişsel gelişim", "cognitiveDevelopment", "brain"],
+  ["Disiplin", "discipline", "clipboard-check-outline"],
+  ["Fizik/kondisyon", "physicalCondition", "run-fast"],
+  ["Psikolojik gelişim", "psychologicalDevelopment", "head-heart-outline"],
+  ["Taktik gelişim", "tacticalDevelopment", "chess-knight"],
+  ["Teknik gelişim", "technicalDevelopment", "soccer"]
 ] as const;
 
 type GroupFormState = {
@@ -42,14 +45,14 @@ export default function DevelopmentScreen() {
   const { session } = useSession();
   const isCoach = session?.roles.includes("Coach") ?? false;
   const { selectedAthleteProfileId } = useAthleteSelection();
-  const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
+  const summaryQuery = useDevelopmentSummary(!isCoach, selectedAthleteProfileId);
   const schoolGroupsQuery = useSchoolGroups(isCoach);
 
   if (isCoach && schoolGroupsQuery.isLoading) {
     return <LoadingState label="Gruplar yükleniyor" />;
   }
 
-  if (!isCoach && reportsQuery.isLoading) {
+  if (!isCoach && summaryQuery.isLoading) {
     return <LoadingState label="Raporlar yükleniyor" />;
   }
 
@@ -57,7 +60,7 @@ export default function DevelopmentScreen() {
     return <CoachTeams session={session} groups={schoolGroupsQuery.data ?? []} />;
   }
 
-  return <DevelopmentReports session={session} reports={reportsQuery.data ?? []} />;
+  return <DevelopmentReports session={session} summary={summaryQuery.data} />;
 }
 
 function CoachTeams({
@@ -134,12 +137,10 @@ function CoachTeams({
   );
 }
 
-function DevelopmentReports({ session, reports }: { session: ReturnType<typeof useSession>["session"]; reports: AthleteReportResponse[] }) {
-  const latest = reports[0];
-  const previous = reports[1];
-  const chartValues = reports.length > 0
-    ? reports.slice(0, 6).reverse().map((report) => averageScore(report) * 10)
-    : [40, 55, 45, 70, 60, 85];
+function DevelopmentReports({ session, summary }: { session: ReturnType<typeof useSession>["session"]; summary?: DevelopmentSummaryResponse }) {
+  const reports = summary?.reports ?? [];
+  const averages = summary?.averages;
+  const chartValues = reports.length > 0 ? reports.slice(0, 6).reverse().map(reportAverage) : [40, 55, 45, 70, 60, 85];
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={38} tone="dark" />}>
@@ -148,35 +149,25 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
         <Text style={styles.subtitle}>Performans metrikleri, grafik ve antrenör yorumları.</Text>
       </View>
 
-      {latest ? (
+      {averages ? (
         <>
           <SurfaceCard style={styles.skillCard}>
-            <SectionTitle title="Performans" action={previous ? "Önceki rapora göre" : undefined} />
+            <SectionTitle title="Genel performans" action={summary?.attendanceRate !== null && summary?.attendanceRate !== undefined ? `%${summary.attendanceRate} katılım` : undefined} />
             <View style={styles.skillList}>
               {scoreLabels.map(([label, key, icon]) => (
                 <SkillRow
                   key={key}
                   icon={icon}
                   label={label}
-                  value={latest[key]}
-                  delta={previous ? round1(latest[key] - previous[key]) : null}
+                  value={averages[key]}
+                  delta={null}
                 />
               ))}
             </View>
           </SurfaceCard>
 
-          {latest.improvementAreas ? (
-            <SurfaceCard style={styles.focusCard}>
-              <View style={styles.focusHeader}>
-                <MaterialCommunityIcons name="target" size={22} color={colors.secondary} />
-                <Text style={styles.sectionHeading}>Gelişim Alanı</Text>
-              </View>
-              <Text style={styles.focusText}>{latest.improvementAreas}</Text>
-            </SurfaceCard>
-          ) : null}
-
           <SurfaceCard style={styles.chartCard}>
-            <SectionTitle title="Gelişim Grafiği" action="Son 6 Rapor" />
+            <SectionTitle title="Gelişim Grafiği" action="Son 6 Antrenman" />
             <BarChart values={chartValues} />
             <View style={styles.legendRow}>
               <LegendDot label="Teknik" color={colors.primary} />
@@ -192,9 +183,9 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
             </View>
             {reports.map((report) => (
               <View key={report.id} style={styles.commentItem}>
-                <Text style={styles.date}>{formatDate(report.createdAt)}</Text>
-                <Text style={styles.summary}>{report.summary}</Text>
-                <Text style={styles.improvement}>Gelişim alanı: {report.improvementAreas}</Text>
+                <Text style={styles.date}>{formatDate(report.trainingCompletedAt)}</Text>
+                <Text style={styles.summary}>{report.trainingTitle}</Text>
+                {report.coachNote ? <Text style={styles.improvement}>{report.coachNote}</Text> : null}
               </View>
             ))}
           </SurfaceCard>
@@ -206,6 +197,16 @@ function DevelopmentReports({ session, reports }: { session: ReturnType<typeof u
       )}
     </ScreenShell>
   );
+}
+
+function reportAverage(report: TrainingReportResponse) {
+  return (report.nutritionScore
+    + report.cognitiveDevelopmentScore
+    + report.disciplineScore
+    + report.physicalConditionScore
+    + report.psychologicalDevelopmentScore
+    + report.tacticalDevelopmentScore
+    + report.technicalDevelopmentScore) / 7;
 }
 
 function GroupCard({ group }: { group: SchoolGroupResponse }) {
@@ -290,14 +291,6 @@ function SkillRow({ icon, label, value, delta }: { icon: keyof typeof MaterialCo
       )}
     </View>
   );
-}
-
-function averageScore(report: AthleteReportResponse) {
-  return (report.speedScore + report.strengthScore + report.dribblingScore + report.shootingScore) / 4;
-}
-
-function round1(value: number) {
-  return Math.round(value * 10) / 10;
 }
 
 const styles = StyleSheet.create({

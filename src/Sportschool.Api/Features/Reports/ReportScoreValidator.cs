@@ -6,4 +6,9 @@ public static class ReportScoreValidator
     {
         return score is >= 0 and <= 10 && score * 2 == decimal.Truncate(score * 2);
     }
+
+    public static bool IsValidPercentage(decimal score)
+    {
+        return score is >= 0 and <= 100 && score == decimal.Truncate(score);
+    }
 }

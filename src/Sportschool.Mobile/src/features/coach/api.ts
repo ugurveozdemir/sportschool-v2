@@ -18,6 +18,8 @@ import type {
   SaveSchoolGroupRequest,
   SaveCoachAthleteReportRequest,
   SaveCoachAttendanceRequest,
+  SaveCoachAttendanceBatchRequest,
+  SaveTrainingReportRequest,
   SavePaymentRequest,
   SavePaymentSettingsRequest,
   SchoolGroupResponse,
@@ -187,16 +189,57 @@ export function useSaveCoachAttendanceBatch(trainingId?: string) {
         throw new Error("Training is required.");
       }
 
-      await Promise.all(
-        items.map(({ existing, ...body }) =>
-          apiRequest(
-            existing ? endpoints.coachAttendanceItem(trainingId, body.athleteProfileId) : endpoints.coachAttendance(trainingId),
-            { method: existing ? "PUT" : "POST", body }
-          )
-        )
-      );
+      const body: SaveCoachAttendanceBatchRequest = {
+        items: items.map(({ athleteProfileId, status }) => ({ athleteProfileId, status }))
+      };
+      await apiRequest(endpoints.coachAttendanceBatch(trainingId), { method: "PUT", body });
     },
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["coach"] });
+    }
+  });
+}
+
+export function useStartCoachTraining(trainingId?: string) {
+  return useMutation({
+    mutationFn: () => {
+      if (!trainingId) {
+        throw new Error("Training is required.");
+      }
+      return apiRequest(endpoints.coachStartTraining(trainingId), { method: "POST" });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["coach"] });
+      await queryClient.invalidateQueries({ queryKey: ["coach", "attendance-roster", trainingId] });
+    }
+  });
+}
+
+export function useCompleteCoachTraining(trainingId?: string) {
+  return useMutation({
+    mutationFn: () => {
+      if (!trainingId) {
+        throw new Error("Training is required.");
+      }
+      return apiRequest(endpoints.coachCompleteTraining(trainingId), { method: "POST" });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["coach"] });
+      await queryClient.invalidateQueries({ queryKey: ["coach", "attendance-roster", trainingId] });
+    }
+  });
+}
+
+export function useSaveTrainingReport(trainingId?: string, athleteProfileId?: string) {
+  return useMutation({
+    mutationFn: (request: SaveTrainingReportRequest) => {
+      if (!trainingId || !athleteProfileId) {
+        throw new Error("Training and athlete are required.");
+      }
+      return apiRequest(endpoints.coachTrainingReport(trainingId, athleteProfileId), { method: "PUT", body: request });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["coach", "attendance-roster", trainingId] });
       await queryClient.invalidateQueries({ queryKey: ["coach"] });
     }
   });

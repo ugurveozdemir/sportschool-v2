@@ -1,5 +1,6 @@
 export type AnnouncementResponse = {
   id: string;
+  trainingSessionId: string | null;
   title: string;
   content: string;
   createdByUserId: string | null;

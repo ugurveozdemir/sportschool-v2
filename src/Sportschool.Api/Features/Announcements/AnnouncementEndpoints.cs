@@ -65,7 +65,8 @@ public static class AnnouncementEndpoints
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
-        if (schoolId is null)
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
         {
             return Results.Forbid();
         }
@@ -74,7 +75,12 @@ public static class AnnouncementEndpoints
         var announcementRows = await db.Announcements
             .AsNoTracking()
             .Include(x => x.CreatedBy)
-            .Where(x => x.SchoolId == schoolId.Value && x.IsActive)
+            .Where(x => x.SchoolId == schoolId.Value
+                && x.IsActive
+                && (x.TrainingSessionId == null
+                    || x.TrainingSession!.Groups.Any(group => group.Group.Athletes.Any(membership =>
+                        membership.AthleteProfile.UserId == userId.Value
+                        || membership.AthleteProfile.ParentUserId == userId.Value))))
             .ToListAsync(cancellationToken);
 
         if (currentOnly == true)
@@ -107,7 +113,12 @@ public static class AnnouncementEndpoints
         var now = DateTimeOffset.UtcNow;
         var activeRows = await db.Announcements
             .AsNoTracking()
-            .Where(a => a.SchoolId == schoolId.Value && a.IsActive)
+            .Where(a => a.SchoolId == schoolId.Value
+                && a.IsActive
+                && (a.TrainingSessionId == null
+                    || a.TrainingSession!.Groups.Any(group => group.Group.Athletes.Any(membership =>
+                        membership.AthleteProfile.UserId == userId.Value
+                        || membership.AthleteProfile.ParentUserId == userId.Value))))
             .Select(a => new { a.Id, a.ExpiresAt })
             .ToListAsync(cancellationToken);
 
@@ -142,7 +153,12 @@ public static class AnnouncementEndpoints
         var now = DateTimeOffset.UtcNow;
         var allIds = await db.Announcements
             .AsNoTracking()
-            .Where(a => a.SchoolId == schoolId.Value && a.IsActive)
+            .Where(a => a.SchoolId == schoolId.Value
+                && a.IsActive
+                && (a.TrainingSessionId == null
+                    || a.TrainingSession!.Groups.Any(group => group.Group.Athletes.Any(membership =>
+                        membership.AthleteProfile.UserId == userId.Value
+                        || membership.AthleteProfile.ParentUserId == userId.Value))))
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
 
@@ -308,6 +324,7 @@ public sealed record UnreadCountResponse(int Count);
 
 public sealed record AnnouncementResponse(
     Guid Id,
+    Guid? TrainingSessionId,
     string Title,
     string Content,
     Guid? CreatedByUserId,
@@ -326,6 +343,7 @@ public sealed record AnnouncementResponse(
         var isExpired = announcement.ExpiresAt is not null && announcement.ExpiresAt <= now;
         return new AnnouncementResponse(
             announcement.Id,
+            announcement.TrainingSessionId,
             announcement.Title,
             announcement.Content,
             announcement.CreatedByUserId,

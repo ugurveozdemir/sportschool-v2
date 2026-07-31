@@ -40,6 +40,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
 
     public DbSet<AthleteReport> AthleteReports => Set<AthleteReport>();
 
+    public DbSet<TrainingAthleteReport> TrainingAthleteReports => Set<TrainingAthleteReport>();
+
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
 
     public DbSet<StudentPayment> StudentPayments => Set<StudentPayment>();
@@ -204,6 +206,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             training.Property(x => x.Recurrence).HasConversion<string>().HasMaxLength(40);
             training.HasIndex(x => new { x.SchoolId, x.StartsAt });
 
+            training.HasIndex(x => new { x.SchoolId, x.StartedAt });
+
             training.HasOne(x => x.School)
                 .WithMany()
                 .HasForeignKey(x => x.SchoolId)
@@ -212,6 +216,16 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             training.HasOne(x => x.Coach)
                 .WithMany()
                 .HasForeignKey(x => x.CoachId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            training.HasOne(x => x.StartedBy)
+                .WithMany()
+                .HasForeignKey(x => x.StartedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            training.HasOne(x => x.CompletedBy)
+                .WithMany()
+                .HasForeignKey(x => x.CompletedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -291,6 +305,41 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<TrainingAthleteReport>(report =>
+        {
+            report.HasKey(x => x.Id);
+            report.Property(x => x.NutritionScore).HasPrecision(5, 2);
+            report.Property(x => x.CognitiveDevelopmentScore).HasPrecision(5, 2);
+            report.Property(x => x.DisciplineScore).HasPrecision(5, 2);
+            report.Property(x => x.PhysicalConditionScore).HasPrecision(5, 2);
+            report.Property(x => x.PsychologicalDevelopmentScore).HasPrecision(5, 2);
+            report.Property(x => x.TacticalDevelopmentScore).HasPrecision(5, 2);
+            report.Property(x => x.TechnicalDevelopmentScore).HasPrecision(5, 2);
+            report.Property(x => x.CoachNote).HasMaxLength(2000);
+            report.HasIndex(x => new { x.TrainingSessionId, x.AthleteProfileId }).IsUnique();
+            report.HasIndex(x => new { x.SchoolId, x.AthleteProfileId, x.CreatedAt });
+
+            report.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            report.HasOne(x => x.TrainingSession)
+                .WithMany()
+                .HasForeignKey(x => x.TrainingSessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            report.HasOne(x => x.AthleteProfile)
+                .WithMany()
+                .HasForeignKey(x => x.AthleteProfileId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            report.HasOne(x => x.Coach)
+                .WithMany()
+                .HasForeignKey(x => x.CoachId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<StudentPayment>(payment =>
         {
             payment.HasKey(x => x.Id);
@@ -320,6 +369,7 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             announcement.Property(x => x.Title).HasMaxLength(160).IsRequired();
             announcement.Property(x => x.Content).HasMaxLength(2000).IsRequired();
             announcement.HasIndex(x => new { x.SchoolId, x.IsActive, x.PublishedAt });
+            announcement.HasIndex(x => x.TrainingSessionId);
 
             announcement.HasOne(x => x.School)
                 .WithMany()
@@ -329,6 +379,11 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             announcement.HasOne(x => x.CreatedBy)
                 .WithMany()
                 .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            announcement.HasOne(x => x.TrainingSession)
+                .WithMany()
+                .HasForeignKey(x => x.TrainingSessionId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

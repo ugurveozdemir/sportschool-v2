@@ -177,6 +177,8 @@ public sealed class DashboardProductEndpointTests
                     Title = "Training A",
                     StartsAt = new DateTimeOffset(2026, 5, 24, 10, 0, 0, TimeSpan.Zero),
                     EndsAt = new DateTimeOffset(2026, 5, 24, 11, 0, 0, TimeSpan.Zero),
+                    StartedAt = new DateTimeOffset(2026, 5, 24, 10, 0, 0, TimeSpan.Zero),
+                    StartedByUserId = coach.Id,
                     Groups = { new TrainingSessionGroup { GroupId = groupId } }
                 },
                 new TrainingSession

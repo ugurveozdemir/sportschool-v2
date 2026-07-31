@@ -80,7 +80,11 @@ public static class AttendanceEndpoints
                 x.Groups
                     .OrderBy(group => group.Group.Name)
                     .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
-                    .ToArray()))
+                    .ToArray(),
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId))
             .FirstOrDefaultAsync(cancellationToken);
 
         if (training is null)
@@ -89,42 +93,42 @@ public static class AttendanceEndpoints
         }
 
         var groupIds = training.Groups.Select(x => x.Id).ToArray();
-        var rowData = await db.GroupAthletes
-            .AsNoTracking()
-            .Where(x => groupIds.Contains(x.GroupId)
-                && x.AthleteProfile.SchoolId == schoolId.Value
-                && x.AthleteProfile.IsActive
-                && x.AthleteProfile.User.IsActive)
-            .Select(x => new
-            {
-                x.AthleteProfileId,
-                x.AthleteProfile.FirstName,
-                x.AthleteProfile.LastName,
-                x.AthleteProfile.ParentFullName,
-                x.AthleteProfile.ParentPhone,
-                Status = db.AttendanceRecords
-                    .Where(a => a.TrainingSessionId == trainingId && a.AthleteProfileId == x.AthleteProfileId)
-                    .Select(a => (AttendanceStatus?)a.Status)
-                    .FirstOrDefault()
-            })
-            .ToListAsync(cancellationToken);
+        var rowData = training.StartedAt is not null
+            ? await db.AttendanceRecords
+                .AsNoTracking()
+                .Where(x => x.TrainingSessionId == trainingId)
+                .Select(x => new AttendanceRosterRow(
+                    x.AthleteProfileId,
+                    x.AthleteProfile.FirstName,
+                    x.AthleteProfile.LastName,
+                    x.AthleteProfile.ParentFullName,
+                    x.AthleteProfile.ParentPhone,
+                    x.Status))
+                .ToListAsync(cancellationToken)
+            : await db.GroupAthletes
+                .AsNoTracking()
+                .Where(x => groupIds.Contains(x.GroupId)
+                    && x.AthleteProfile.SchoolId == schoolId.Value
+                    && x.AthleteProfile.IsActive
+                    && x.AthleteProfile.User.IsActive)
+                .Select(x => new AttendanceRosterRow(
+                    x.AthleteProfileId,
+                    x.AthleteProfile.FirstName,
+                    x.AthleteProfile.LastName,
+                    x.AthleteProfile.ParentFullName,
+                    x.AthleteProfile.ParentPhone,
+                    null))
+                .ToListAsync(cancellationToken);
         var rows = rowData
-            .GroupBy(x => new
-            {
+            .GroupBy(x => x.AthleteProfileId)
+            .Select(x => x.First())
+            .Select(x => new AttendanceRosterItem(
                 x.AthleteProfileId,
                 x.FirstName,
                 x.LastName,
                 x.ParentFullName,
                 x.ParentPhone,
-                x.Status
-            })
-            .Select(x => new AttendanceRosterItem(
-                x.Key.AthleteProfileId,
-                x.Key.FirstName,
-                x.Key.LastName,
-                x.Key.ParentFullName,
-                x.Key.ParentPhone,
-                x.Key.Status))
+                x.Status))
             .OrderBy(x => x.LastName)
             .ThenBy(x => x.FirstName)
             .ToArray();
@@ -157,6 +161,8 @@ public static class AttendanceEndpoints
             .Select(x => new
             {
                 x.Id,
+                x.StartedAt,
+                x.CompletedAt,
                 GroupIds = x.Groups.Select(group => group.GroupId).ToArray()
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -164,6 +170,11 @@ public static class AttendanceEndpoints
         if (training is null)
         {
             return Results.NotFound();
+        }
+
+        if (training.StartedAt is null || training.CompletedAt is not null)
+        {
+            return AttendanceLocked();
         }
 
         var athleteIsInGroup = await db.GroupAthletes.AnyAsync(
@@ -178,25 +189,17 @@ public static class AttendanceEndpoints
             return Results.NotFound();
         }
 
-        var exists = await db.AttendanceRecords.AnyAsync(
+        var attendance = await db.AttendanceRecords.FirstOrDefaultAsync(
             x => x.TrainingSessionId == trainingId && x.AthleteProfileId == request.AthleteProfileId,
             cancellationToken);
-
-        if (exists)
+        if (attendance is null)
         {
-            return Results.Conflict();
+            return Results.NotFound();
         }
 
-        var attendance = new AttendanceRecord
-        {
-            SchoolId = schoolId.Value,
-            TrainingSessionId = trainingId,
-            AthleteProfileId = request.AthleteProfileId,
-            Status = request.Status,
-            RecordedByUserId = userId.Value
-        };
-
-        db.AttendanceRecords.Add(attendance);
+        attendance.Status = request.Status;
+        attendance.RecordedByUserId = userId.Value;
+        attendance.RecordedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created(
@@ -235,12 +238,32 @@ public static class AttendanceEndpoints
             return Results.NotFound();
         }
 
+        var trainingIsEditable = await db.TrainingSessions.AnyAsync(
+            x => x.Id == trainingId
+                && x.SchoolId == schoolId.Value
+                && x.StartedAt != null
+                && x.CompletedAt == null
+                && x.IsActive,
+            cancellationToken);
+        if (!trainingIsEditable)
+        {
+            return AttendanceLocked();
+        }
+
         attendance.Status = request.Status;
         attendance.UpdatedByUserId = userId.Value;
         attendance.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Ok(AttendanceResponse.From(attendance));
+    }
+
+    private static IResult AttendanceLocked()
+    {
+        return Results.Problem(
+            statusCode: 409,
+            title: "Yoklama kilitli",
+            detail: "Yoklama yalnızca başlatılmış ve tamamlanmamış antrenmanda değiştirilebilir.");
     }
 }
 
@@ -250,10 +273,10 @@ public sealed record AttendanceResponse(
     Guid Id,
     Guid TrainingSessionId,
     Guid AthleteProfileId,
-    AttendanceStatus Status,
-    Guid RecordedByUserId,
+    AttendanceStatus? Status,
+    Guid? RecordedByUserId,
     Guid? UpdatedByUserId,
-    DateTimeOffset RecordedAt,
+    DateTimeOffset? RecordedAt,
     DateTimeOffset? UpdatedAt)
 {
     public static AttendanceResponse From(AttendanceRecord attendance)
@@ -279,9 +302,21 @@ public sealed record AttendanceRosterTraining(
     string Title,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    IReadOnlyCollection<TrainingGroupSummary> Groups);
+    IReadOnlyCollection<TrainingGroupSummary> Groups,
+    DateTimeOffset? StartedAt,
+    Guid? StartedByUserId,
+    DateTimeOffset? CompletedAt,
+    Guid? CompletedByUserId);
 
 public sealed record AttendanceRosterItem(
+    Guid AthleteProfileId,
+    string FirstName,
+    string LastName,
+    string ParentFullName,
+    string ParentPhone,
+    AttendanceStatus? Status);
+
+internal sealed record AttendanceRosterRow(
     Guid AthleteProfileId,
     string FirstName,
     string LastName,

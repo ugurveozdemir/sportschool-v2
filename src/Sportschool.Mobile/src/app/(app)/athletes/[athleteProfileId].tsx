@@ -1,11 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
-import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
-import { useCoachAthlete, useCreateCoachAthleteReport } from "@/features/coach/api";
-import type { SaveCoachAthleteReportRequest } from "@/features/coach/types";
+import { useCoachAthlete } from "@/features/coach/api";
 import type { AthleteReportResponse } from "@/features/me/types";
 import { Button } from "@/shared/components/Button";
 import { LoadingState } from "@/shared/components/LoadingState";
@@ -18,21 +16,10 @@ import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatDate } from "@/shared/utils/date";
 
-const initialForm = {
-  summary: "",
-  improvementAreas: "",
-  speedScore: "8",
-  strengthScore: "8",
-  dribblingScore: "8",
-  shootingScore: "8"
-};
-
 export default function CoachAthleteDetailScreen() {
   const { session } = useSession();
   const { athleteProfileId } = useLocalSearchParams<{ athleteProfileId: string }>();
   const athleteQuery = useCoachAthlete(athleteProfileId);
-  const createReport = useCreateCoachAthleteReport(athleteProfileId);
-  const [form, setForm] = useState(initialForm);
 
   if (athleteQuery.isLoading) {
     return <LoadingState label="Sporcu bilgileri yükleniyor" />;
@@ -57,26 +44,6 @@ export default function CoachAthleteDetailScreen() {
   const chartValues = athlete.reports.length > 0
     ? athlete.reports.slice(0, 6).reverse().map((report) => averageScore(report) * 10)
     : [35, 48, 55, 64, 70, 78];
-
-  function updateForm(key: keyof typeof initialForm, value: string) {
-    setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  function submitReport() {
-    const request = buildRequest(currentAthleteId, form);
-    if (!request) {
-      Alert.alert("Gelişim raporu", "Skorlar 0-10 arasında ve 0.5 adımlarla olmalı. Özet ve gelişim alanı boş bırakılamaz.");
-      return;
-    }
-
-    createReport.mutate(request, {
-      onSuccess: () => {
-        setForm(initialForm);
-        Alert.alert("Gelişim raporu", "Rapor kaydedildi.");
-      },
-      onError: () => Alert.alert("Gelişim raporu", "Rapor kaydedilemedi.")
-    });
-  }
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
@@ -125,16 +92,8 @@ export default function CoachAthleteDetailScreen() {
       </SurfaceCard>
 
       <SurfaceCard style={styles.card}>
-        <SectionTitle title="Yeni Gelişim Raporu" />
-        <TextField label="Özet" multiline value={form.summary} onChangeText={(value) => updateForm("summary", value)} placeholder="Bugünkü performans özeti" />
-        <TextField label="Gelişim Alanları" multiline value={form.improvementAreas} onChangeText={(value) => updateForm("improvementAreas", value)} placeholder="Odaklanılacak teknik/taktik alanlar" />
-        <View style={styles.scoreGrid}>
-          <TextField label="Hız" keyboardType="decimal-pad" value={form.speedScore} onChangeText={(value) => updateForm("speedScore", value)} />
-          <TextField label="Güç" keyboardType="decimal-pad" value={form.strengthScore} onChangeText={(value) => updateForm("strengthScore", value)} />
-          <TextField label="Dribling" keyboardType="decimal-pad" value={form.dribblingScore} onChangeText={(value) => updateForm("dribblingScore", value)} />
-          <TextField label="Şut" keyboardType="decimal-pad" value={form.shootingScore} onChangeText={(value) => updateForm("shootingScore", value)} />
-        </View>
-        <Button disabled={createReport.isPending} label={createReport.isPending ? "Kaydediliyor" : "Raporu Kaydet"} onPress={submitReport} />
+        <SectionTitle title="Antrenman Raporları" />
+        <Text style={styles.muted}>Yeni raporlar, tamamlanan antrenmanın içinden girilir.</Text>
       </SurfaceCard>
     </ScreenShell>
   );
@@ -147,34 +106,6 @@ function Info({ label, value }: { label: string; value: string }) {
       <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
-}
-
-function buildRequest(athleteProfileId: string, form: typeof initialForm): SaveCoachAthleteReportRequest | null {
-  const scores = {
-    speedScore: parseScore(form.speedScore),
-    strengthScore: parseScore(form.strengthScore),
-    dribblingScore: parseScore(form.dribblingScore),
-    shootingScore: parseScore(form.shootingScore)
-  };
-
-  if (!form.summary.trim() || !form.improvementAreas.trim() || Object.values(scores).some((score) => score === null)) {
-    return null;
-  }
-
-  return {
-    athleteProfileId,
-    summary: form.summary.trim(),
-    improvementAreas: form.improvementAreas.trim(),
-    speedScore: scores.speedScore!,
-    strengthScore: scores.strengthScore!,
-    dribblingScore: scores.dribblingScore!,
-    shootingScore: scores.shootingScore!
-  };
-}
-
-function parseScore(value: string) {
-  const score = Number(value.replace(",", "."));
-  return Number.isFinite(score) && score >= 0 && score <= 10 && Number.isInteger(score * 2) ? score : null;
 }
 
 function averageScore(report: AthleteReportResponse) {

@@ -61,13 +61,19 @@ public static class TrainingEndpoints
                 x.Coach.FullName,
                 x.Location,
                 new AttendanceSummary(
-                    x.Groups
-                        .SelectMany(group => group.Group.Athletes)
-                        .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
-                        .Select(a => a.AthleteProfileId)
-                        .Distinct()
-                        .Count(),
-                    db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id))))
+                    x.StartedAt != null
+                        ? db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)
+                        : x.Groups
+                            .SelectMany(group => group.Group.Athletes)
+                            .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
+                            .Select(a => a.AthleteProfileId)
+                            .Distinct()
+                            .Count(),
+                    db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id && a.Status != null)),
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId))
             .ToListAsync(cancellationToken);
         var trainings = trainingRows
             .Where(x => x.StartsAt >= start && x.StartsAt < end)
@@ -215,7 +221,11 @@ public static class TrainingEndpoints
                 x.Recurrence,
                 x.RecurrenceEndsOn,
                 x.Location,
-                x.Notes))
+                x.Notes,
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(trainings);
@@ -260,6 +270,11 @@ public static class TrainingEndpoints
         if (training is null)
         {
             return Results.NotFound();
+        }
+
+        if (training.StartedAt is not null)
+        {
+            return Results.Conflict(new { detail = "Başlatılmış antrenman düzenlenemez." });
         }
 
         if (CurrentUser.IsCoachSession(currentUser) && training.CoachId != userId.Value)
@@ -429,7 +444,11 @@ public sealed record TrainingResponse(
     TrainingRecurrence Recurrence,
     DateOnly? RecurrenceEndsOn,
     string? Location,
-    string? Notes)
+    string? Notes,
+    DateTimeOffset? StartedAt,
+    Guid? StartedByUserId,
+    DateTimeOffset? CompletedAt,
+    Guid? CompletedByUserId)
 {
     public static TrainingResponse From(TrainingSession training, IReadOnlyCollection<TrainingGroupSummary> groups)
     {
@@ -443,7 +462,11 @@ public sealed record TrainingResponse(
             training.Recurrence,
             training.RecurrenceEndsOn,
             training.Location,
-            training.Notes);
+            training.Notes,
+            training.StartedAt,
+            training.StartedByUserId,
+            training.CompletedAt,
+            training.CompletedByUserId);
     }
 }
 
@@ -465,7 +488,11 @@ public sealed record TrainingListResponse(
     Guid CoachId,
     string CoachName,
     string? Location,
-    AttendanceSummary AttendanceSummary);
+    AttendanceSummary AttendanceSummary,
+    DateTimeOffset? StartedAt,
+    Guid? StartedByUserId,
+    DateTimeOffset? CompletedAt,
+    Guid? CompletedByUserId);
 
 public sealed record TrainingGroupSummary(Guid Id, string Name);
 

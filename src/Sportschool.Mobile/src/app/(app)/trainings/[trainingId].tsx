@@ -4,9 +4,9 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "rea
 import { useEffect, useState } from "react";
 
 import { useSession } from "@/core/sessionProvider";
-import { useCoachAttendanceRoster, useSaveCoachAttendanceBatch, useSchoolGroups, useUpdateCoachTraining } from "@/features/coach/api";
+import { useCompleteCoachTraining, useCoachAttendanceRoster, useSaveCoachAttendanceBatch, useSaveTrainingReport, useSchoolGroups, useStartCoachTraining, useUpdateCoachTraining } from "@/features/coach/api";
 import type { SaveCoachAttendanceItem } from "@/features/coach/api";
-import type { CoachAttendanceRosterItem, CoachAttendanceRosterTraining, SchoolGroupResponse, UpdateCoachTrainingRequest } from "@/features/coach/types";
+import type { CoachAttendanceRosterItem, CoachAttendanceRosterTraining, SaveTrainingReportRequest, SchoolGroupResponse, UpdateCoachTrainingRequest } from "@/features/coach/types";
 import type { AttendanceStatus } from "@/shared/constants/domain";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -20,15 +20,6 @@ import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatTime } from "@/shared/utils/date";
 
-// Attendance can be taken once a training has started and until the end of that day.
-// The backend (in the school's configured time zone) is the source of truth; this is a
-// client-side approximation using the device clock to keep the UI in sync.
-function isAttendanceWindowOpen(startsAt: string) {
-  const start = new Date(startsAt);
-  const now = new Date();
-  return start.getTime() <= now.getTime() && start.toDateString() === now.toDateString();
-}
-
 export default function TrainingDetailScreen() {
   const { session } = useSession();
   const { trainingId } = useLocalSearchParams<{ trainingId: string }>();
@@ -37,31 +28,29 @@ export default function TrainingDetailScreen() {
   const groupsQuery = useSchoolGroups(isCoach);
   const updateTraining = useUpdateCoachTraining(isCoach ? trainingId : undefined);
   const saveAttendance = useSaveCoachAttendanceBatch(isCoach ? trainingId : undefined);
+  const startTraining = useStartCoachTraining(isCoach ? trainingId : undefined);
+  const completeTraining = useCompleteCoachTraining(isCoach ? trainingId : undefined);
   const [isEditVisible, setIsEditVisible] = useState(false);
-  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
+  const [statuses, setStatuses] = useState<Record<string, AttendanceStatus | null>>({});
+  const [reportAthlete, setReportAthlete] = useState<CoachAttendanceRosterItem | null>(null);
 
   const rosterAthletes = rosterQuery.data?.athletes;
   useEffect(() => {
     if (!rosterAthletes) {
       return;
     }
-    setStatuses(Object.fromEntries(rosterAthletes.map((athlete) => [athlete.athleteProfileId, athlete.status ?? "Present"])));
+    setStatuses(Object.fromEntries(rosterAthletes.map((athlete) => [athlete.athleteProfileId, athlete.status])));
   }, [rosterAthletes]);
 
   const submitAttendance = () => {
-    const startsAt = rosterQuery.data?.training.startsAt;
-    if (startsAt && !isAttendanceWindowOpen(startsAt)) {
-      Alert.alert("Yoklama", "Yoklama penceresi kapalı. Yoklama yalnızca antrenmanın yapıldığı gün alınabilir.");
+    if (!rosterQuery.data?.training.startedAt || rosterQuery.data.training.completedAt) {
+      Alert.alert("Yoklama", "Yoklama yalnızca devam eden antrenmanda alınabilir.");
       return;
     }
     const athletes = rosterQuery.data?.athletes ?? [];
     const items = athletes.reduce<SaveCoachAttendanceItem[]>((pending, athlete) => {
       const target = statuses[athlete.athleteProfileId] ?? "Present";
-      if (athlete.status === null) {
-        pending.push({ athleteProfileId: athlete.athleteProfileId, status: target, existing: false });
-      } else if (athlete.status !== target) {
-        pending.push({ athleteProfileId: athlete.athleteProfileId, status: target, existing: true });
-      }
+      pending.push({ athleteProfileId: athlete.athleteProfileId, status: target, existing: athlete.status !== null });
       return pending;
     }, []);
 
@@ -75,6 +64,20 @@ export default function TrainingDetailScreen() {
       onError: () => Alert.alert("Yoklama", "Yoklama kaydedilemedi. Lütfen tekrar deneyin.")
     });
   };
+
+  function start() {
+    startTraining.mutate(undefined, {
+      onSuccess: () => Alert.alert("Antrenman", "Antrenman başlatıldı ve ilgili gruplara duyuru gönderildi."),
+      onError: () => Alert.alert("Antrenman", "Antrenman başlatılamadı. Lütfen tekrar deneyin.")
+    });
+  }
+
+  function complete() {
+    completeTraining.mutate(undefined, {
+      onSuccess: () => Alert.alert("Antrenman", "Antrenman tamamlandı. Artık oyuncu raporlarını girebilirsin."),
+      onError: () => Alert.alert("Antrenman", "Önce tüm oyuncuların yoklamasını kaydetmelisin.")
+    });
+  }
 
   if (!isCoach) {
     return (
@@ -106,17 +109,19 @@ export default function TrainingDetailScreen() {
 
   const { training, athletes } = rosterQuery.data;
   const notes = training.notes?.trim();
-  const attendanceOpen = isAttendanceWindowOpen(training.startsAt);
-  const notStartedYet = new Date(training.startsAt).getTime() > Date.now();
-  const attendanceHint = attendanceOpen
-    ? "Herkes varsayılan \"Geldi\" işaretli. Sadece istisnaları değiştir ve kaydet."
-    : notStartedYet
-      ? `Yoklama, antrenman başladığında (${formatTime(training.startsAt)}) açılır.`
-      : "Yoklama penceresi kapandı. Yoklama yalnızca antrenmanın yapıldığı gün alınabilir.";
+  const trainingStarted = training.startedAt !== null;
+  const trainingCompleted = training.completedAt !== null;
+  const attendanceOpen = trainingStarted && !trainingCompleted;
+  const allAttendanceRecorded = athletes.every((athlete) => statuses[athlete.athleteProfileId] !== null);
+  const attendanceHint = trainingCompleted
+    ? "Antrenman tamamlandı. Yoklama kilitlendi."
+    : trainingStarted
+      ? "Oyuncuları Geldi veya Gelmedi olarak işaretle ve yoklamayı kaydet."
+      : "Önce antrenmanı başlat. Başlatınca bu antrenmanın oyuncu listesi sabitlenir.";
   const startsAt = new Date(training.startsAt);
   const day = new Intl.DateTimeFormat("tr-TR", { day: "2-digit" }).format(startsAt);
   const month = new Intl.DateTimeFormat("tr-TR", { month: "short" }).format(startsAt).replace(".", "");
-  const presentCount = athletes.filter((athlete) => (statuses[athlete.athleteProfileId] ?? "Present") === "Present").length;
+  const presentCount = athletes.filter((athlete) => statuses[athlete.athleteProfileId] === "Present").length;
   const attendanceRate = athletes.length === 0 ? 0 : Math.round((presentCount / athletes.length) * 100);
 
   return (
@@ -128,7 +133,7 @@ export default function TrainingDetailScreen() {
         <View style={styles.headerCopy}>
           <Text style={styles.headingText}>Antrenman Detayı</Text>
         </View>
-        <Pressable accessibilityLabel="Antrenmanı düzenle" onPress={() => setIsEditVisible(true)} style={styles.editButton}>
+        <Pressable accessibilityLabel="Antrenmanı düzenle" disabled={trainingStarted} onPress={() => setIsEditVisible(true)} style={[styles.editButton, trainingStarted && styles.disabledAction]}>
           <MaterialCommunityIcons name="dots-vertical" size={24} color={colors.primary} />
         </Pressable>
       </View>
@@ -146,7 +151,7 @@ export default function TrainingDetailScreen() {
             </View>
           </View>
           <View style={styles.trainingStatus}>
-            <Pill label={notStartedYet ? "PLANLANDI" : "AKTİF"} tone="primary" />
+            <Pill label={trainingCompleted ? "TAMAMLANDI" : trainingStarted ? "DEVAM EDİYOR" : "PLANLANDI"} tone={trainingCompleted ? "success" : "primary"} />
             <Text style={styles.trainingDateFull}>{formatTrainingDate(training.startsAt)}</Text>
           </View>
         </View>
@@ -162,6 +167,8 @@ export default function TrainingDetailScreen() {
           <MaterialCommunityIcons name="dumbbell" size={25} color={colors.primary} />
         </View>
       </SurfaceCard>
+
+      {!trainingStarted ? <Button disabled={startTraining.isPending} label={startTraining.isPending ? "Başlatılıyor" : "Antrenmanı Başlat"} onPress={start} /> : null}
 
       <SurfaceCard style={styles.groupSummary}>
         <View style={styles.groupSummaryHeader}>
@@ -219,9 +226,36 @@ export default function TrainingDetailScreen() {
               label={saveAttendance.isPending ? "Kaydediliyor" : "Yoklamayı Kaydet"}
               onPress={submitAttendance}
             />
+            {trainingStarted && !trainingCompleted ? (
+              <Button
+                variant="outline"
+                disabled={completeTraining.isPending || !allAttendanceRecorded}
+                label={completeTraining.isPending ? "Tamamlanıyor" : allAttendanceRecorded ? "Antrenmanı Bitir" : "Önce Yoklamayı Tamamla"}
+                onPress={complete}
+              />
+            ) : null}
           </>
         )}
       </SurfaceCard>
+
+      {trainingCompleted ? (
+        <SurfaceCard style={styles.rosterCard}>
+          <View style={styles.rosterHeader}>
+            <Text style={styles.rosterTitle}>Antrenman Raporları</Text>
+            <Text style={styles.mutedText}>{athletes.filter((athlete) => athlete.status === "Present" && athlete.reportEntered).length}/{athletes.filter((athlete) => athlete.status === "Present").length}</Text>
+          </View>
+          {athletes.filter((athlete) => athlete.status === "Present").map((athlete) => (
+            <View key={athlete.athleteProfileId} style={styles.reportRow}>
+              <View style={styles.flexOne}>
+                <Text style={styles.athleteName}>{athlete.firstName} {athlete.lastName}</Text>
+                <Text style={styles.mutedText}>{athlete.reportEntered ? "Rapor girildi" : "Rapor bekliyor"}</Text>
+              </View>
+              <Button disabled={athlete.reportEntered} variant={athlete.reportEntered ? "outline" : "primary"} label={athlete.reportEntered ? "Rapor Girildi" : "Rapor Gir"} onPress={() => setReportAthlete(athlete)} />
+            </View>
+          ))}
+          {athletes.every((athlete) => athlete.status !== "Present") ? <Text style={styles.mutedText}>Gelen oyuncu olmadığı için rapor beklenmiyor.</Text> : null}
+        </SurfaceCard>
+      ) : null}
 
       <EditTrainingModal
         groups={groupsQuery.data ?? []}
@@ -239,15 +273,15 @@ export default function TrainingDetailScreen() {
           });
         }}
       />
+
+      {reportAthlete ? <TrainingReportModal trainingId={trainingId} athlete={reportAthlete} visible onClose={() => setReportAthlete(null)} /> : null}
     </ScreenShell>
   );
 }
 
 const ATTENDANCE_OPTIONS: { status: AttendanceStatus; label: string }[] = [
   { status: "Present", label: "Geldi" },
-  { status: "Absent", label: "Gelmedi" },
-  { status: "Late", label: "Geç" },
-  { status: "Excused", label: "İzinli" }
+  { status: "Absent", label: "Gelmedi" }
 ];
 
 function AttendanceRow({ athlete, status, disabled = false, onChange }: {
@@ -394,6 +428,103 @@ function EditTrainingModal({ groups, saving, training, visible, onClose, onSubmi
   );
 }
 
+const INITIAL_TRAINING_REPORT = {
+  nutritionScore: "80",
+  cognitiveDevelopmentScore: "80",
+  disciplineScore: "80",
+  physicalConditionScore: "80",
+  psychologicalDevelopmentScore: "80",
+  tacticalDevelopmentScore: "80",
+  technicalDevelopmentScore: "80",
+  coachNote: ""
+};
+
+function TrainingReportModal({ trainingId, athlete, visible, onClose }: {
+  trainingId: string;
+  athlete: CoachAttendanceRosterItem;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const saveReport = useSaveTrainingReport(trainingId, athlete.athleteProfileId);
+  const [form, setForm] = useState(INITIAL_TRAINING_REPORT);
+
+  function update(key: keyof typeof INITIAL_TRAINING_REPORT, value: string) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function submit() {
+    const scores = {
+      nutritionScore: parsePercentage(form.nutritionScore),
+      cognitiveDevelopmentScore: parsePercentage(form.cognitiveDevelopmentScore),
+      disciplineScore: parsePercentage(form.disciplineScore),
+      physicalConditionScore: parsePercentage(form.physicalConditionScore),
+      psychologicalDevelopmentScore: parsePercentage(form.psychologicalDevelopmentScore),
+      tacticalDevelopmentScore: parsePercentage(form.tacticalDevelopmentScore),
+      technicalDevelopmentScore: parsePercentage(form.technicalDevelopmentScore)
+    };
+    if (Object.values(scores).some((score) => score === null)) {
+      Alert.alert("Antrenman raporu", "Puanlar 0 ile 100 arasında tam sayı olmalı.");
+      return;
+    }
+
+    const request: SaveTrainingReportRequest = {
+      athleteProfileId: athlete.athleteProfileId,
+      nutritionScore: scores.nutritionScore!,
+      cognitiveDevelopmentScore: scores.cognitiveDevelopmentScore!,
+      disciplineScore: scores.disciplineScore!,
+      physicalConditionScore: scores.physicalConditionScore!,
+      psychologicalDevelopmentScore: scores.psychologicalDevelopmentScore!,
+      tacticalDevelopmentScore: scores.tacticalDevelopmentScore!,
+      technicalDevelopmentScore: scores.technicalDevelopmentScore!,
+      coachNote: form.coachNote.trim() || null
+    };
+
+    saveReport.mutate(request, {
+      onSuccess: () => {
+        Alert.alert("Antrenman raporu", "Rapor kaydedildi.");
+        onClose();
+      },
+      onError: () => Alert.alert("Antrenman raporu", "Rapor kaydedilemedi. Lütfen tekrar deneyin.")
+    });
+  }
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>Antrenman Raporu</Text>
+              <Text style={styles.mutedText}>{athlete.firstName} {athlete.lastName}</Text>
+            </View>
+            <Pressable accessibilityLabel="Kapat" onPress={onClose} style={styles.closeButton}>
+              <MaterialCommunityIcons name="close" size={22} color={colors.primary} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.reportScoreGrid}>
+              <TextField label="Beslenme" keyboardType="number-pad" value={form.nutritionScore} onChangeText={(value) => update("nutritionScore", value)} />
+              <TextField label="Bilişsel gelişim" keyboardType="number-pad" value={form.cognitiveDevelopmentScore} onChangeText={(value) => update("cognitiveDevelopmentScore", value)} />
+              <TextField label="Disiplin" keyboardType="number-pad" value={form.disciplineScore} onChangeText={(value) => update("disciplineScore", value)} />
+              <TextField label="Fizik/kondisyon" keyboardType="number-pad" value={form.physicalConditionScore} onChangeText={(value) => update("physicalConditionScore", value)} />
+              <TextField label="Psikolojik gelişim" keyboardType="number-pad" value={form.psychologicalDevelopmentScore} onChangeText={(value) => update("psychologicalDevelopmentScore", value)} />
+              <TextField label="Taktik gelişim" keyboardType="number-pad" value={form.tacticalDevelopmentScore} onChangeText={(value) => update("tacticalDevelopmentScore", value)} />
+              <TextField label="Teknik gelişim" keyboardType="number-pad" value={form.technicalDevelopmentScore} onChangeText={(value) => update("technicalDevelopmentScore", value)} />
+            </View>
+            <TextField label="Antrenör notu" multiline value={form.coachNote} onChangeText={(value) => update("coachNote", value)} placeholder="İsteğe bağlı kısa not" />
+            <Button disabled={saveReport.isPending} label={saveReport.isPending ? "Kaydediliyor" : "Raporu Kaydet"} onPress={submit} />
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function parsePercentage(value: string) {
+  const score = Number(value.replace(",", "."));
+  return Number.isInteger(score) && score >= 0 && score <= 100 ? score : null;
+}
+
 function formatTrainingDate(value: string) {
   return new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", weekday: "long" }).format(new Date(value));
 }
@@ -452,6 +583,7 @@ const styles = StyleSheet.create({
   checkboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   closeButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   detailHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  disabledAction: { opacity: 0.4 },
   editButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   eyebrow: { ...typography.label, color: colors.secondary, textTransform: "uppercase" },
   flexOne: { flex: 1 },
@@ -485,6 +617,8 @@ const styles = StyleSheet.create({
   rosterCountText: { ...typography.label, color: colors.onSurfaceVariant },
   rosterHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   rosterTitle: { ...typography.title, color: colors.onSurface },
+  reportRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, paddingTop: spacing.sm },
+  reportScoreGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   sectionLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   statusChip: { alignItems: "center", borderColor: colors.outlineVariant, borderRadius: radius.full, borderWidth: 1, flexGrow: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
   statusChipSelected: { backgroundColor: colors.primaryContainer, borderColor: colors.primaryContainer },

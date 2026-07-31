@@ -1,0 +1,282 @@
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Data;
+using Sportschool.Api.Features.Attendance;
+using Sportschool.Api.Features.Trainings;
+using Sportschool.Api.Features.Users;
+using Sportschool.Api.Security;
+
+namespace Sportschool.Api.Features.Reports;
+
+public static class TrainingReportEndpoints
+{
+    public static IEndpointRouteBuilder MapTrainingReportEndpoints(this IEndpointRouteBuilder app)
+    {
+        var coachGroup = app.MapGroup("/api/mobile/coach")
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.Coach.ToString()));
+
+        coachGroup.MapPut(
+            "/trainings/{trainingId:guid}/athletes/{athleteProfileId:guid}/report",
+            SaveTrainingReportAsync);
+
+        var memberGroup = app.MapGroup("/api/me")
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.Parent.ToString(), UserRole.Athlete.ToString()));
+
+        memberGroup.MapGet("/development-summary", GetDevelopmentSummaryAsync);
+
+        return app;
+    }
+
+    private static async Task<IResult> SaveTrainingReportAsync(
+        Guid trainingId,
+        Guid athleteProfileId,
+        SaveTrainingReportRequest request,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var context = GetCoachContext(currentUser);
+        if (context is null)
+        {
+            return Results.Forbid();
+        }
+
+        if (request.AthleteProfileId != athleteProfileId || !IsValidRequest(request))
+        {
+            return Results.BadRequest();
+        }
+
+        var training = await db.TrainingSessions
+            .FirstOrDefaultAsync(x => x.Id == trainingId
+                && x.SchoolId == context.Value.SchoolId
+                && x.CoachId == context.Value.CoachId
+                && x.IsActive, cancellationToken);
+        if (training is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (training.CompletedAt is null)
+        {
+            return Results.Conflict(new { detail = "Rapor yalnızca tamamlanmış antrenman için girilebilir." });
+        }
+
+        var attended = await db.AttendanceRecords.AnyAsync(
+            x => x.TrainingSessionId == trainingId
+                && x.AthleteProfileId == athleteProfileId
+                && x.SchoolId == context.Value.SchoolId
+                && x.Status == AttendanceStatus.Present,
+            cancellationToken);
+        if (!attended)
+        {
+            return Results.Conflict(new { detail = "Gelmedi olarak işaretlenen oyuncu için rapor girilemez." });
+        }
+
+        var report = await db.TrainingAthleteReports.FirstOrDefaultAsync(
+            x => x.TrainingSessionId == trainingId && x.AthleteProfileId == athleteProfileId,
+            cancellationToken);
+
+        if (report is null)
+        {
+            report = new TrainingAthleteReport
+            {
+                SchoolId = context.Value.SchoolId,
+                TrainingSessionId = trainingId,
+                AthleteProfileId = athleteProfileId,
+                CoachId = context.Value.CoachId
+            };
+            db.TrainingAthleteReports.Add(report);
+        }
+
+        report.NutritionScore = request.NutritionScore;
+        report.CognitiveDevelopmentScore = request.CognitiveDevelopmentScore;
+        report.DisciplineScore = request.DisciplineScore;
+        report.PhysicalConditionScore = request.PhysicalConditionScore;
+        report.PsychologicalDevelopmentScore = request.PsychologicalDevelopmentScore;
+        report.TacticalDevelopmentScore = request.TacticalDevelopmentScore;
+        report.TechnicalDevelopmentScore = request.TechnicalDevelopmentScore;
+        report.CoachNote = string.IsNullOrWhiteSpace(request.CoachNote) ? null : request.CoachNote.Trim();
+        report.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(TrainingReportResponse.From(report, training.Title, training.CompletedAt.Value));
+    }
+
+    private static async Task<IResult> GetDevelopmentSummaryAsync(
+        Guid? athleteProfileId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var profileQuery = db.AthleteProfiles.Where(x => x.SchoolId == schoolId.Value
+            && (x.UserId == userId.Value || x.ParentUserId == userId.Value)
+            && x.IsActive);
+        if (athleteProfileId is not null)
+        {
+            profileQuery = profileQuery.Where(x => x.Id == athleteProfileId.Value);
+        }
+
+        var profile = await profileQuery
+            .OrderBy(x => x.FirstName)
+            .ThenBy(x => x.LastName)
+            .Select(x => new { x.Id, x.FirstName, x.LastName })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (profile is null)
+        {
+            return Results.NotFound();
+        }
+
+        var reports = await db.TrainingAthleteReports
+            .AsNoTracking()
+            .Include(x => x.TrainingSession)
+            .Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == profile.Id)
+            .ToListAsync(cancellationToken);
+        reports = reports
+            .OrderByDescending(x => x.TrainingSession.CompletedAt)
+            .ThenByDescending(x => x.CreatedAt)
+            .Take(8)
+            .ToList();
+
+        var attendance = await db.AttendanceRecords
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId.Value
+                && x.AthleteProfileId == profile.Id
+                && x.Status != null)
+            .Select(x => x.Status!.Value)
+            .ToListAsync(cancellationToken);
+
+        var averages = reports.Count == 0
+            ? null
+            : (DevelopmentMetricAverages?)new DevelopmentMetricAverages(
+                Average(reports, x => x.NutritionScore),
+                Average(reports, x => x.CognitiveDevelopmentScore),
+                Average(reports, x => x.DisciplineScore),
+                Average(reports, x => x.PhysicalConditionScore),
+                Average(reports, x => x.PsychologicalDevelopmentScore),
+                Average(reports, x => x.TacticalDevelopmentScore),
+                Average(reports, x => x.TechnicalDevelopmentScore));
+
+        var presentCount = attendance.Count(x => x == AttendanceStatus.Present);
+        var attendanceRate = attendance.Count == 0
+            ? (decimal?)null
+            : Math.Round(presentCount * 100m / attendance.Count, 2);
+
+        return Results.Ok(new DevelopmentSummaryResponse(
+            profile.Id,
+            profile.FirstName + " " + profile.LastName,
+            reports.Count,
+            attendance.Count,
+            presentCount,
+            attendanceRate,
+            averages,
+            reports.Select(x => TrainingReportResponse.From(x, x.TrainingSession.Title, x.TrainingSession.CompletedAt!.Value)).ToArray()));
+    }
+
+    private static decimal Average(
+        IReadOnlyCollection<TrainingAthleteReport> reports,
+        Func<TrainingAthleteReport, decimal> selector)
+    {
+        return Math.Round(reports.Average(selector), 2);
+    }
+
+    private static bool IsValidRequest(SaveTrainingReportRequest request)
+    {
+        return request.AthleteProfileId != Guid.Empty
+            && ReportScoreValidator.IsValidPercentage(request.NutritionScore)
+            && ReportScoreValidator.IsValidPercentage(request.CognitiveDevelopmentScore)
+            && ReportScoreValidator.IsValidPercentage(request.DisciplineScore)
+            && ReportScoreValidator.IsValidPercentage(request.PhysicalConditionScore)
+            && ReportScoreValidator.IsValidPercentage(request.PsychologicalDevelopmentScore)
+            && ReportScoreValidator.IsValidPercentage(request.TacticalDevelopmentScore)
+            && ReportScoreValidator.IsValidPercentage(request.TechnicalDevelopmentScore)
+            && (request.CoachNote is null || request.CoachNote.Trim().Length <= 2000);
+    }
+
+    private static CoachContext? GetCoachContext(ClaimsPrincipal currentUser)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        var coachId = CurrentUser.GetUserId(currentUser);
+        return schoolId is null || coachId is null ? null : new CoachContext(schoolId.Value, coachId.Value);
+    }
+}
+
+public sealed record SaveTrainingReportRequest(
+    Guid AthleteProfileId,
+    decimal NutritionScore,
+    decimal CognitiveDevelopmentScore,
+    decimal DisciplineScore,
+    decimal PhysicalConditionScore,
+    decimal PsychologicalDevelopmentScore,
+    decimal TacticalDevelopmentScore,
+    decimal TechnicalDevelopmentScore,
+    string? CoachNote);
+
+public sealed record TrainingReportResponse(
+    Guid Id,
+    Guid TrainingSessionId,
+    Guid AthleteProfileId,
+    Guid CoachId,
+    string TrainingTitle,
+    DateTimeOffset TrainingCompletedAt,
+    decimal NutritionScore,
+    decimal CognitiveDevelopmentScore,
+    decimal DisciplineScore,
+    decimal PhysicalConditionScore,
+    decimal PsychologicalDevelopmentScore,
+    decimal TacticalDevelopmentScore,
+    decimal TechnicalDevelopmentScore,
+    string? CoachNote,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt)
+{
+    public static TrainingReportResponse From(
+        TrainingAthleteReport report,
+        string trainingTitle,
+        DateTimeOffset trainingCompletedAt)
+    {
+        return new TrainingReportResponse(
+            report.Id,
+            report.TrainingSessionId,
+            report.AthleteProfileId,
+            report.CoachId,
+            trainingTitle,
+            trainingCompletedAt,
+            report.NutritionScore,
+            report.CognitiveDevelopmentScore,
+            report.DisciplineScore,
+            report.PhysicalConditionScore,
+            report.PsychologicalDevelopmentScore,
+            report.TacticalDevelopmentScore,
+            report.TechnicalDevelopmentScore,
+            report.CoachNote,
+            report.CreatedAt,
+            report.UpdatedAt);
+    }
+}
+
+public sealed record DevelopmentSummaryResponse(
+    Guid AthleteProfileId,
+    string AthleteName,
+    int ReportCount,
+    int AttendanceCount,
+    int PresentCount,
+    decimal? AttendanceRate,
+    DevelopmentMetricAverages? Averages,
+    IReadOnlyCollection<TrainingReportResponse> Reports);
+
+public sealed record DevelopmentMetricAverages(
+    decimal Nutrition,
+    decimal CognitiveDevelopment,
+    decimal Discipline,
+    decimal PhysicalCondition,
+    decimal PsychologicalDevelopment,
+    decimal TacticalDevelopment,
+    decimal TechnicalDevelopment);

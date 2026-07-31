@@ -1,5 +1,6 @@
 import type { AttendanceStatus, PaymentStatus } from "@/shared/constants/domain";
 import type { AthleteReportResponse } from "@/features/me/types";
+import type { TrainingReportResponse } from "@/features/me/types";
 
 export type CoachSummaryResponse = {
   todayTrainings: CoachTrainingItem[];
@@ -88,6 +89,10 @@ export type CoachTrainingItem = {
   location: string | null;
   totalAthletes: number;
   recordedAttendanceCount: number;
+  startedAt: string | null;
+  startedByUserId: string | null;
+  completedAt: string | null;
+  completedByUserId: string | null;
   notes: string | null;
 };
 
@@ -124,6 +129,10 @@ export type CoachAttendanceRosterTraining = {
   groups: TrainingGroupSummary[];
   location: string | null;
   notes: string | null;
+  startedAt: string | null;
+  startedByUserId: string | null;
+  completedAt: string | null;
+  completedByUserId: string | null;
 };
 
 export type CoachAttendanceRosterItem = {
@@ -134,11 +143,28 @@ export type CoachAttendanceRosterItem = {
   parentPhone: string;
   profileImageUrl: string | null;
   status: AttendanceStatus | null;
+  reportEntered: boolean;
 };
 
 export type SaveCoachAttendanceRequest = {
   athleteProfileId: string;
   status: AttendanceStatus;
+};
+
+export type SaveCoachAttendanceBatchRequest = {
+  items: SaveCoachAttendanceRequest[];
+};
+
+export type SaveTrainingReportRequest = {
+  athleteProfileId: string;
+  nutritionScore: number;
+  cognitiveDevelopmentScore: number;
+  disciplineScore: number;
+  physicalConditionScore: number;
+  psychologicalDevelopmentScore: number;
+  tacticalDevelopmentScore: number;
+  technicalDevelopmentScore: number;
+  coachNote: string | null;
 };
 
 export type SchoolMonthlyPaymentResponse = {

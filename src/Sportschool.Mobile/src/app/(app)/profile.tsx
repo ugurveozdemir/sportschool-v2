@@ -8,7 +8,7 @@ import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { logout } from "@/features/auth/api";
 import { useCoachGroups } from "@/features/coach/api";
-import { useGroups, useProfile, useReports } from "@/features/me/api";
+import { useDevelopmentSummary, useGroups, useProfile } from "@/features/me/api";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { CircularScore, InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
@@ -25,7 +25,7 @@ export default function ProfileScreen() {
   const { selectedAthleteProfileId } = useAthleteSelection();
   const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
-  const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
+  const developmentQuery = useDevelopmentSummary(!isCoach, selectedAthleteProfileId);
   const coachGroupsQuery = useCoachGroups(isCoach);
   const { refetch: refetchProfile } = profileQuery;
 
@@ -54,7 +54,7 @@ export default function ProfileScreen() {
   const profile = profileQuery.data;
   const displayName = isCoach ? session?.fullName : profile ? `${profile.firstName} ${profile.lastName}` : session?.fullName;
   const groups = isCoach ? coachGroupsQuery.data ?? [] : groupsQuery.data ?? [];
-  const latestReport = reportsQuery.data?.[0];
+  const averages = developmentQuery.data?.averages;
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
@@ -74,11 +74,11 @@ export default function ProfileScreen() {
       </View>
 
       {!isCoach ? (
-        latestReport ? (
+        averages ? (
           <View style={styles.scoreGrid}>
-            <CircularScore value={latestReport.speedScore * 10} label="Hız" />
-            <CircularScore value={latestReport.dribblingScore * 10} label="Teknik" />
-            <CircularScore value={latestReport.strengthScore * 10} label="Kondisyon" color={colors.primary} />
+            <CircularScore value={averages.technicalDevelopment} label="Teknik" />
+            <CircularScore value={averages.physicalCondition} label="Kondisyon" />
+            <CircularScore value={averages.discipline} label="Disiplin" color={colors.primary} />
           </View>
         ) : (
           <SurfaceCard>

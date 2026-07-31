@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@/shared/api/apiClient";
 import { endpoints } from "@/shared/constants/endpoints";
-import type { AttendanceResponse, AthleteReportResponse, GroupResponse, MobileAthleteResponse, MobileProfileResponse, PaymentResponse, TrainingResponse } from "@/features/me/types";
+import type { AttendanceResponse, AthleteReportResponse, DevelopmentSummaryResponse, GroupResponse, MobileAthleteResponse, MobileProfileResponse, PaymentResponse, TrainingResponse } from "@/features/me/types";
 
 type TrainingRange = {
   from: string;
@@ -44,6 +44,14 @@ export function usePayments(enabled = true, athleteProfileId?: string | null) {
 
 export function useReports(enabled = true, athleteProfileId?: string | null) {
   return useQuery({ enabled, queryKey: ["me", "athlete-reports", athleteProfileId], queryFn: () => apiRequest<AthleteReportResponse[]>(withAthlete(endpoints.meAthleteReports, athleteProfileId)) });
+}
+
+export function useDevelopmentSummary(enabled = true, athleteProfileId?: string | null) {
+  return useQuery({
+    enabled,
+    queryKey: ["me", "development-summary", athleteProfileId],
+    queryFn: () => apiRequest<DevelopmentSummaryResponse>(withAthlete(endpoints.meDevelopmentSummary, athleteProfileId))
+  });
 }
 
 function withAthlete(path: string, athleteProfileId?: string | null) {

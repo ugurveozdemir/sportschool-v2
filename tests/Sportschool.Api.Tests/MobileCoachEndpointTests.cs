@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Features.Announcements;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Groups;
@@ -153,6 +154,9 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         var data = await SeedCoachScenarioAsync();
         using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
 
+        using var startResponse = await client.PostAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/start", null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+
         using var response = await client.PostAsJsonAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/attendance", new
         {
             athleteProfileId = data.Athlete.Id,
@@ -196,10 +200,115 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             status = AttendanceStatus.Present
         });
 
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var count = await _factory.QueryAsync(db => db.AttendanceRecords.CountAsync(
             x => x.TrainingSessionId == futureTraining.Id));
         Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task StartTraining_CreatesPendingAttendanceAndOnlyRelatedAthleteSeesAnnouncement()
+    {
+        var data = await SeedCoachScenarioAsync();
+        using var coachClient = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        using var startResponse = await coachClient.PostAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/start", null);
+
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+        var pending = await _factory.QueryAsync(db => db.AttendanceRecords
+            .Where(x => x.TrainingSessionId == data.CoachTraining.Id)
+            .ToListAsync());
+        Assert.Single(pending);
+        Assert.Null(pending[0].Status);
+        Assert.Equal(data.Coach.Id, await _factory.QueryAsync(db => db.TrainingSessions
+            .Where(x => x.Id == data.CoachTraining.Id)
+            .Select(x => x.StartedByUserId)
+            .SingleAsync()));
+
+        using var athleteClient = _factory.CreateAuthenticatedClient(data.AthleteUser, UserRole.Athlete);
+        using var otherAthleteClient = _factory.CreateAuthenticatedClient(data.OtherCoachAthleteUser, UserRole.Athlete);
+        var announcements = await athleteClient.GetFromJsonAsync<AnnouncementResponse[]>("/api/me/announcements");
+        var otherAnnouncements = await otherAthleteClient.GetFromJsonAsync<AnnouncementResponse[]>("/api/me/announcements");
+
+        Assert.NotNull(announcements);
+        Assert.Single(announcements!);
+        Assert.Equal(data.CoachTraining.Id, announcements[0].TrainingSessionId);
+        Assert.Empty(otherAnnouncements!);
+    }
+
+    [Fact]
+    public async Task CompleteTraining_RequiresAttendanceAndLocksAttendanceAfterCompletion()
+    {
+        var data = await SeedCoachScenarioAsync();
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        using var startResponse = await client.PostAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/start", null);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+
+        using var incompleteResponse = await client.PostAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/complete", null);
+        Assert.Equal(HttpStatusCode.Conflict, incompleteResponse.StatusCode);
+
+        using var attendanceResponse = await client.PutAsJsonAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/attendance", new
+        {
+            items = new[] { new { athleteProfileId = data.Athlete.Id, status = AttendanceStatus.Present } }
+        });
+        Assert.Equal(HttpStatusCode.NoContent, attendanceResponse.StatusCode);
+
+        using var completeResponse = await client.PostAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/complete", null);
+        Assert.Equal(HttpStatusCode.OK, completeResponse.StatusCode);
+
+        var lifecycle = await _factory.QueryAsync(db => db.TrainingSessions
+            .Where(x => x.Id == data.CoachTraining.Id)
+            .Select(x => new { x.StartedByUserId, x.CompletedByUserId, x.StartedAt, x.CompletedAt })
+            .SingleAsync());
+        Assert.Equal(data.Coach.Id, lifecycle.StartedByUserId);
+        Assert.Equal(data.Coach.Id, lifecycle.CompletedByUserId);
+        Assert.NotNull(lifecycle.StartedAt);
+        Assert.NotNull(lifecycle.CompletedAt);
+
+        using var lockedResponse = await client.PutAsJsonAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/attendance/{data.Athlete.Id}", new
+        {
+            athleteProfileId = data.Athlete.Id,
+            status = AttendanceStatus.Absent
+        });
+        Assert.Equal(HttpStatusCode.Conflict, lockedResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task TrainingReport_IsSavedOnlyForPresentAthleteAndMemberCanReadAutomaticSummary()
+    {
+        var data = await SeedCoachScenarioAsync();
+        using var coachClient = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+
+        await coachClient.PostAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/start", null);
+        await coachClient.PutAsJsonAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/attendance", new
+        {
+            items = new[] { new { athleteProfileId = data.Athlete.Id, status = AttendanceStatus.Present } }
+        });
+        await coachClient.PostAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/complete", null);
+
+        using var reportResponse = await coachClient.PutAsJsonAsync($"/api/mobile/coach/trainings/{data.CoachTraining.Id}/athletes/{data.Athlete.Id}/report", new
+        {
+            athleteProfileId = data.Athlete.Id,
+            nutritionScore = 80,
+            cognitiveDevelopmentScore = 70,
+            disciplineScore = 90,
+            physicalConditionScore = 60,
+            psychologicalDevelopmentScore = 75,
+            tacticalDevelopmentScore = 65,
+            technicalDevelopmentScore = 85,
+            coachNote = "İyi odaklandı."
+        });
+        Assert.Equal(HttpStatusCode.OK, reportResponse.StatusCode);
+
+        using var athleteClient = _factory.CreateAuthenticatedClient(data.AthleteUser, UserRole.Athlete);
+        var summary = await athleteClient.GetFromJsonAsync<DevelopmentSummaryResponse>("/api/me/development-summary");
+        Assert.NotNull(summary);
+        Assert.Equal(1, summary!.ReportCount);
+        Assert.Equal(90, summary.Averages!.Discipline);
+        Assert.Equal(70, summary.Averages.CognitiveDevelopment);
+        Assert.Equal(100, summary.AttendanceRate);
+        Assert.Single(summary.Reports);
     }
 
     [Fact]
@@ -346,7 +455,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
             return Task.CompletedTask;
         });
 
-        return new CoachScenario(coach, coachTraining, otherCoachTraining, group, athlete, otherCoachAthlete);
+        return new CoachScenario(coach, coachTraining, otherCoachTraining, group, athlete, otherCoachAthlete, athleteUser, otherCoachAthleteUser);
     }
 
     private sealed record CoachScenario(
@@ -355,5 +464,7 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         TrainingSession OtherCoachTraining,
         TrainingGroup Group,
         AthleteProfile Athlete,
-        AthleteProfile OtherCoachAthlete);
+        AthleteProfile OtherCoachAthlete,
+        AppUser AthleteUser,
+        AppUser OtherCoachAthleteUser);
 }

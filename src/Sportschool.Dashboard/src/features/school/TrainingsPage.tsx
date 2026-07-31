@@ -132,6 +132,7 @@ export function TrainingsPage() {
           { title: "Antrenman", dataIndex: "title", key: "title", render: (title: string, training) => <><Typography.Text strong>{title}</Typography.Text>{training.location && <><br /><Typography.Text type="secondary">{training.location}</Typography.Text></>}</> },
           { title: "Gruplar", key: "groups", render: (_, training) => <Space size={[0, 4]} wrap>{training.groups.map((group) => <Tag key={group.id}>{group.name}</Tag>)}</Space> },
           { title: "Antrenör", dataIndex: "coachName", key: "coachName" },
+          { title: "Durum", key: "status", render: (_, training) => training.completedAt ? <Tag color="green">Tamamlandı</Tag> : training.startedAt ? <Tag color="blue">Devam ediyor</Tag> : <Tag>Planlandı</Tag> },
           { title: "Yoklama", key: "attendance", render: (_, training) => `${training.attendanceSummary.recordedCount}/${training.attendanceSummary.totalAthletes}` },
           {
             title: "İşlemler",

@@ -10,8 +10,8 @@ import { useMemberAnnouncements, useUnreadAnnouncementCount } from "@/features/a
 import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary, useCoachTrainings } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
-import { useAttendance, useGroups, useProfile, useReports, useTrainings } from "@/features/me/api";
-import type { AthleteReportResponse, AttendanceResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
+import { useAttendance, useDevelopmentSummary, useGroups, useProfile, useTrainings } from "@/features/me/api";
+import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
   const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
-  const reportsQuery = useReports(!isCoach, selectedAthleteProfileId);
+  const developmentQuery = useDevelopmentSummary(!isCoach, selectedAthleteProfileId);
   const announcementsQuery = useMemberAnnouncements(!isCoach, true);
   const unreadCountQuery = useUnreadAnnouncementCount(!isCoach);
   const coachSummaryQuery = useCoachSummary(isCoach);
@@ -75,9 +75,7 @@ export default function HomeScreen() {
   const todayTrainingCount = trainings.filter((training) => isSameDay(training.startsAt)).length;
   const announcements = announcementsQuery.data ?? [];
   const attendance = attendanceQuery.data ?? [];
-  const reports = reportsQuery.data ?? [];
-  const latestReport = reports[0];
-  const previousReport = reports[1];
+  const developmentSummary = developmentQuery.data;
 
   if (isParent) {
     return (
@@ -92,8 +90,7 @@ export default function HomeScreen() {
         nextTraining={nextTraining}
         todayTrainingCount={todayTrainingCount}
         announcements={announcements.slice(0, 2)}
-        latestReport={latestReport}
-        previousReport={previousReport}
+        developmentSummary={developmentSummary}
         attendance={attendance}
       />
     );
@@ -109,7 +106,7 @@ export default function HomeScreen() {
       groupCount={groupsQuery.data?.length ?? 0}
       attendance={attendance}
       announcementCount={unreadCountQuery.data?.count ?? 0}
-      latestReport={latestReport}
+      developmentSummary={developmentSummary}
     />
   );
 }
@@ -349,7 +346,7 @@ function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visi
   );
 }
 
-function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTraining, groupCount, attendance, announcementCount, latestReport }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; profileImageUrl?: string | null; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; latestReport?: AthleteReportResponse }) {
+function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTraining, groupCount, attendance, announcementCount, developmentSummary }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; profileImageUrl?: string | null; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; developmentSummary?: DevelopmentSummaryResponse }) {
   const stats = attendanceStats(attendance);
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={profileImageUrl ? resolveApiUrl(profileImageUrl) : null} label={firstName.slice(0, 1)} size={38} tone="dark" />}>
@@ -385,11 +382,11 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
             <Text style={styles.linkText}>Detaylar</Text>
           </Pressable>
         </View>
-        {latestReport ? (
+        {developmentSummary?.averages ? (
           <View style={styles.scoreRow}>
-            <CircularScore label="Hız" value={latestReport.speedScore * 10} color={colors.secondary} />
-            <CircularScore label="Teknik" value={latestReport.dribblingScore * 10} color={colors.primary} />
-            <CircularScore label="Kondisyon" value={latestReport.strengthScore * 10} color={colors.secondaryFixedDim} />
+            <CircularScore label="Teknik" value={developmentSummary.averages.technicalDevelopment} color={colors.secondary} />
+            <CircularScore label="Kondisyon" value={developmentSummary.averages.physicalCondition} color={colors.primary} />
+            <CircularScore label="Disiplin" value={developmentSummary.averages.discipline} color={colors.secondaryFixedDim} />
           </View>
         ) : (
           <EmptyState title="Rapor yok" description="Henüz yayınlanmış gelişim raporu bulunmuyor." />
@@ -406,13 +403,11 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
   );
 }
 
-function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, todayTrainingCount, announcements, latestReport, previousReport, attendance }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; latestReport?: AthleteReportResponse; previousReport?: AthleteReportResponse; attendance: AttendanceResponse[] }) {
+function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, todayTrainingCount, announcements, developmentSummary, attendance }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; developmentSummary?: DevelopmentSummaryResponse; attendance: AttendanceResponse[] }) {
   const nextTrainingGroup = nextTraining ? trainingGroupName(nextTraining) : null;
   const selectedAthlete = athletes.find((athlete) => athlete.id === selectedAthleteProfileId);
   const stats = attendanceStats(attendance);
-  const score = latestReport ? round1(averageScore([latestReport.speedScore, latestReport.strengthScore, latestReport.dribblingScore, latestReport.shootingScore])) : null;
-  const previousScore = previousReport ? round1(averageScore([previousReport.speedScore, previousReport.strengthScore, previousReport.dribblingScore, previousReport.shootingScore])) : null;
-  const trend = score !== null && previousScore !== null ? round1(score - previousScore) : null;
+  const score = developmentSummary?.averages ? averageMetrics(developmentSummary.averages) : null;
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={selectedAthlete?.profileImageUrl ? resolveApiUrl(selectedAthlete.profileImageUrl) : null} label={childName.slice(0, 1)} size={38} tone="light" />}>
       <View style={styles.headerBlockSmallGap}>
@@ -471,16 +466,14 @@ function ParentHome({ navItems, shellTitle, parentName, childName, athletes, sel
 
       <View style={styles.darkScoreCard}>
         <Text style={styles.darkCardTitle}>Gelişim Özeti</Text>
-        {latestReport && score !== null ? (
+        {developmentSummary?.averages && score !== null ? (
           <>
             <Text style={styles.darkSubtitle}>Genel performans puanı</Text>
             <View style={styles.scoreInline}>
               <Text style={styles.largeWhite}>{score.toFixed(1)}</Text>
-              {trend !== null && trend > 0 ? <Text style={styles.greenText}>↗ {trend.toFixed(1)} puan</Text> : null}
-              {trend !== null && trend < 0 ? <Text style={styles.redText}>↘ {Math.abs(trend).toFixed(1)} puan</Text> : null}
             </View>
-            <Progress label="Hız" value={latestReport.speedScore * 10} />
-            <Progress label="Teknik" value={latestReport.dribblingScore * 10} light />
+            <Progress label="Teknik" value={developmentSummary.averages.technicalDevelopment} />
+            <Progress label="Kondisyon" value={developmentSummary.averages.physicalCondition} light />
           </>
         ) : (
           <Text style={styles.darkSubtitle}>Henüz gelişim raporu bulunmuyor.</Text>
@@ -520,28 +513,26 @@ type AttendanceStats = {
   total: number;
   present: number;
   absent: number;
-  excused: number;
   rate: number;
   recent: AttendanceResponse[];
 };
 
 function attendanceStats(records: AttendanceResponse[]): AttendanceStats {
-  const present = records.filter((record) => record.status === "Present" || record.status === "Late").length;
+  const present = records.filter((record) => record.status === "Present").length;
   const absent = records.filter((record) => record.status === "Absent").length;
-  const excused = records.filter((record) => record.status === "Excused").length;
-  const total = records.length;
+  const recent = records.filter((record) => record.status !== null);
+  const total = recent.length;
   return {
     total,
     present,
     absent,
-    excused,
     rate: total > 0 ? Math.round((present / total) * 100) : 0,
-    recent: records.slice(0, 5)
+    recent: recent.slice(0, 5)
   };
 }
 
-function attendanceTone(status: AttendanceStatus): "success" | "danger" | "neutral" {
-  if (status === "Present" || status === "Late") {
+function attendanceTone(status: AttendanceStatus | null): "success" | "danger" | "neutral" {
+  if (status === "Present") {
     return "success";
   }
   return status === "Absent" ? "danger" : "neutral";
@@ -565,14 +556,15 @@ function AttendanceCard({ stats }: { stats: AttendanceStats }) {
           <View style={styles.attendanceStatsRow}>
             <AttendanceStat label="Geldi" value={stats.present} color={colors.secondary} />
             <AttendanceStat label="Gelmedi" value={stats.absent} color={colors.error} />
-            <AttendanceStat label="Mazeret" value={stats.excused} color={colors.outline} />
           </View>
           <View style={styles.attendanceList}>
             {stats.recent.map((record) => (
-              <View key={record.id} style={styles.attendanceRow}>
-                <Text style={styles.attendanceDate}>{formatDate(record.recordedAt)}</Text>
-                <Pill label={getAttendanceLabel(record.status)} tone={attendanceTone(record.status)} />
-              </View>
+              record.status === null ? null : (
+                <View key={record.id} style={styles.attendanceRow}>
+                  <Text style={styles.attendanceDate}>{record.recordedAt ? formatDate(record.recordedAt) : "Tarih yok"}</Text>
+                  <Pill label={getAttendanceLabel(record.status)} tone={attendanceTone(record.status)} />
+                </View>
+              )
             ))}
           </View>
         </>
@@ -663,12 +655,14 @@ function AnnouncementItem({ dotColor, title, text, date }: { dotColor: string; t
   );
 }
 
-function averageScore(values: number[]) {
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function round1(value: number) {
-  return Math.round(value * 10) / 10;
+function averageMetrics(averages: DevelopmentMetricAverages) {
+  return Math.round((averages.nutrition
+    + averages.cognitiveDevelopment
+    + averages.discipline
+    + averages.physicalCondition
+    + averages.psychologicalDevelopment
+    + averages.tacticalDevelopment
+    + averages.technicalDevelopment) / 7 * 10) / 10;
 }
 
 const styles = StyleSheet.create({

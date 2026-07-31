@@ -21,9 +21,9 @@ public sealed class AttendanceRecord
 
     public AthleteProfile AthleteProfile { get; set; } = null!;
 
-    public AttendanceStatus Status { get; set; }
+    public AttendanceStatus? Status { get; set; }
 
-    public Guid RecordedByUserId { get; set; }
+    public Guid? RecordedByUserId { get; set; }
 
     public AppUser RecordedBy { get; set; } = null!;
 
@@ -31,7 +31,7 @@ public sealed class AttendanceRecord
 
     public AppUser? UpdatedBy { get; set; }
 
-    public DateTimeOffset RecordedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? RecordedAt { get; set; }
 
     public DateTimeOffset? UpdatedAt { get; set; }
 }

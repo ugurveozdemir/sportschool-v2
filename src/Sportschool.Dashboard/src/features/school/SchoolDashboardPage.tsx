@@ -24,6 +24,10 @@ type TrainingItem = {
   location: string | null;
   totalAthletes: number;
   recordedAttendanceCount: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  recordedReportCount: number;
+  presentCount: number;
 };
 
 type RecentReport = {
@@ -68,9 +72,15 @@ export function SchoolDashboardPage() {
                       title={training.title}
                       description={`${formatTime(training.startsAt)} · ${training.coachName}${training.location ? ` · ${training.location}` : ""}`}
                     />
-                    <Tag color={training.totalAthletes > training.recordedAttendanceCount ? "orange" : "green"}>
-                      {training.recordedAttendanceCount}/{training.totalAthletes} yoklama
-                    </Tag>
+                    <div>
+                      <Tag color={training.completedAt ? "green" : training.startedAt ? "blue" : "default"}>
+                        {training.completedAt ? "Tamamlandı" : training.startedAt ? "Devam ediyor" : "Planlandı"}
+                      </Tag>
+                      <Typography.Text type="secondary">
+                        {training.recordedAttendanceCount}/{training.totalAthletes} yoklama
+                        {training.startedAt ? ` · ${training.recordedReportCount}/${training.presentCount} rapor` : ""}
+                      </Typography.Text>
+                    </div>
                   </List.Item>
                 )}
               />
