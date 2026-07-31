@@ -100,7 +100,12 @@ public static class TrainingReportEndpoints
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(TrainingReportResponse.From(report, training.Title, training.CompletedAt.Value));
+        var coachName = await db.Users
+            .Where(x => x.Id == context.Value.CoachId)
+            .Select(x => x.FullName)
+            .SingleAsync(cancellationToken);
+
+        return Results.Ok(TrainingReportResponse.From(report, training.Title, training.CompletedAt.Value, coachName));
     }
 
     private static async Task<IResult> GetDevelopmentSummaryAsync(
@@ -137,6 +142,7 @@ public static class TrainingReportEndpoints
         var reports = await db.TrainingAthleteReports
             .AsNoTracking()
             .Include(x => x.TrainingSession)
+            .Include(x => x.Coach)
             .Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == profile.Id)
             .ToListAsync(cancellationToken);
         reports = reports
@@ -177,7 +183,7 @@ public static class TrainingReportEndpoints
             presentCount,
             attendanceRate,
             averages,
-            reports.Select(x => TrainingReportResponse.From(x, x.TrainingSession.Title, x.TrainingSession.CompletedAt!.Value)).ToArray()));
+            reports.Select(x => TrainingReportResponse.From(x, x.TrainingSession.Title, x.TrainingSession.CompletedAt!.Value, x.Coach.FullName)).ToArray()));
     }
 
     private static decimal Average(
@@ -224,6 +230,7 @@ public sealed record TrainingReportResponse(
     Guid TrainingSessionId,
     Guid AthleteProfileId,
     Guid CoachId,
+    string CoachName,
     string TrainingTitle,
     DateTimeOffset TrainingCompletedAt,
     decimal NutritionScore,
@@ -240,13 +247,15 @@ public sealed record TrainingReportResponse(
     public static TrainingReportResponse From(
         TrainingAthleteReport report,
         string trainingTitle,
-        DateTimeOffset trainingCompletedAt)
+        DateTimeOffset trainingCompletedAt,
+        string coachName)
     {
         return new TrainingReportResponse(
             report.Id,
             report.TrainingSessionId,
             report.AthleteProfileId,
             report.CoachId,
+            coachName,
             trainingTitle,
             trainingCompletedAt,
             report.NutritionScore,

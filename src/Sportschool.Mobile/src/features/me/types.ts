@@ -92,6 +92,7 @@ export type TrainingReportResponse = {
   trainingSessionId: string;
   athleteProfileId: string;
   coachId: string;
+  coachName: string;
   trainingTitle: string;
   trainingCompletedAt: string;
   nutritionScore: number;

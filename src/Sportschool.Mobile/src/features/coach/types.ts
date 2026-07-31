@@ -73,6 +73,7 @@ export type CoachAthleteDetailResponse = {
   profileImageUrl: string | null;
   groups: string[];
   reports: AthleteReportResponse[];
+  trainingReports: TrainingReportResponse[];
 };
 
 export type TrainingGroupSummary = {

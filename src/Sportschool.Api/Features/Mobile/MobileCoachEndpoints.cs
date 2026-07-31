@@ -159,14 +159,20 @@ public static class MobileCoachEndpoints
             .ToListAsync(cancellationToken);
 
         var athleteIds = athleteRows.Select(x => x.AthleteProfileId).ToArray();
-        var reportScores = await db.AthleteReports
+        var reportScores = await db.TrainingAthleteReports
             .AsNoTracking()
             .Where(x => x.SchoolId == context.SchoolId && athleteIds.Contains(x.AthleteProfileId))
             .Select(x => new
             {
                 x.AthleteProfileId,
                 x.CreatedAt,
-                AverageScore = (x.SpeedScore + x.StrengthScore + x.DribblingScore + x.ShootingScore) / 4
+                x.NutritionScore,
+                x.CognitiveDevelopmentScore,
+                x.DisciplineScore,
+                x.PhysicalConditionScore,
+                x.PsychologicalDevelopmentScore,
+                x.TacticalDevelopmentScore,
+                x.TechnicalDevelopmentScore
             })
             .ToListAsync(cancellationToken);
 
@@ -174,7 +180,17 @@ public static class MobileCoachEndpoints
             .GroupBy(x => x.AthleteProfileId)
             .ToDictionary(
                 x => x.Key,
-                x => (decimal?)x.OrderByDescending(report => report.CreatedAt).First().AverageScore);
+                x =>
+                {
+                    var latest = x.OrderByDescending(report => report.CreatedAt).First();
+                    return (decimal?)Math.Round((latest.NutritionScore
+                        + latest.CognitiveDevelopmentScore
+                        + latest.DisciplineScore
+                        + latest.PhysicalConditionScore
+                        + latest.PsychologicalDevelopmentScore
+                        + latest.TacticalDevelopmentScore
+                        + latest.TechnicalDevelopmentScore) / 7, 2);
+                });
 
         var athletes = athleteRows
             .Select(x => new MobileCoachAthleteListItem(
@@ -243,6 +259,23 @@ public static class MobileCoachEndpoints
             .OrderByDescending(x => x.CreatedAt)
             .ToArray();
 
+        var trainingReports = await db.TrainingAthleteReports
+            .AsNoTracking()
+            .Include(x => x.TrainingSession)
+            .Include(x => x.Coach)
+            .Where(x => x.SchoolId == context.SchoolId && x.AthleteProfileId == athleteProfileId)
+            .ToListAsync(cancellationToken);
+        var orderedTrainingReports = trainingReports
+            .Where(x => x.TrainingSession.CompletedAt is not null)
+            .OrderByDescending(x => x.TrainingSession.CompletedAt)
+            .ThenByDescending(x => x.CreatedAt)
+            .Select(x => TrainingReportResponse.From(
+                x,
+                x.TrainingSession.Title,
+                x.TrainingSession.CompletedAt!.Value,
+                x.Coach.FullName))
+            .ToArray();
+
         return Results.Ok(new MobileCoachAthleteDetailResponse(
             athlete.Id,
             athlete.FirstName,
@@ -252,7 +285,8 @@ public static class MobileCoachEndpoints
             athlete.ParentPhone,
             athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(context.SchoolId, athlete.Id, athlete.ProfileImageVersion),
             groups,
-            reports));
+            reports,
+            orderedTrainingReports));
     }
 
     private static async Task<IResult> CreateAthleteReportAsync(
@@ -702,7 +736,8 @@ public sealed record MobileCoachAthleteDetailResponse(
     string ParentPhone,
     string? ProfileImageUrl,
     IReadOnlyCollection<string> Groups,
-    IReadOnlyCollection<AthleteReportResponse> Reports);
+    IReadOnlyCollection<AthleteReportResponse> Reports,
+    IReadOnlyCollection<TrainingReportResponse> TrainingReports);
 
 public sealed record MobileCoachTrainingItem(
     Guid Id,

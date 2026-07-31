@@ -43,8 +43,8 @@ export default function AttendanceScreen() {
       <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
         <View style={styles.headerBlock}>
           <View>
-            <Text style={styles.title}>Sporcular</Text>
-            <Text style={styles.subtitle}>Sana atanmış gruplardaki aktif sporcular.</Text>
+            <Text style={styles.title}>Raporlama</Text>
+            <Text style={styles.subtitle}>Tamamlanan antrenmanların raporlarını sporcu bazında görüntüle.</Text>
           </View>
           <View style={styles.metricsRow}>
             <MetricTile icon="account-multiple-outline" label="Sporcu" value={`${athletes.length}`} />
