@@ -12,7 +12,6 @@ import { useCoachSummary, useCoachTrainings } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
 import { useAttendance, useDevelopmentSummary, useGroups, useProfile, useTrainings } from "@/features/me/api";
 import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
-import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
@@ -115,6 +114,11 @@ function hasStarted(training: CoachTrainingItem) {
   return new Date(training.startsAt).getTime() <= Date.now();
 }
 
+function getInitials(value?: string) {
+  const initials = value?.trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
+  return initials?.toLocaleUpperCase("tr-TR") || "A";
+}
+
 function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSchoolAdmin }: { sessionName?: string; summary?: CoachSummaryResponse; trainings: CoachTrainingItem[]; navItems: ReturnType<typeof getMobileNav>; shellTitle: string; isSchoolAdmin: boolean }) {
   const todayTrainings = summary?.todayTrainings ?? [];
   const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now());
@@ -145,7 +149,7 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
   return (
     <ScreenShell title={shellTitle} navItems={navItems}>
       <View style={styles.coachWelcome}>
-        <AcademyLogoAvatar size={54} />
+        <InitialsAvatar label={getInitials(sessionName)} size={54} tone="dark" />
         <View style={styles.flexOne}>
           <Text style={styles.coachWelcomeTitle}>Hoş Geldin, {isSchoolAdmin ? "Yönetici" : "Antrenör"}</Text>
           <Text style={styles.coachWelcomeName}>{sessionName ?? "Akademi Ekibi"}</Text>

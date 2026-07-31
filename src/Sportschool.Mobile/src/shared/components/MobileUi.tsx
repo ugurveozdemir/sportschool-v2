@@ -53,8 +53,8 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
           <AcademyLogoAvatar size={34} />
         </View>
         <Text numberOfLines={1} style={styles.topTitle}>{title}</Text>
-        <Pressable accessibilityLabel="Sporcu ara" onPress={() => router.push("/attendance")} style={styles.topBarButton}>
-          <MaterialCommunityIcons name="magnify" size={26} color={colors.onSurfaceVariant} />
+        <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.topBarButton}>
+          <MaterialCommunityIcons name="bell-outline" size={26} color={colors.onSurfaceVariant} />
         </Pressable>
       </View>
     );
