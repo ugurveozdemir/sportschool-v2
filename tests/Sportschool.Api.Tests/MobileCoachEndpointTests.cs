@@ -342,6 +342,19 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         Assert.Equal(data.Coach.FullName, trainingReport.CoachName);
         Assert.Equal(data.CoachTraining.Title, trainingReport.TrainingTitle);
 
+        var trainingReportList = await coachClient.GetFromJsonAsync<CoachTrainingReportListItem[]>(
+            "/api/mobile/coach/training-reports");
+        var trainingReportListItem = Assert.Single(trainingReportList!);
+        Assert.Equal(data.CoachTraining.Id, trainingReportListItem.TrainingSessionId);
+        Assert.Equal(data.Coach.FullName, trainingReportListItem.CoachName);
+
+        var trainingReportDetail = await coachClient.GetFromJsonAsync<CoachTrainingReportDetailResponse>(
+            $"/api/mobile/coach/training-reports/{data.CoachTraining.Id}");
+        Assert.NotNull(trainingReportDetail);
+        var athleteTrainingReport = Assert.Single(trainingReportDetail!.Reports);
+        Assert.Equal(data.Athlete.Id, athleteTrainingReport.AthleteProfileId);
+        Assert.Equal("Mobile Athlete", athleteTrainingReport.AthleteName);
+
         using var athleteClient = _factory.CreateAuthenticatedClient(data.AthleteUser, UserRole.Athlete);
         var summary = await athleteClient.GetFromJsonAsync<DevelopmentSummaryResponse>("/api/me/development-summary");
         Assert.NotNull(summary);

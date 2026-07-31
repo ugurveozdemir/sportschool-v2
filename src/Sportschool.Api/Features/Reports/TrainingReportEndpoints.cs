@@ -18,6 +18,8 @@ public static class TrainingReportEndpoints
         coachGroup.MapPut(
             "/trainings/{trainingId:guid}/athletes/{athleteProfileId:guid}/report",
             SaveTrainingReportAsync);
+        coachGroup.MapGet("/training-reports", ListCoachTrainingReportsAsync);
+        coachGroup.MapGet("/training-reports/{trainingId:guid}", GetCoachTrainingReportAsync);
 
         var memberGroup = app.MapGroup("/api/me")
             .RequireAuthorization(policy => policy.RequireRole(UserRole.Parent.ToString(), UserRole.Athlete.ToString()));
@@ -186,6 +188,94 @@ public static class TrainingReportEndpoints
             reports.Select(x => TrainingReportResponse.From(x, x.TrainingSession.Title, x.TrainingSession.CompletedAt!.Value, x.Coach.FullName)).ToArray()));
     }
 
+    private static async Task<IResult> ListCoachTrainingReportsAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var context = GetCoachContext(currentUser);
+        if (context is null)
+        {
+            return Results.Forbid();
+        }
+
+        var reportRows = await db.TrainingAthleteReports
+            .AsNoTracking()
+            .Include(x => x.TrainingSession)
+            .Include(x => x.Coach)
+            .Where(x => x.SchoolId == context.Value.SchoolId
+                && x.TrainingSession.CoachId == context.Value.CoachId
+                && x.TrainingSession.CompletedAt != null)
+            .ToListAsync(cancellationToken);
+
+        var reports = reportRows
+            .GroupBy(x => x.TrainingSessionId)
+            .Select(group =>
+            {
+                var latest = group.OrderByDescending(x => x.CreatedAt).First();
+                return new CoachTrainingReportListItem(
+                    group.Key,
+                    latest.TrainingSession.Title,
+                    latest.TrainingSession.CompletedAt!.Value,
+                    latest.Coach.FullName,
+                    group.Count());
+            })
+            .OrderByDescending(x => x.TrainingCompletedAt)
+            .ToArray();
+
+        return Results.Ok(reports);
+    }
+
+    private static async Task<IResult> GetCoachTrainingReportAsync(
+        Guid trainingId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var context = GetCoachContext(currentUser);
+        if (context is null)
+        {
+            return Results.Forbid();
+        }
+
+        var training = await db.TrainingSessions
+            .AsNoTracking()
+            .Include(x => x.Coach)
+            .FirstOrDefaultAsync(x => x.Id == trainingId
+                && x.SchoolId == context.Value.SchoolId
+                && x.CoachId == context.Value.CoachId
+                && x.CompletedAt != null,
+                cancellationToken);
+        if (training is null)
+        {
+            return Results.NotFound();
+        }
+        var completedAt = training.CompletedAt!.Value;
+
+        var reportRows = await db.TrainingAthleteReports
+            .AsNoTracking()
+            .Include(x => x.AthleteProfile)
+            .Include(x => x.Coach)
+            .Where(x => x.TrainingSessionId == trainingId && x.SchoolId == context.Value.SchoolId)
+            .ToListAsync(cancellationToken);
+
+        var reports = reportRows
+            .OrderBy(x => x.AthleteProfile.LastName)
+            .ThenBy(x => x.AthleteProfile.FirstName)
+            .Select(x => new CoachTrainingAthleteReportItem(
+                x.AthleteProfileId,
+                x.AthleteProfile.FirstName + " " + x.AthleteProfile.LastName,
+                TrainingReportResponse.From(x, training.Title, completedAt, x.Coach.FullName)))
+            .ToArray();
+
+        return Results.Ok(new CoachTrainingReportDetailResponse(
+            training.Id,
+            training.Title,
+            completedAt,
+            training.Coach.FullName,
+            reports));
+    }
+
     private static decimal Average(
         IReadOnlyCollection<TrainingAthleteReport> reports,
         Func<TrainingAthleteReport, decimal> selector)
@@ -289,3 +379,22 @@ public sealed record DevelopmentMetricAverages(
     decimal PsychologicalDevelopment,
     decimal TacticalDevelopment,
     decimal TechnicalDevelopment);
+
+public sealed record CoachTrainingReportListItem(
+    Guid TrainingSessionId,
+    string TrainingTitle,
+    DateTimeOffset TrainingCompletedAt,
+    string CoachName,
+    int ReportCount);
+
+public sealed record CoachTrainingReportDetailResponse(
+    Guid TrainingSessionId,
+    string TrainingTitle,
+    DateTimeOffset TrainingCompletedAt,
+    string CoachName,
+    IReadOnlyCollection<CoachTrainingAthleteReportItem> Reports);
+
+public sealed record CoachTrainingAthleteReportItem(
+    Guid AthleteProfileId,
+    string AthleteName,
+    TrainingReportResponse Report);

@@ -40,5 +40,7 @@ export const endpoints = {
   coachAttendanceBatch: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/attendance`,
   coachStartTraining: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/start`,
   coachCompleteTraining: (trainingId: string) => `/api/mobile/coach/trainings/${trainingId}/complete`,
-  coachTrainingReport: (trainingId: string, athleteProfileId: string) => `/api/mobile/coach/trainings/${trainingId}/athletes/${athleteProfileId}/report`
+  coachTrainingReport: (trainingId: string, athleteProfileId: string) => `/api/mobile/coach/trainings/${trainingId}/athletes/${athleteProfileId}/report`,
+  coachTrainingReports: "/api/mobile/coach/training-reports",
+  coachTrainingReportDetails: (trainingId: string) => `/api/mobile/coach/training-reports/${trainingId}`
 } as const;

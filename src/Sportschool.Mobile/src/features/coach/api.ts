@@ -7,6 +7,8 @@ import type {
   AthleteRosterResponse,
   CoachAthleteDetailResponse,
   CoachAthleteListItem,
+  CoachTrainingReportDetailResponse,
+  CoachTrainingReportListItem,
   CoachAttendanceRosterResponse,
   CoachGroupResponse,
   CoachSummaryResponse,
@@ -130,6 +132,22 @@ export function useCoachAthlete(athleteProfileId?: string) {
     enabled: Boolean(athleteProfileId),
     queryKey: ["coach", "athlete", athleteProfileId],
     queryFn: () => apiRequest<CoachAthleteDetailResponse>(endpoints.coachAthlete(athleteProfileId!))
+  });
+}
+
+export function useCoachTrainingReports(enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: ["coach", "training-reports"],
+    queryFn: () => apiRequest<CoachTrainingReportListItem[]>(endpoints.coachTrainingReports)
+  });
+}
+
+export function useCoachTrainingReportDetails(trainingId?: string) {
+  return useQuery({
+    enabled: Boolean(trainingId),
+    queryKey: ["coach", "training-report", trainingId],
+    queryFn: () => apiRequest<CoachTrainingReportDetailResponse>(endpoints.coachTrainingReportDetails(trainingId!))
   });
 }
 

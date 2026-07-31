@@ -1,16 +1,14 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
-import { useCoachAthletes } from "@/features/coach/api";
-import type { CoachAthleteListItem } from "@/features/coach/types";
+import { useCoachTrainingReports } from "@/features/coach/api";
+import type { CoachTrainingReportListItem } from "@/features/coach/types";
 import { useAttendance, useTrainings } from "@/features/me/api";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
-import { resolveApiUrl } from "@/shared/api/apiClient";
+import { InitialsAvatar, MetricTile, Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
 import { spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
@@ -24,10 +22,10 @@ export default function AttendanceScreen() {
   const { selectedAthleteProfileId } = useAthleteSelection();
   const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
   const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);
-  const coachAthletesQuery = useCoachAthletes(isCoach);
+  const trainingReportsQuery = useCoachTrainingReports(isCoach);
 
-  if (isCoach && coachAthletesQuery.isLoading) {
-    return <LoadingState label="Sporcular yükleniyor" />;
+  if (isCoach && trainingReportsQuery.isLoading) {
+    return <LoadingState label="Antrenman raporları yükleniyor" />;
   }
 
   if (!isCoach && attendanceQuery.isLoading) {
@@ -35,31 +33,29 @@ export default function AttendanceScreen() {
   }
 
   if (isCoach) {
-    const athletes = coachAthletesQuery.data ?? [];
-    const scoredAthletes = athletes.filter((athlete) => athlete.latestAverageScore !== null).length;
-    const groupCount = new Set(athletes.flatMap((athlete) => athlete.groups)).size;
+    const reports = trainingReportsQuery.data ?? [];
+    const athleteReportCount = reports.reduce((total, report) => total + report.reportCount, 0);
 
     return (
       <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
         <View style={styles.headerBlock}>
           <View>
-            <Text style={styles.title}>Raporlama</Text>
-            <Text style={styles.subtitle}>Tamamlanan antrenmanların raporlarını sporcu bazında görüntüle.</Text>
+            <Text style={styles.title}>Son Antrenman Raporları</Text>
+            <Text style={styles.subtitle}>Bir antrenmanı seçerek sporcu raporlarını görüntüle.</Text>
           </View>
           <View style={styles.metricsRow}>
-            <MetricTile icon="account-multiple-outline" label="Sporcu" value={`${athletes.length}`} />
-            <MetricTile icon="account-group-outline" label="Grup" value={`${groupCount}`} tone="success" />
-            <MetricTile icon="chart-line" label="Raporlu" value={`${scoredAthletes}`} tone="warning" />
+            <MetricTile icon="calendar-check-outline" label="Antrenman" value={`${reports.length}`} />
+            <MetricTile icon="file-chart-outline" label="Rapor" value={`${athleteReportCount}`} tone="success" />
           </View>
         </View>
 
         <View style={styles.rosterList}>
-          {athletes.length === 0 ? (
+          {reports.length === 0 ? (
             <SurfaceCard>
-              <EmptyState title="Sporcu yok" description="Henüz sana atanmış aktif sporcu bulunmuyor." />
+              <EmptyState title="Rapor yok" description="Tamamlanmış antrenmanlar için henüz sporcu raporu girilmemiş." />
             </SurfaceCard>
           ) : (
-            athletes.map((athlete) => <AthleteRow key={athlete.athleteProfileId} athlete={athlete} />)
+            reports.map((report) => <TrainingReportRow key={report.trainingSessionId} report={report} />)
           )}
         </View>
       </ScreenShell>
@@ -102,39 +98,36 @@ export default function AttendanceScreen() {
   );
 }
 
-function AthleteRow({ athlete }: { athlete: CoachAthleteListItem }) {
-  const name = `${athlete.firstName} ${athlete.lastName}`;
-  const score = athlete.latestAverageScore;
+function TrainingReportRow({ report }: { report: CoachTrainingReportListItem }) {
   return (
-    <Pressable onPress={() => router.push({ pathname: "/athletes/[athleteProfileId]", params: { athleteProfileId: athlete.athleteProfileId } })}>
-      <SurfaceCard style={styles.athleteCard}>
-        <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={initials(name)} size={46} tone="light" />
+    <Pressable onPress={() => router.push({ pathname: "/reports/[trainingId]", params: { trainingId: report.trainingSessionId } })}>
+      <SurfaceCard style={styles.trainingReportCard}>
         <View style={styles.flexOne}>
-          <Text style={styles.athleteName}>{name}</Text>
-          <Text style={styles.rowMeta}>{athlete.groups.join(", ") || "Grup ataması yok"}</Text>
-          <Text style={styles.rowMeta}>Veli: {athlete.parentFullName}</Text>
+          <Text style={styles.reportDate}>{formatDate(report.trainingCompletedAt)} · Antrenman Raporu</Text>
+          <Text style={styles.rowTitle}>{report.trainingTitle}</Text>
+          <Text style={styles.rowMeta}>Antrenör: {report.coachName}</Text>
         </View>
-        {score !== null ? <Pill label={`${score.toFixed(1)} skor`} tone="success" /> : <Pill label="Rapor yok" tone="neutral" />}
-        <MaterialCommunityIcons name="chevron-right" size={26} color={colors.outline} />
+        <View style={styles.reportAction}>
+          <Pill label={`${report.reportCount} sporcu`} tone="success" />
+          <Text style={styles.chevron}>›</Text>
+        </View>
       </SurfaceCard>
     </Pressable>
   );
 }
 
-function initials(name: string) {
-  return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-}
-
 const styles = StyleSheet.create({
-  athleteCard: { alignItems: "center", flexDirection: "row", gap: spacing.md },
-  athleteName: { ...typography.title, color: colors.primary },
+  chevron: { color: colors.outline, fontSize: 30, lineHeight: 30 },
   flexOne: { flex: 1 },
   headerBlock: { gap: spacing.lg },
   historyRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   metricsRow: { flexDirection: "row", gap: spacing.sm },
+  reportAction: { alignItems: "flex-end", gap: spacing.xs },
+  reportDate: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   rosterList: { gap: spacing.md },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
   rowTitle: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
-  title: { ...typography.headline, color: colors.primary }
+  title: { ...typography.headline, color: colors.primary },
+  trainingReportCard: { alignItems: "center", flexDirection: "row", gap: spacing.md }
 });

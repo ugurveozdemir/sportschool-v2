@@ -76,6 +76,28 @@ export type CoachAthleteDetailResponse = {
   trainingReports: TrainingReportResponse[];
 };
 
+export type CoachTrainingReportListItem = {
+  trainingSessionId: string;
+  trainingTitle: string;
+  trainingCompletedAt: string;
+  coachName: string;
+  reportCount: number;
+};
+
+export type CoachTrainingReportDetailResponse = {
+  trainingSessionId: string;
+  trainingTitle: string;
+  trainingCompletedAt: string;
+  coachName: string;
+  reports: CoachTrainingAthleteReportItem[];
+};
+
+export type CoachTrainingAthleteReportItem = {
+  athleteProfileId: string;
+  athleteName: string;
+  report: TrainingReportResponse;
+};
+
 export type TrainingGroupSummary = {
   id: string;
   name: string;
