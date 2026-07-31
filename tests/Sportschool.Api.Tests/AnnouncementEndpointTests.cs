@@ -93,6 +93,27 @@ public sealed class AnnouncementEndpointTests
     }
 
     [Fact]
+    public async Task SchoolStaffUnreadCountIsPerUser()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedAnnouncementScenarioAsync(factory);
+        using var coachClient = factory.CreateAuthenticatedClient(fixture.Coach, UserRole.Coach);
+        using var adminClient = factory.CreateAuthenticatedClient(fixture.Admin, UserRole.SchoolAdmin);
+
+        var coachCount = await coachClient.GetFromJsonAsync<UnreadCountResponse>("/api/school/announcements/unread-count");
+        Assert.NotNull(coachCount);
+        Assert.Equal(1, coachCount!.Count);
+
+        using var readResponse = await coachClient.PostAsync("/api/school/announcements/read", null);
+        Assert.Equal(HttpStatusCode.NoContent, readResponse.StatusCode);
+
+        var coachCountAfterRead = await coachClient.GetFromJsonAsync<UnreadCountResponse>("/api/school/announcements/unread-count");
+        var adminCount = await adminClient.GetFromJsonAsync<UnreadCountResponse>("/api/school/announcements/unread-count");
+        Assert.Equal(0, coachCountAfterRead!.Count);
+        Assert.Equal(1, adminCount!.Count);
+    }
+
+    [Fact]
     public async Task MarkRead_IsPerUser_OtherUserStillSeesUnread()
     {
         await using var factory = new TestAppFactory();

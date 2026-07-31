@@ -16,6 +16,10 @@ public static class AnnouncementEndpoints
 
         schoolGroup.MapGet("", ListSchoolAnnouncementsAsync)
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
+        schoolGroup.MapGet("/unread-count", GetSchoolUnreadCountAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
+        schoolGroup.MapPost("/read", MarkSchoolAllReadAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
         schoolGroup.MapPost("", CreateAnnouncementAsync)
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
         schoolGroup.MapPut("/{id:guid}", UpdateAnnouncementAsync)
@@ -138,6 +142,41 @@ public static class AnnouncementEndpoints
         return Results.Ok(new UnreadCountResponse(count));
     }
 
+    private static async Task<IResult> GetSchoolUnreadCountAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var activeRows = await db.Announcements
+            .AsNoTracking()
+            .Where(a => a.SchoolId == schoolId.Value
+                && a.IsActive)
+            .Select(a => new { a.Id, a.ExpiresAt })
+            .ToListAsync(cancellationToken);
+
+        var activeIds = activeRows
+            .Where(a => a.ExpiresAt == null || a.ExpiresAt > now)
+            .Select(a => a.Id)
+            .ToList();
+
+        var readIds = await db.AnnouncementReads
+            .AsNoTracking()
+            .Where(r => r.UserId == userId.Value)
+            .Select(r => r.AnnouncementId)
+            .ToHashSetAsync(cancellationToken);
+
+        var count = activeIds.Count(id => !readIds.Contains(id));
+        return Results.Ok(new UnreadCountResponse(count));
+    }
+
     private static async Task<IResult> MarkAllReadAsync(
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
@@ -161,6 +200,58 @@ public static class AnnouncementEndpoints
                         || membership.AthleteProfile.ParentUserId == userId.Value))))
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
+
+        var alreadyReadIds = await db.AnnouncementReads
+            .AsNoTracking()
+            .Where(r => r.UserId == userId.Value)
+            .Select(r => r.AnnouncementId)
+            .ToListAsync(cancellationToken);
+
+        var readSet = new HashSet<Guid>(alreadyReadIds);
+        var unreadIds = allIds.Where(id => !readSet.Contains(id)).ToList();
+
+        foreach (var id in unreadIds)
+        {
+            db.AnnouncementReads.Add(new AnnouncementRead
+            {
+                AnnouncementId = id,
+                UserId = userId.Value,
+                ReadAt = now
+            });
+        }
+
+        if (unreadIds.Count > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> MarkSchoolAllReadAsync(
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        var userId = CurrentUser.GetUserId(currentUser);
+        if (schoolId is null || userId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var announcementRows = await db.Announcements
+            .AsNoTracking()
+            .Where(a => a.SchoolId == schoolId.Value
+                && a.IsActive)
+            .Select(a => new { a.Id, a.ExpiresAt })
+            .ToListAsync(cancellationToken);
+
+        var allIds = announcementRows
+            .Where(a => a.ExpiresAt == null || a.ExpiresAt > now)
+            .Select(a => a.Id)
+            .ToList();
 
         var alreadyReadIds = await db.AnnouncementReads
             .AsNoTracking()

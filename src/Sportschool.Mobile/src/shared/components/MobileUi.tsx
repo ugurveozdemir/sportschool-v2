@@ -43,8 +43,9 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
   const { session } = useSession();
   const isManager = session?.loginRole === "SchoolAdmin" || session?.roles.includes("Coach");
   const isMember = !isManager;
-  const unreadQuery = useUnreadAnnouncementCount(isMember);
+  const unreadQuery = useUnreadAnnouncementCount(Boolean(session), isManager ? "manager" : "member");
   const hasUnread = isMember && (unreadQuery.data?.count ?? 0) > 0;
+  const hasManagerUnread = isManager && (unreadQuery.data?.count ?? 0) > 0;
 
   if (isManager) {
     return (
@@ -55,6 +56,7 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
         <Text numberOfLines={1} style={styles.topTitle}>{title}</Text>
         <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.topBarButton}>
           <MaterialCommunityIcons name="bell-outline" size={26} color={colors.onSurfaceVariant} />
+          {hasManagerUnread ? <View style={styles.notificationDot} /> : null}
         </Pressable>
       </View>
     );
@@ -249,7 +251,7 @@ const styles = StyleSheet.create({
   circularScore: { alignItems: "center", gap: spacing.sm },
   content: { gap: spacing.lg, padding: spacing.md },
   contentBottom: { paddingBottom: spacing.xl },
-  iconButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
+  iconButton: { alignItems: "center", height: 44, justifyContent: "center", position: "relative", width: 44 },
   initialsAvatar: { alignItems: "center", justifyContent: "center" },
   initialsText: { ...typography.title },
   profileAvatar: { backgroundColor: colors.primaryFixed, resizeMode: "cover" },
@@ -271,7 +273,7 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.title, color: colors.onSurface },
   shell: { backgroundColor: colors.background, flex: 1 },
   topBar: { alignItems: "center", backgroundColor: colors.background, borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", height: 58, justifyContent: "space-between", paddingHorizontal: spacing.md },
-  topBarButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
+  topBarButton: { alignItems: "center", height: 44, justifyContent: "center", position: "relative", width: 44 },
   topActions: { alignItems: "center", flexDirection: "row", justifyContent: "flex-end", width: 80 },
   topLead: { alignItems: "flex-start", height: 44, justifyContent: "center", width: 80 },
   topTitle: { ...typography.headline, color: colors.primary, flex: 1, textAlign: "center" }

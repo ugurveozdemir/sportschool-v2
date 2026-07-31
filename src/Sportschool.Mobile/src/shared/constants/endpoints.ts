@@ -15,6 +15,8 @@ export const endpoints = {
   meDevelopmentSummary: "/api/me/development-summary",
   feed: "/api/feed",
   schoolAnnouncements: "/api/school/announcements",
+  schoolAnnouncementsUnreadCount: "/api/school/announcements/unread-count",
+  schoolAnnouncementsRead: "/api/school/announcements/read",
   schoolAnnouncement: (announcementId: string) => `/api/school/announcements/${announcementId}`,
   schoolGroups: "/api/school/groups",
   schoolAthletes: "/api/school/athletes",

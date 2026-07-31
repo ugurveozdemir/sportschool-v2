@@ -5,6 +5,8 @@ import { apiRequest } from "@/shared/api/apiClient";
 import { endpoints } from "@/shared/constants/endpoints";
 import type { AnnouncementResponse, SaveAnnouncementRequest, UnreadCountResponse } from "@/features/announcements/types";
 
+export type AnnouncementAudience = "member" | "manager";
+
 export function useMemberAnnouncements(enabled = true, currentOnly = false) {
   return useQuery({
     enabled,
@@ -63,19 +65,27 @@ function withCurrentOnly(path: string, currentOnly: boolean) {
   return `${path}?${params.toString()}`;
 }
 
-export function useUnreadAnnouncementCount(enabled = true) {
+export function useUnreadAnnouncementCount(enabled = true, audience: AnnouncementAudience = "member") {
+  const endpoint = audience === "manager"
+    ? endpoints.schoolAnnouncementsUnreadCount
+    : endpoints.meAnnouncementsUnreadCount;
+
   return useQuery({
     enabled,
-    queryKey: ["me", "announcements", "unread-count"],
-    queryFn: () => apiRequest<UnreadCountResponse>(endpoints.meAnnouncementsUnreadCount)
+    queryKey: ["announcements", "unread-count", audience],
+    queryFn: () => apiRequest<UnreadCountResponse>(endpoint)
   });
 }
 
-export function useMarkAnnouncementsRead() {
+export function useMarkAnnouncementsRead(audience: AnnouncementAudience = "member") {
+  const endpoint = audience === "manager"
+    ? endpoints.schoolAnnouncementsRead
+    : endpoints.meAnnouncementsRead;
+
   return useMutation({
-    mutationFn: () => apiRequest<void>(endpoints.meAnnouncementsRead, { method: "POST" }),
+    mutationFn: () => apiRequest<void>(endpoint, { method: "POST" }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["me", "announcements", "unread-count"] });
+      await queryClient.invalidateQueries({ queryKey: ["announcements", "unread-count", audience] });
     }
   });
 }

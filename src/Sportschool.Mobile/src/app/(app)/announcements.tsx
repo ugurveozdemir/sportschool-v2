@@ -37,25 +37,25 @@ const initialForm: AnnouncementFormState = {
 
 export default function AnnouncementsScreen() {
   const { session } = useSession();
-  const canManage = session?.roles.includes("Coach") || session?.roles.includes("SchoolAdmin");
+  const canManage = Boolean(session?.roles.includes("Coach") || session?.roles.includes("SchoolAdmin"));
   const memberAnnouncementsQuery = useMemberAnnouncements(!canManage);
   const schoolAnnouncementsQuery = useSchoolAnnouncements(Boolean(canManage));
   const createAnnouncement = useCreateAnnouncement();
   const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementResponse | null>(null);
   const updateAnnouncement = useUpdateAnnouncement(editingAnnouncement?.id);
   const deleteAnnouncement = useDeleteAnnouncement();
-  const markRead = useMarkAnnouncementsRead();
+  const markRead = useMarkAnnouncementsRead(canManage ? "manager" : "member");
   const [form, setForm] = useState(initialForm);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const announcementsQuery = canManage ? schoolAnnouncementsQuery : memberAnnouncementsQuery;
   const announcements = announcementsQuery.data ?? [];
 
   useEffect(() => {
-    if (!canManage) {
+    if (session) {
       markRead.mutate();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage]);
+  }, [canManage, session]);
 
   if (announcementsQuery.isLoading) {
     return <LoadingState label="Duyurular yükleniyor" />;
