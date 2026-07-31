@@ -55,7 +55,7 @@ export default function RoleScreen() {
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.title}>KIBRIS&apos;IN{"\n"}BİR NUMARALISI</Text>
+          <Text style={styles.title}>KIBRIS&apos;IN{"\n"}BİR NUMARALI AKADEMİSİ</Text>
           <Text style={styles.subtitle}>
             Futbol eğitimi ile kişisel gelişim eğitimleri{"\n"}
             Kıbrıs&apos;ta ilk kez{"\n"}
