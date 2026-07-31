@@ -376,6 +376,7 @@ public static class SchoolManagementEndpoints
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
             BirthDate = request.BirthDate,
+            PreferredFoot = request.PreferredFoot,
             ParentFullName = request.ParentFullName.Trim(),
             ParentPhone = request.ParentPhone.Trim()
         };
@@ -489,7 +490,8 @@ public sealed record CreateAthleteRequest(
     string ParentPhone,
     string ParentEmail,
     string ParentPassword,
-    Guid? GroupId);
+    Guid? GroupId,
+    PreferredFoot PreferredFoot = PreferredFoot.Unknown);
 
 public sealed record SchoolUserResponse(Guid Id, Guid SchoolId, string Email, string FullName, UserRole[] Roles)
 {
@@ -511,6 +513,7 @@ public sealed record AthleteRosterResponse(
     string FirstName,
     string LastName,
     DateOnly BirthDate,
+    PreferredFoot PreferredFoot,
     string ParentFullName,
     string ParentPhone,
     string? ProfileImageUrl)
@@ -524,6 +527,7 @@ public sealed record AthleteRosterResponse(
             athlete.FirstName,
             athlete.LastName,
             athlete.BirthDate,
+            athlete.PreferredFoot,
             athlete.ParentFullName,
             athlete.ParentPhone,
             athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion));
@@ -539,6 +543,7 @@ public sealed record AthleteDetailResponse(
     string FirstName,
     string LastName,
     DateOnly BirthDate,
+    PreferredFoot PreferredFoot,
     string Email,
     string ParentFullName,
     string ParentPhone,
@@ -559,6 +564,7 @@ public sealed record AthleteDetailResponse(
             athlete.FirstName,
             athlete.LastName,
             athlete.BirthDate,
+            athlete.PreferredFoot,
             athlete.User.Email,
             athlete.ParentFullName,
             athlete.ParentPhone,

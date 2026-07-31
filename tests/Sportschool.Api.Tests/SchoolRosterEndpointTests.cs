@@ -138,7 +138,8 @@ public sealed class SchoolRosterEndpointTests
             "5551112233",
             "ayse@example.com",
             "parent-pass-1",
-            group.Id);
+            group.Id,
+            PreferredFoot.Left);
         var secondRequest = firstRequest with
         {
             FirstName = "Ece",
@@ -156,6 +157,8 @@ public sealed class SchoolRosterEndpointTests
         var secondAthlete = await secondResponse.Content.ReadFromJsonAsync<AthleteRosterResponse>(JsonOptions);
         Assert.NotNull(firstAthlete);
         Assert.NotNull(secondAthlete);
+        Assert.Equal(PreferredFoot.Left, firstAthlete.PreferredFoot);
+        Assert.Equal(PreferredFoot.Left, secondAthlete.PreferredFoot);
 
         var result = await factory.QueryAsync(async db =>
         {
@@ -175,6 +178,7 @@ public sealed class SchoolRosterEndpointTests
         Assert.Equal(1, result.ParentCount);
         Assert.Equal(2, result.MembershipCount);
         Assert.Equal(result.Profiles[0].ParentUserId, result.Profiles[1].ParentUserId);
+        Assert.All(result.Profiles, profile => Assert.Equal(PreferredFoot.Left, profile.PreferredFoot));
         var hasher = new PasswordHasher();
         Assert.True(hasher.Verify("parent-pass-1", result.Profiles[0].Parent!.PasswordHash));
         Assert.Contains(result.Profiles, x => x.User.Email == "ali@example.com" && hasher.Verify("athlete-pass-1", x.User.PasswordHash));

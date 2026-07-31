@@ -4,7 +4,7 @@ import { Avatar, Button, Form, Input, Modal, Popconfirm, Select, Table, Typograp
 import { useState } from "react";
 import { Link } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
-import { createAthlete, deactivateAthlete, listAthletes, listGroups, type Athlete, type CreateAthleteInput } from "./athletesApi";
+import { createAthlete, deactivateAthlete, listAthletes, listGroups, type Athlete, type CreateAthleteInput, type PreferredFoot } from "./athletesApi";
 
 export function AthletesPage() {
   const queryClient = useQueryClient();
@@ -64,6 +64,7 @@ export function AthletesPage() {
             )
           },
           { title: "Doğum tarihi", dataIndex: "birthDate", key: "birthDate", render: (value: string) => formatDate(value) },
+          { title: "Ayak", dataIndex: "preferredFoot", key: "preferredFoot", render: (value: PreferredFoot) => preferredFootLabel(value) },
           { title: "Veli", dataIndex: "parentFullName", key: "parentFullName" },
           { title: "Telefon", dataIndex: "parentPhone", key: "parentPhone" },
           {
@@ -94,12 +95,18 @@ export function AthletesPage() {
         onCancel={() => setIsCreateOpen(false)}
         onOk={() => form.submit()}
       >
-        <Form form={form} layout="vertical" onFinish={(values) => createMutation.mutate(values)}>
+        <Form form={form} layout="vertical" initialValues={{ preferredFoot: "Unknown" }} onFinish={(values) => createMutation.mutate(values)}>
           <Typography.Title level={5}>Sporcu bilgileri</Typography.Title>
           <div className="form-grid">
             <Form.Item name="firstName" label="Ad" rules={[{ required: true, message: "Ad zorunludur." }]}><Input autoFocus /></Form.Item>
             <Form.Item name="lastName" label="Soyad" rules={[{ required: true, message: "Soyad zorunludur." }]}><Input /></Form.Item>
             <Form.Item name="birthDate" label="Doğum tarihi" rules={[{ required: true, message: "Doğum tarihi zorunludur." }]}><Input type="date" /></Form.Item>
+            <Form.Item name="preferredFoot" label="Baskın ayak" rules={[{ required: true, message: "Baskın ayak seçimi zorunludur." }]}><Select options={[
+              { value: "Unknown", label: "Belirtilmedi" },
+              { value: "Right", label: "Sağ" },
+              { value: "Left", label: "Sol" },
+              { value: "Both", label: "İki ayaklı" }
+            ]} /></Form.Item>
             <Form.Item name="groupId" label="İlk grup"><Select allowClear loading={groupsQuery.isLoading} options={(groupsQuery.data ?? []).map((group) => ({ value: group.id, label: group.name }))} /></Form.Item>
             <Form.Item name="athleteEmail" label="Sporcu e-postası" rules={[{ required: true, type: "email", message: "Geçerli bir e-posta girin." }]}><Input /></Form.Item>
             <Form.Item name="athletePassword" label="Sporcu ilk şifresi" rules={[{ required: true, min: 8, message: "Şifre en az 8 karakter olmalıdır." }]}><Input.Password /></Form.Item>
@@ -121,6 +128,15 @@ export function AthletesPage() {
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("tr-TR").format(new Date(`${value}T00:00:00`));
+}
+
+function preferredFootLabel(value: PreferredFoot): string {
+  return {
+    Unknown: "Belirtilmedi",
+    Right: "Sağ",
+    Left: "Sol",
+    Both: "İki ayaklı"
+  }[value];
 }
 
 function errorMessage(error: Error): string {

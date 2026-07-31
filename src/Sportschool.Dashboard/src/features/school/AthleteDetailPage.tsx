@@ -15,7 +15,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
 import { deleteAthleteVideo, deleteProfileImage, listAthleteVideos, setVideoPublication, uploadAthleteVideo, uploadProfileImage, type AthleteVideo } from "./athleteMediaApi";
-import { getAthlete } from "./athletesApi";
+import { getAthlete, type PreferredFoot } from "./athletesApi";
 
 type VideoFormValues = { caption?: string };
 
@@ -182,6 +182,7 @@ export function AthleteDetailPage() {
           <Descriptions column={1}>
             <Descriptions.Item label={<><CalendarOutlined /> Doğum tarihi</>}>{formatDate(athlete.birthDate)}</Descriptions.Item>
             <Descriptions.Item label={<><UserOutlined /> Yaş</>}>{formatAge(athlete.birthDate)}</Descriptions.Item>
+            <Descriptions.Item label="Baskın ayak">{preferredFootLabel(athlete.preferredFoot)}</Descriptions.Item>
             <Descriptions.Item label={<><MailOutlined /> E-posta</>}>{athlete.email}</Descriptions.Item>
             <Descriptions.Item label="Kayıt tarihi">{formatDateTime(athlete.createdAt)}</Descriptions.Item>
           </Descriptions>
@@ -262,6 +263,15 @@ function VideoCard({ video, publicationPending, deletePending, onPublicationChan
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("tr-TR").format(new Date(`${value}T00:00:00`));
+}
+
+function preferredFootLabel(value: PreferredFoot): string {
+  return {
+    Unknown: "Belirtilmedi",
+    Right: "Sağ",
+    Left: "Sol",
+    Both: "İki ayaklı"
+  }[value];
 }
 
 function formatDateTime(value: string): string {

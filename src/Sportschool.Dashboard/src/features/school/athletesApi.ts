@@ -1,5 +1,7 @@
 import { apiRequest } from "../../app/api/apiClient";
 
+export type PreferredFoot = "Unknown" | "Right" | "Left" | "Both";
+
 export type Athlete = {
   id: string;
   schoolId: string;
@@ -7,6 +9,7 @@ export type Athlete = {
   firstName: string;
   lastName: string;
   birthDate: string;
+  preferredFoot: PreferredFoot;
   parentFullName: string;
   parentPhone: string;
   profileImageUrl: string | null;
@@ -41,6 +44,7 @@ export type CreateAthleteInput = {
   parentPhone: string;
   parentEmail: string;
   parentPassword: string;
+  preferredFoot: PreferredFoot;
   groupId?: string;
 };
 

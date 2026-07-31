@@ -21,6 +21,8 @@ public sealed class AthleteProfile
 
     public DateOnly BirthDate { get; set; }
 
+    public PreferredFoot PreferredFoot { get; set; } = PreferredFoot.Unknown;
+
     public required string ParentFullName { get; set; }
 
     public required string ParentPhone { get; set; }
