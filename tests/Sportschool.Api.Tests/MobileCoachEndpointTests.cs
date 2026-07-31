@@ -354,6 +354,8 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
         var athleteTrainingReport = Assert.Single(trainingReportDetail!.Reports);
         Assert.Equal(data.Athlete.Id, athleteTrainingReport.AthleteProfileId);
         Assert.Equal("Mobile Athlete", athleteTrainingReport.AthleteName);
+        Assert.NotNull(athleteTrainingReport.ProfileImageUrl);
+        Assert.Contains(data.Group.Name, athleteTrainingReport.Groups);
 
         using var athleteClient = _factory.CreateAuthenticatedClient(data.AthleteUser, UserRole.Athlete);
         var summary = await athleteClient.GetFromJsonAsync<DevelopmentSummaryResponse>("/api/me/development-summary");

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Attendance;
+using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
@@ -230,6 +231,7 @@ public static class TrainingReportEndpoints
         Guid trainingId,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
+        MediaAccessUrlService mediaUrls,
         CancellationToken cancellationToken)
     {
         var context = GetCoachContext(currentUser);
@@ -259,12 +261,30 @@ public static class TrainingReportEndpoints
             .Where(x => x.TrainingSessionId == trainingId && x.SchoolId == context.Value.SchoolId)
             .ToListAsync(cancellationToken);
 
+        var athleteIds = reportRows.Select(x => x.AthleteProfileId).ToArray();
+        var groupRows = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x => athleteIds.Contains(x.AthleteProfileId)
+                && x.Group.SchoolId == context.Value.SchoolId
+                && x.Group.IsActive)
+            .Select(x => new { x.AthleteProfileId, x.Group.Name })
+            .ToListAsync(cancellationToken);
+        var groupsByAthlete = groupRows
+            .GroupBy(x => x.AthleteProfileId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyCollection<string>)group.OrderBy(x => x.Name).Select(x => x.Name).ToArray());
+
         var reports = reportRows
             .OrderBy(x => x.AthleteProfile.LastName)
             .ThenBy(x => x.AthleteProfile.FirstName)
             .Select(x => new CoachTrainingAthleteReportItem(
                 x.AthleteProfileId,
                 x.AthleteProfile.FirstName + " " + x.AthleteProfile.LastName,
+                x.AthleteProfile.ProfileImageStorageKey is null
+                    ? null
+                    : mediaUrls.CreateProfileImageUrl(context.Value.SchoolId, x.AthleteProfileId, x.AthleteProfile.ProfileImageVersion),
+                groupsByAthlete.GetValueOrDefault(x.AthleteProfileId, []),
                 TrainingReportResponse.From(x, training.Title, completedAt, x.Coach.FullName)))
             .ToArray();
 
@@ -397,4 +417,6 @@ public sealed record CoachTrainingReportDetailResponse(
 public sealed record CoachTrainingAthleteReportItem(
     Guid AthleteProfileId,
     string AthleteName,
+    string? ProfileImageUrl,
+    IReadOnlyCollection<string> Groups,
     TrainingReportResponse Report);

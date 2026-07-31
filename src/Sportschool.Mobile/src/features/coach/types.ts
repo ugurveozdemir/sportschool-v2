@@ -95,6 +95,8 @@ export type CoachTrainingReportDetailResponse = {
 export type CoachTrainingAthleteReportItem = {
   athleteProfileId: string;
   athleteName: string;
+  profileImageUrl: string | null;
+  groups: string[];
   report: TrainingReportResponse;
 };
 

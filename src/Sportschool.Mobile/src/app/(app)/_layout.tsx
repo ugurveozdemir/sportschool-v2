@@ -14,6 +14,7 @@ export default function AppTabs() {
       <Tabs.Screen name="calendar" />
       <Tabs.Screen name="trainings/[trainingId]" options={{ href: null }} />
       <Tabs.Screen name="reports/[trainingId]" options={{ href: null }} />
+      <Tabs.Screen name="reports/[trainingId]/athletes/[athleteProfileId]" options={{ href: null }} />
       <Tabs.Screen name="attendance" />
       <Tabs.Screen name="athletes/[athleteProfileId]" options={{ href: null }} />
       <Tabs.Screen name="groups/[groupId]" options={{ href: null }} />
