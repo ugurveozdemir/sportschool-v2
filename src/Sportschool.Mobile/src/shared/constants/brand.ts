@@ -1,4 +1,4 @@
 export const brand = {
-  name: "TÜRK OCAĞI LİMASOL",
+  name: "TÜRK OCAĞI ELİT AKADEMİ",
   shortName: "TOL"
 } as const;
