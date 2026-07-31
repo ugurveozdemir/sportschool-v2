@@ -33,6 +33,7 @@ export default function TrainingDetailScreen() {
   const [isEditVisible, setIsEditVisible] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus | null>>({});
   const [reportAthlete, setReportAthlete] = useState<CoachAttendanceRosterItem | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const rosterAthletes = rosterQuery.data?.athletes;
   useEffect(() => {
@@ -41,6 +42,11 @@ export default function TrainingDetailScreen() {
     }
     setStatuses(Object.fromEntries(rosterAthletes.map((athlete) => [athlete.athleteProfileId, athlete.status])));
   }, [rosterAthletes]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const submitAttendance = () => {
     if (!rosterQuery.data?.training.startedAt || rosterQuery.data.training.completedAt) {
@@ -112,12 +118,16 @@ export default function TrainingDetailScreen() {
   const trainingStarted = training.startedAt !== null;
   const trainingCompleted = training.completedAt !== null;
   const attendanceOpen = trainingStarted && !trainingCompleted;
+  const startWindowAt = new Date(training.startsAt).getTime() - 2 * 60 * 60 * 1000;
+  const startWindowOpen = now >= startWindowAt;
   const allAttendanceRecorded = athletes.every((athlete) => statuses[athlete.athleteProfileId] !== null);
   const attendanceHint = trainingCompleted
     ? "Antrenman tamamlandı. Yoklama kilitlendi."
     : trainingStarted
       ? "Oyuncuları Geldi veya Gelmedi olarak işaretle ve yoklamayı kaydet."
-      : "Önce antrenmanı başlat. Başlatınca bu antrenmanın oyuncu listesi sabitlenir.";
+      : startWindowOpen
+        ? "Önce antrenmanı başlat. Başlatınca bu antrenmanın oyuncu listesi sabitlenir."
+        : `Antrenman ${formatTime(new Date(startWindowAt).toISOString())} itibarıyla başlatılabilir.`;
   const startsAt = new Date(training.startsAt);
   const day = new Intl.DateTimeFormat("tr-TR", { day: "2-digit" }).format(startsAt);
   const month = new Intl.DateTimeFormat("tr-TR", { month: "short" }).format(startsAt).replace(".", "");
@@ -168,7 +178,7 @@ export default function TrainingDetailScreen() {
         </View>
       </SurfaceCard>
 
-      {!trainingStarted ? <Button disabled={startTraining.isPending} label={startTraining.isPending ? "Başlatılıyor" : "Antrenmanı Başlat"} onPress={start} /> : null}
+      {!trainingStarted ? <Button disabled={startTraining.isPending || !startWindowOpen} label={startTraining.isPending ? "Başlatılıyor" : startWindowOpen ? "Antrenmanı Başlat" : `Saat ${formatTime(new Date(startWindowAt).toISOString())}'da Aktifleşir`} onPress={start} /> : null}
 
       <SurfaceCard style={styles.groupSummary}>
         <View style={styles.groupSummaryHeader}>

@@ -48,6 +48,17 @@ public static class TrainingLifecycleEndpoints
             return Results.Conflict(new { detail = "Bu antrenman zaten başlatılmış veya tamamlanmış." });
         }
 
+        var now = DateTimeOffset.UtcNow;
+        var startWindow = training.StartsAt.AddHours(-2);
+        if (now < startWindow)
+        {
+            return Results.Conflict(new
+            {
+                detail = "Antrenman başlangıçtan 2 saat önce başlatılabilir.",
+                availableAt = startWindow
+            });
+        }
+
         var groupIds = await db.TrainingSessionGroups
             .Where(x => x.TrainingSessionId == trainingId)
             .Select(x => x.GroupId)
@@ -62,7 +73,6 @@ public static class TrainingLifecycleEndpoints
             .Distinct()
             .ToArrayAsync(cancellationToken);
 
-        var now = DateTimeOffset.UtcNow;
         training.StartedAt = now;
         training.StartedByUserId = context.Value.CoachId;
 

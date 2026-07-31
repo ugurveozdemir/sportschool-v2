@@ -237,6 +237,40 @@ public sealed class MobileCoachEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task StartTraining_IsBlockedBeforeTwoHourWindow()
+    {
+        var data = await SeedCoachScenarioAsync();
+        var futureStartsAt = DateTimeOffset.UtcNow.AddHours(3);
+        var futureTraining = new TrainingSession
+        {
+            SchoolId = data.Group.SchoolId,
+            CoachId = data.Coach.Id,
+            Title = "Too Early Training",
+            StartsAt = futureStartsAt,
+            EndsAt = futureStartsAt.AddHours(1),
+            Recurrence = TrainingRecurrence.None,
+            Groups = { new TrainingSessionGroup { GroupId = data.Group.Id } }
+        };
+        await _factory.SeedAsync(db =>
+        {
+            db.TrainingSessions.Add(futureTraining);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateAuthenticatedClient(data.Coach, UserRole.Coach);
+        using var response = await client.PostAsync($"/api/mobile/coach/trainings/{futureTraining.Id}/start", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var lifecycle = await _factory.QueryAsync(db => db.TrainingSessions
+            .Where(x => x.Id == futureTraining.Id)
+            .Select(x => new { x.StartedAt })
+            .SingleAsync());
+        Assert.Null(lifecycle.StartedAt);
+        Assert.Equal(0, await _factory.QueryAsync(db => db.AttendanceRecords.CountAsync(
+            x => x.TrainingSessionId == futureTraining.Id)));
+    }
+
+    [Fact]
     public async Task CompleteTraining_RequiresAttendanceAndLocksAttendanceAfterCompletion()
     {
         var data = await SeedCoachScenarioAsync();
