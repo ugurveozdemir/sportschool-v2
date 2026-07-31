@@ -37,10 +37,10 @@ export function getMobileNav(session: Session | null) {
 
 export function getShellTitle(session: Session | null) {
   if (session?.loginRole === "SchoolAdmin") {
-    return "TÜRK OCAĞI LİMASOL";
+    return "TÜRK OCAĞI ELİT AKADEMİ";
   }
   if (session?.roles.includes("Coach")) {
-    return "TÜRK OCAĞI LİMASOL";
+    return "TÜRK OCAĞI ELİT AKADEMİ";
   }
   if (session?.roles.includes("Parent")) {
     return "Akademi Takibi";
