@@ -70,7 +70,7 @@ export default function HomeScreen() {
 
   const profile = profileQuery.data;
   const trainings = trainingsQuery.data ?? [];
-  const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now()) ?? trainings[0];
+  const nextTraining = trainings.find(isNextTraining);
   const todayTrainingCount = trainings.filter((training) => isSameDay(training.startsAt)).length;
   const announcements = announcementsQuery.data ?? [];
   const attendance = attendanceQuery.data ?? [];
@@ -114,6 +114,11 @@ function hasStarted(training: CoachTrainingItem) {
   return new Date(training.startsAt).getTime() <= Date.now();
 }
 
+function isNextTraining(training: { startsAt: string; completedAt: string | null }) {
+  return training.completedAt === null
+    && new Date(training.startsAt).getTime() >= Date.now();
+}
+
 function getInitials(value?: string) {
   const initials = value?.trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
   return initials?.toLocaleUpperCase("tr-TR") || "A";
@@ -121,7 +126,7 @@ function getInitials(value?: string) {
 
 function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSchoolAdmin }: { sessionName?: string; summary?: CoachSummaryResponse; trainings: CoachTrainingItem[]; navItems: ReturnType<typeof getMobileNav>; shellTitle: string; isSchoolAdmin: boolean }) {
   const todayTrainings = summary?.todayTrainings ?? [];
-  const nextTraining = trainings.find((training) => new Date(training.startsAt).getTime() >= Date.now());
+  const nextTraining = trainings.find(isNextTraining);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const openAttendance = () => {
