@@ -43,6 +43,7 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
   const { session } = useSession();
   const isManager = session?.loginRole === "SchoolAdmin" || session?.roles.includes("Coach");
   const isMember = !isManager;
+  const isAthlete = session?.loginRole === "Athlete" || session?.roles.includes("Athlete");
   const unreadQuery = useUnreadAnnouncementCount(Boolean(session), isManager ? "manager" : "member");
   const hasUnread = isMember && (unreadQuery.data?.count ?? 0) > 0;
   const hasManagerUnread = isManager && (unreadQuery.data?.count ?? 0) > 0;
@@ -67,9 +68,11 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
       <View style={styles.topLead}>{avatar ?? <AkademiLogo size={30} />}</View>
       <Text style={styles.topTitle}>{title}</Text>
       <View style={styles.topActions}>
-        <Pressable accessibilityLabel="Profil" onPress={() => router.push("/profile")} style={styles.iconButton}>
-          <MaterialCommunityIcons name="account-outline" size={24} color={colors.primary} />
-        </Pressable>
+        {!isAthlete ? (
+          <Pressable accessibilityLabel="Profil" onPress={() => router.push("/profile")} style={styles.iconButton}>
+            <MaterialCommunityIcons name="account-outline" size={24} color={colors.primary} />
+          </Pressable>
+        ) : null}
         <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.iconButton}>
           <MaterialCommunityIcons name="bell-outline" size={24} color={colors.primary} />
           {hasUnread ? <View style={styles.notificationDot} /> : null}

@@ -8,11 +8,8 @@ const coachNav: NavItem[] = [
 ];
 
 const athleteNav: NavItem[] = [
-  { label: "Panel", icon: "view-dashboard-outline", href: "/home", match: "/home" },
-  { label: "Antrenman", icon: "calendar-month-outline", href: "/calendar", match: "/calendar" },
-  { label: "Gelişim", icon: "chart-line", href: "/development", match: "/development" },
-  { label: "Videolar", icon: "play-box-multiple-outline", href: "/feed", match: "/feed" },
-  { label: "Ödemeler", icon: "cash-multiple", href: "/payments", match: "/payments" }
+  { label: "Ana Sayfa", icon: "home-outline", href: "/home", match: "/home" },
+  { label: "Profilim", icon: "account-outline", href: "/profile", match: "/profile" }
 ];
 
 const parentNav: NavItem[] = [

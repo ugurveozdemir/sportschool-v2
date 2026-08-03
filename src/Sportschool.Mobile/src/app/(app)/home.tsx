@@ -13,7 +13,7 @@ import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/t
 import { useAttendance, useDevelopmentSummary, useGroups, useProfile, useTrainings } from "@/features/me/api";
 import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import type { AttendanceStatus } from "@/shared/constants/domain";
 import { colors } from "@/shared/design/colors";
@@ -180,30 +180,30 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
         </SurfaceCard>
       )}
 
-      <View style={styles.coachMenu}>
-        <CoachMenuAction
+      <View style={styles.homeMenu}>
+        <HomeMenuAction
           icon="clipboard-check-outline"
           label="YOKLAMA AL"
           onPress={openAttendance}
         />
-        <CoachMenuAction
+        <HomeMenuAction
           highlighted
           icon="soccer"
           label="ANTRENMANLAR"
           onPress={() => router.push("/calendar")}
         />
-        <CoachMenuAction
+        <HomeMenuAction
           icon="chart-box-outline"
           label="RAPORLAMA"
           onPress={() => router.push("/attendance")}
         />
-        <CoachMenuAction
+        <HomeMenuAction
           highlighted
           icon="cash-multiple"
           label="ÖDEMELER"
           onPress={() => router.push("/payments")}
         />
-        <CoachMenuAction
+        <HomeMenuAction
           icon="bullhorn-outline"
           label="DUYURULAR"
           onPress={() => router.push("/announcements")}
@@ -273,7 +273,7 @@ function CoachTrainingHero({ training }: { training: CoachTrainingItem }) {
   );
 }
 
-function CoachMenuAction({
+function HomeMenuAction({
   highlighted = false,
   icon,
   label,
@@ -288,19 +288,19 @@ function CoachMenuAction({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.coachMenuAction,
-        highlighted && styles.coachMenuActionHighlighted,
-        pressed && styles.coachMenuActionPressed
+        styles.homeMenuAction,
+        highlighted && styles.homeMenuActionHighlighted,
+        pressed && styles.homeMenuActionPressed
       ]}
     >
-      <View style={[styles.coachMenuIcon, highlighted && styles.coachMenuIconHighlighted]}>
+      <View style={[styles.homeMenuIcon, highlighted && styles.homeMenuIconHighlighted]}>
         <MaterialCommunityIcons
           name={icon}
           size={25}
           color={highlighted ? colors.onPrimary : colors.onSurface}
         />
       </View>
-      <Text style={[styles.coachMenuLabel, highlighted && styles.coachMenuLabelHighlighted]}>{label}</Text>
+      <Text style={[styles.homeMenuLabel, highlighted && styles.homeMenuLabelHighlighted]}>{label}</Text>
       <MaterialCommunityIcons
         name="chevron-right"
         size={24}
@@ -372,13 +372,34 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
         </SurfaceCard>
       )}
 
-      <View style={styles.sectionStack}>
-        <SectionTitle title="Hızlı İşlemler" />
-        <View style={styles.quickGrid}>
-          <QuickAction label="Yoklama\nDurumum" icon="account-check-outline" />
-          <QuickAction label="Beslenme\nProgramı" icon="silverware-fork-knife" />
-          <QuickAction label="Duyurular" icon="bullhorn-outline" badge={announcementCount > 0} onPress={() => router.push("/announcements")} />
-        </View>
+      <View style={styles.homeMenu}>
+        <HomeMenuAction
+          highlighted
+          icon="calendar-month-outline"
+          label="ANTRENMANLAR"
+          onPress={() => router.push("/calendar")}
+        />
+        <HomeMenuAction
+          highlighted
+          icon="chart-line"
+          label="GELİŞİMİM"
+          onPress={() => router.push("/development")}
+        />
+        <HomeMenuAction
+          icon="account-check-outline"
+          label="KATILIMIM"
+          onPress={() => router.push("/attendance")}
+        />
+        <HomeMenuAction
+          icon="bullhorn-outline"
+          label={announcementCount > 0 ? `DUYURULAR  •  ${announcementCount} YENİ` : "DUYURULAR"}
+          onPress={() => router.push("/announcements")}
+        />
+        <HomeMenuAction
+          icon="play-box-multiple-outline"
+          label="VİDEOLAR"
+          onPress={() => router.push("/feed")}
+        />
       </View>
 
       <SurfaceCard style={styles.sectionStack}>
@@ -591,29 +612,6 @@ function AttendanceStat({ label, value, color }: { label: string; value: number;
   );
 }
 
-function QuickAction({ label, icon, primary, badge, tone, onPress }: { label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; primary?: boolean; badge?: boolean; tone?: "green" | "dark"; onPress?: () => void }) {
-  const highlighted = primary || tone;
-  const content = (
-    <>
-      {badge ? <View style={styles.smallRedDot} /> : null}
-      <View style={[styles.quickIconCircle, highlighted && styles.quickIconHighlight]}>
-        <MaterialCommunityIcons name={icon} size={26} color={highlighted ? colors.onPrimary : colors.primary} />
-      </View>
-      <Text style={[styles.quickText, highlighted && styles.quickTextPrimary]}>{label}</Text>
-    </>
-  );
-
-  if (!onPress) {
-    return <View style={[styles.quickAction, primary && styles.quickActionPrimary, tone === "green" && styles.quickActionGreen, tone === "dark" && styles.quickActionDark]}>{content}</View>;
-  }
-
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.quickAction, primary && styles.quickActionPrimary, tone === "green" && styles.quickActionGreen, tone === "dark" && styles.quickActionDark]}>
-      {content}
-    </Pressable>
-  );
-}
-
 function HeroTrainingCard({ training }: { training: TrainingResponse }) {
   const groupName = trainingGroupName(training);
   return (
@@ -741,8 +739,8 @@ const styles = StyleSheet.create({
   },
   coachHeroTime: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   coachHeroWeekday: { ...typography.label, color: colors.primary, letterSpacing: 1.4 },
-  coachMenu: { gap: spacing.md },
-  coachMenuAction: {
+  homeMenu: { gap: spacing.md },
+  homeMenuAction: {
     alignItems: "center",
     backgroundColor: colors.surfaceContainerHigh,
     borderColor: colors.outlineVariant,
@@ -753,12 +751,12 @@ const styles = StyleSheet.create({
     minHeight: 80,
     padding: spacing.md
   },
-  coachMenuActionHighlighted: {
+  homeMenuActionHighlighted: {
     backgroundColor: colors.primaryContainer,
     borderColor: colors.primaryContainer
   },
-  coachMenuActionPressed: { transform: [{ scale: 0.985 }] },
-  coachMenuIcon: {
+  homeMenuActionPressed: { transform: [{ scale: 0.985 }] },
+  homeMenuIcon: {
     alignItems: "center",
     backgroundColor: colors.surface,
     borderRadius: radius.full,
@@ -766,15 +764,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44
   },
-  coachMenuIconHighlighted: { backgroundColor: "rgba(60,47,0,0.16)" },
-  coachMenuLabel: {
+  homeMenuIconHighlighted: { backgroundColor: "rgba(60,47,0,0.16)" },
+  homeMenuLabel: {
     ...typography.title,
     color: colors.onSurface,
     flex: 1,
     fontFamily: "HankenGrotesk_700Bold",
     letterSpacing: 0.5
   },
-  coachMenuLabelHighlighted: { color: colors.onPrimary },
+  homeMenuLabelHighlighted: { color: colors.onPrimary },
   coachOutlineButton: {
     alignItems: "center",
     borderColor: colors.primary,
@@ -857,15 +855,6 @@ const styles = StyleSheet.create({
   progressLabel: { ...typography.label, color: colors.onPrimary },
   progressTrack: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: radius.full, height: 7, overflow: "hidden" },
   progressWrap: { gap: 4 },
-  quickAction: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.borderSoft, borderRadius: radius.lg, borderWidth: 1, flex: 1, gap: spacing.sm, minHeight: 110, justifyContent: "center", padding: spacing.sm },
-  quickActionDark: { backgroundColor: "#2f343d", borderColor: "#2f343d" },
-  quickActionGreen: { backgroundColor: "#00472d", borderColor: "#00472d" },
-  quickActionPrimary: { backgroundColor: colors.primary },
-  quickGrid: { flexDirection: "row", gap: spacing.md },
-  quickIconCircle: { alignItems: "center", backgroundColor: colors.primaryFixed, borderRadius: radius.full, height: 46, justifyContent: "center", width: 46 },
-  quickIconHighlight: { backgroundColor: "rgba(255,255,255,0.16)" },
-  quickText: { ...typography.label, color: colors.primary, fontSize: 13, lineHeight: 17, textAlign: "center" },
-  quickTextPrimary: { color: colors.onPrimary },
   redText: { color: colors.errorContainer },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
   rowTitle: { ...typography.bodyLarge, color: colors.primary },
@@ -874,7 +863,6 @@ const styles = StyleSheet.create({
   sectionStack: { gap: spacing.lg },
   separator: { backgroundColor: colors.borderSoft, height: 1 },
   smallMeta: { ...typography.body, color: colors.onSurfaceVariant },
-  smallRedDot: { backgroundColor: colors.error, borderRadius: 5, height: 10, position: "absolute", right: spacing.md, top: spacing.md, width: 10 },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   welcomeRow: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" }
 });
