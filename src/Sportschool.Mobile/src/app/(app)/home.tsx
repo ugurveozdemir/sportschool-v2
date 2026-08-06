@@ -43,6 +43,7 @@ export default function HomeScreen() {
   const coachSummaryQuery = useCoachSummary(isCoach);
   const coachTrainingsQuery = useCoachTrainings(isCoach);
   const { refetch: refetchProfile } = profileQuery;
+  const { refetch: refetchTrainings } = trainingsQuery;
 
   useFocusEffect(useCallback(() => {
     if (isCoach) {
@@ -51,9 +52,10 @@ export default function HomeScreen() {
 
     void Promise.all([
       refetchProfile(),
+      refetchTrainings(),
       queryClient.refetchQueries({ queryKey: ["me", "athletes"], type: "active" })
     ]);
-  }, [isCoach, queryClient, refetchProfile]));
+  }, [isCoach, queryClient, refetchProfile, refetchTrainings]));
 
   if (isCoach) {
     return (
