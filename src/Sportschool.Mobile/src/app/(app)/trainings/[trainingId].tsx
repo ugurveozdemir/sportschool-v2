@@ -23,7 +23,7 @@ import { formatTime } from "@/shared/utils/date";
 export default function TrainingDetailScreen() {
   const { session } = useSession();
   const { trainingId } = useLocalSearchParams<{ trainingId: string }>();
-  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const rosterQuery = useCoachAttendanceRoster(isCoach ? trainingId : undefined);
   const groupsQuery = useSchoolGroups(isCoach);
   const updateTraining = useUpdateCoachTraining(isCoach ? trainingId : undefined);

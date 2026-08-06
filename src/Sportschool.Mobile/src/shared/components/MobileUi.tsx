@@ -41,9 +41,9 @@ export function ScreenShell({ children, title, avatar, navItems, contentStyle, r
 
 export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode }) {
   const { session } = useSession();
-  const isManager = session?.loginRole === "SchoolAdmin" || session?.roles.includes("Coach");
+  const isManager = session?.loginRole === "SchoolAdmin" || session?.loginRole === "Coach";
   const isMember = !isManager;
-  const isAthlete = session?.loginRole === "Athlete" || session?.roles.includes("Athlete");
+  const isAthlete = session?.loginRole === "Athlete";
   const unreadQuery = useUnreadAnnouncementCount(Boolean(session), isManager ? "manager" : "member");
   const hasUnread = isMember && (unreadQuery.data?.count ?? 0) > 0;
   const hasManagerUnread = isManager && (unreadQuery.data?.count ?? 0) > 0;

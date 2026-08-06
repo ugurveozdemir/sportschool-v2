@@ -21,7 +21,7 @@ import { formatDate } from "@/shared/utils/date";
 
 export default function ProfileScreen() {
   const { session, clearSession } = useSession();
-  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const { selectedAthleteProfileId } = useAthleteSelection();
   const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);

@@ -43,7 +43,7 @@ const emptyGroupForm: GroupFormState = {
 
 export default function DevelopmentScreen() {
   const { session } = useSession();
-  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const { selectedAthleteProfileId } = useAthleteSelection();
   const summaryQuery = useDevelopmentSummary(!isCoach, selectedAthleteProfileId);
   const schoolGroupsQuery = useSchoolGroups(isCoach);

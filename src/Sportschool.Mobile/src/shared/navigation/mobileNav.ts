@@ -20,26 +20,20 @@ const parentNav: NavItem[] = [
 ];
 
 export function getMobileNav(session: Session | null) {
-  if (session?.loginRole === "SchoolAdmin") {
+  if (session?.loginRole === "SchoolAdmin" || session?.loginRole === "Coach") {
     return coachNav;
   }
-  if (session?.roles.includes("Coach")) {
-    return coachNav;
-  }
-  if (session?.roles.includes("Parent")) {
+  if (session?.loginRole === "Parent") {
     return parentNav;
   }
   return athleteNav;
 }
 
 export function getShellTitle(session: Session | null) {
-  if (session?.loginRole === "SchoolAdmin") {
+  if (session?.loginRole === "SchoolAdmin" || session?.loginRole === "Coach") {
     return "TÜRK OCAĞI ELİT AKADEMİ";
   }
-  if (session?.roles.includes("Coach")) {
-    return "TÜRK OCAĞI ELİT AKADEMİ";
-  }
-  if (session?.roles.includes("Parent")) {
+  if (session?.loginRole === "Parent") {
     return "Akademi Takibi";
   }
   return "Elite Academy";

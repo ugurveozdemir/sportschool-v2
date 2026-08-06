@@ -27,8 +27,8 @@ export default function HomeScreen() {
   const { session } = useSession();
   const queryClient = useQueryClient();
   const isSchoolAdmin = session?.loginRole === "SchoolAdmin";
-  const isCoach = (session?.roles.includes("Coach") ?? false) || isSchoolAdmin;
-  const isParent = session?.roles.includes("Parent") ?? false;
+  const isCoach = session?.loginRole === "Coach" || isSchoolAdmin;
+  const isParent = session?.loginRole === "Parent";
   const navItems = getMobileNav(session);
   const shellTitle = getShellTitle(session);
   const { athletes, selectedAthleteProfileId, setSelectedAthleteProfileId } = useAthleteSelection();

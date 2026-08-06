@@ -56,7 +56,7 @@ const initialTrainingForm: TrainingFormState = {
 
 export default function CalendarScreen() {
   const { session } = useSession();
-  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   // Both coaches and members open on the weekly view; either can switch to the month grid.

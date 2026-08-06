@@ -18,7 +18,7 @@ import { getAttendanceLabel } from "@/shared/utils/status";
 
 export default function AttendanceScreen() {
   const { session } = useSession();
-  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const { selectedAthleteProfileId } = useAthleteSelection();
   const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
   const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);

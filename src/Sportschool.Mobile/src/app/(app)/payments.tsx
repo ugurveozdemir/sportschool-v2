@@ -25,7 +25,7 @@ type PaymentFilter = "all" | "paid" | "unpaid";
 
 export default function PaymentsScreen() {
   const { session } = useSession();
-  const isCoach = session?.roles.includes("Coach") ?? false;
+  const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const { selectedAthleteProfileId } = useAthleteSelection();
   const paymentsQuery = usePayments(!isCoach, selectedAthleteProfileId);
 

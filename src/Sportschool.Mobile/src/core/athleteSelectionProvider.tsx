@@ -16,7 +16,7 @@ const AthleteSelectionContext = createContext<AthleteSelectionContextValue | nul
 
 export function AthleteSelectionProvider({ children }: PropsWithChildren) {
   const { session } = useSession();
-  const isMember = !!session && !session.roles.includes("Coach") && !session.roles.includes("SchoolAdmin") && !session.roles.includes("PlatformOwner");
+  const isMember = session?.loginRole === "Athlete" || session?.loginRole === "Parent";
   const athletesQuery = useMyAthletes(isMember);
   const athletes = useMemo(() => athletesQuery.data ?? [], [athletesQuery.data]);
   const [selectedAthleteProfileId, setSelectedAthleteProfileId] = useState<string | null>(null);

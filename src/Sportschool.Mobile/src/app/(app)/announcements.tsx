@@ -37,7 +37,7 @@ const initialForm: AnnouncementFormState = {
 
 export default function AnnouncementsScreen() {
   const { session } = useSession();
-  const canManage = Boolean(session?.roles.includes("Coach") || session?.roles.includes("SchoolAdmin"));
+  const canManage = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const memberAnnouncementsQuery = useMemberAnnouncements(!canManage);
   const schoolAnnouncementsQuery = useSchoolAnnouncements(Boolean(canManage));
   const createAnnouncement = useCreateAnnouncement();
