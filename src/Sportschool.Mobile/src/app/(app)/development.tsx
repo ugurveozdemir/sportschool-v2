@@ -140,19 +140,34 @@ function CoachTeams({
 function DevelopmentReports({ session, summary }: { session: ReturnType<typeof useSession>["session"]; summary?: DevelopmentSummaryResponse }) {
   const reports = summary?.reports ?? [];
   const averages = summary?.averages;
-  const chartValues = reports.length > 0 ? reports.slice(0, 6).reverse().map(reportAverage) : [40, 55, 45, 70, 60, 85];
+  const chartValues = reports.slice(0, 6).reverse().map(reportAverage);
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={38} tone="dark" />}>
-      <View style={styles.headerBlock}>
-        <Text style={styles.title}>Gelişim</Text>
-        <Text style={styles.subtitle}>Performans metrikleri, grafik ve antrenör yorumları.</Text>
+      <View style={styles.memberHeader}>
+        <Text style={styles.title}>Gelişimim</Text>
+        <Text style={styles.subtitle}>Antrenmanlardaki performansını ve antrenör değerlendirmelerini takip et.</Text>
       </View>
 
       {averages ? (
         <>
+          <SurfaceCard style={styles.performanceHero}>
+            <Text style={styles.performanceKicker}>GENEL PERFORMANS</Text>
+            <Text style={styles.performanceScore}>{averageMetrics(averages).toFixed(0)}</Text>
+            <Text style={styles.performanceCaption}>Son raporlarının ortalama puanı</Text>
+            <View style={styles.performanceStats}>
+              <PerformanceStat icon="file-chart-outline" label="Rapor" value={`${reports.length}`} />
+              <View style={styles.performanceDivider} />
+              <PerformanceStat
+                icon="calendar-check-outline"
+                label="Katılım"
+                value={summary?.attendanceRate === null || summary?.attendanceRate === undefined ? "-" : `%${summary.attendanceRate}`}
+              />
+            </View>
+          </SurfaceCard>
+
           <SurfaceCard style={styles.skillCard}>
-            <SectionTitle title="Genel performans" action={summary?.attendanceRate !== null && summary?.attendanceRate !== undefined ? `%${summary.attendanceRate} katılım` : undefined} />
+            <SectionTitle title="Gelişim Alanlarım" action="7 metrik" />
             <View style={styles.skillList}>
               {scoreLabels.map(([label, key, icon]) => (
                 <SkillRow
@@ -166,28 +181,20 @@ function DevelopmentReports({ session, summary }: { session: ReturnType<typeof u
             </View>
           </SurfaceCard>
 
-          <SurfaceCard style={styles.chartCard}>
-            <SectionTitle title="Gelişim Grafiği" action="Son 6 Antrenman" />
-            <BarChart values={chartValues} />
-            <View style={styles.legendRow}>
-              <LegendDot label="Teknik" color={colors.primary} />
-              <LegendDot label="Hız" color={colors.secondary} />
-              <LegendDot label="Dayanıklılık" color={colors.surfaceContainerHigh} />
-            </View>
-          </SurfaceCard>
+          {chartValues.length > 0 ? (
+            <SurfaceCard style={styles.chartCard}>
+              <SectionTitle title="Gelişim Seyri" action={`Son ${chartValues.length} rapor`} />
+              <BarChart values={chartValues} />
+              <Text style={styles.chartCaption}>Her sütun, ilgili antrenman raporundaki yedi gelişim alanının ortalamasını gösterir.</Text>
+            </SurfaceCard>
+          ) : null}
 
           <SurfaceCard style={styles.commentCard}>
             <View style={styles.commentHeader}>
-              <Text style={styles.sectionHeading}>Antrenör Yorumları</Text>
-              <MaterialCommunityIcons name="forum-outline" size={22} color={colors.outline} />
+              <Text style={styles.sectionHeading}>Raporlarım</Text>
+              <Text style={styles.reportCount}>{reports.length} rapor</Text>
             </View>
-            {reports.map((report) => (
-              <View key={report.id} style={styles.commentItem}>
-                <Text style={styles.date}>{formatDate(report.trainingCompletedAt)}</Text>
-                <Text style={styles.summary}>{report.trainingTitle}</Text>
-                {report.coachNote ? <Text style={styles.improvement}>{report.coachNote}</Text> : null}
-              </View>
-            ))}
+            {reports.map((report) => <ReportRow key={report.id} report={report} />)}
           </SurfaceCard>
         </>
       ) : (
@@ -197,6 +204,49 @@ function DevelopmentReports({ session, summary }: { session: ReturnType<typeof u
       )}
     </ScreenShell>
   );
+}
+
+function PerformanceStat({ icon, label, value }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: string }) {
+  return (
+    <View style={styles.performanceStat}>
+      <MaterialCommunityIcons name={icon} size={18} color={colors.primaryFixed} />
+      <Text style={styles.performanceStatValue}>{value}</Text>
+      <Text style={styles.performanceStatLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ReportRow({ report }: { report: TrainingReportResponse }) {
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: "/reports/[trainingId]/member", params: { trainingId: report.trainingSessionId } })}
+      style={({ pressed }) => [styles.reportRow, pressed && styles.reportRowPressed]}
+    >
+      <View style={styles.reportDateBadge}>
+        <MaterialCommunityIcons name="file-chart-outline" size={20} color={colors.primaryContainer} />
+      </View>
+      <View style={styles.flexOne}>
+        <Text style={styles.date}>{formatDate(report.trainingCompletedAt)}</Text>
+        <Text style={styles.summary}>{report.trainingTitle}</Text>
+        <Text numberOfLines={1} style={styles.improvement}>{report.coachNote?.trim() || "Antrenör değerlendirmesini görüntüle."}</Text>
+      </View>
+      <View style={styles.reportScore}>
+        <Text style={styles.reportScoreValue}>{reportAverage(report).toFixed(0)}</Text>
+        <Text style={styles.reportScoreLabel}>PUAN</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={22} color={colors.outline} />
+    </Pressable>
+  );
+}
+
+function averageMetrics(averages: DevelopmentMetricAverages) {
+  return (averages.nutrition
+    + averages.cognitiveDevelopment
+    + averages.discipline
+    + averages.physicalCondition
+    + averages.psychologicalDevelopment
+    + averages.tacticalDevelopment
+    + averages.technicalDevelopment) / 7;
 }
 
 function reportAverage(report: TrainingReportResponse) {
@@ -261,15 +311,6 @@ function GroupFormModal({ form, saving, visible, onChangeForm, onClose, onSubmit
   );
 }
 
-function LegendDot({ label, color }: { label: string; color: string }) {
-  return (
-    <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.rowMeta}>{label}</Text>
-    </View>
-  );
-}
-
 function SkillRow({ icon, label, value, delta }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: number; delta: number | null }) {
   const up = delta !== null && delta > 0;
   const down = delta !== null && delta < 0;
@@ -295,9 +336,9 @@ function SkillRow({ icon, label, value, delta }: { icon: keyof typeof MaterialCo
 
 const styles = StyleSheet.create({
   chartCard: { gap: spacing.md },
+  chartCaption: { ...typography.body, color: colors.onSurfaceVariant },
   commentCard: { gap: spacing.md },
   commentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  commentItem: { borderLeftColor: colors.primary, borderLeftWidth: 2, gap: spacing.xs, paddingLeft: spacing.md },
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
@@ -320,10 +361,17 @@ const styles = StyleSheet.create({
   headerBlock: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   iconAction: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   improvement: { ...typography.body, color: colors.onSurfaceVariant },
-  legendDot: { borderRadius: 4, height: 8, width: 8 },
-  legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
-  legendRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, justifyContent: "center" },
   list: { gap: spacing.md },
+  memberHeader: { gap: spacing.xs },
+  performanceCaption: { ...typography.body, color: colors.onSurfaceVariant },
+  performanceDivider: { backgroundColor: colors.outlineVariant, height: 44, width: 1 },
+  performanceHero: { alignItems: "center", backgroundColor: colors.surfaceContainerHighest, gap: spacing.xs, paddingVertical: spacing.lg },
+  performanceKicker: { ...typography.label, color: colors.primaryFixed, letterSpacing: 1.1 },
+  performanceScore: { ...typography.display, color: colors.primaryContainer, fontSize: 56, lineHeight: 62 },
+  performanceStat: { alignItems: "center", flex: 1, gap: 2 },
+  performanceStatLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
+  performanceStatValue: { ...typography.headline, color: colors.onSurface },
+  performanceStats: { alignSelf: "stretch", flexDirection: "row", marginTop: spacing.md },
   skillCard: { gap: spacing.md },
   skillList: { gap: spacing.sm },
   skillRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
@@ -344,6 +392,13 @@ const styles = StyleSheet.create({
   primaryButton: { alignItems: "center", backgroundColor: colors.primaryContainer, borderRadius: radius.sm, flexDirection: "row", gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   primaryButtonText: { ...typography.label, color: colors.onPrimary },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
+  reportCount: { ...typography.label, color: colors.primaryContainer },
+  reportDateBadge: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, height: 42, justifyContent: "center", width: 42 },
+  reportRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.sm, paddingTop: spacing.md },
+  reportRowPressed: { opacity: 0.72 },
+  reportScore: { alignItems: "center", minWidth: 38 },
+  reportScoreLabel: { ...typography.label, color: colors.onSurfaceVariant, fontSize: 9 },
+  reportScoreValue: { ...typography.title, color: colors.primaryContainer },
   sectionHeading: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginTop: spacing.xs },
   summary: { ...typography.bodyLarge, color: colors.onSurface },
