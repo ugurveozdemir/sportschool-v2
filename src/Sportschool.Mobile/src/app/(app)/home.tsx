@@ -599,21 +599,42 @@ function AttendanceStat({ label, value, color }: { label: string; value: number;
 }
 
 function HeroTrainingCard({ training }: { training: TrainingResponse }) {
-  const groupName = trainingGroupName(training);
+  const date = new Date(training.startsAt);
+  const day = new Intl.DateTimeFormat("tr-TR", { day: "2-digit" }).format(date);
+  const month = new Intl.DateTimeFormat("tr-TR", { month: "short" }).format(date).replace(".", "");
+  const weekday = new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(date);
+  const groups = training.groups.map((group) => group.name).join(", ");
   const inProgress = isTrainingInProgress(training);
   return (
-    <View style={styles.heroCard}>
-      <MaterialCommunityIcons name="soccer" size={160} color="rgba(255,255,255,0.09)" style={styles.heroIcon} />
-      <View style={styles.iconTitleRow}>
-        <MaterialCommunityIcons name="clock-outline" size={20} color={colors.secondaryContainer} />
-        <Text style={styles.heroKicker}>{inProgress ? "Devam Eden Antrenman" : "Sıradaki Antrenman"}</Text>
+    <View style={styles.coachHero}>
+      <View style={styles.coachHeroGlow} />
+      <View style={styles.coachHeroDate}>
+        <Text style={styles.coachHeroDateText}>{day} {month}</Text>
+        <Text style={styles.coachHeroTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
       </View>
-      <Text style={styles.heroTitle}>{training.title}</Text>
-      <View style={styles.metaRow}>
-        <Text style={styles.heroText}>◷ {formatRelativeDay(training.startsAt)} • {formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
-        {training.location ? <Text style={styles.heroText}>⌖ {training.location}</Text> : null}
-        {groupName ? <Text style={styles.heroText}>♟ {groupName}</Text> : null}
+      <Text style={styles.coachHeroWeekday}>{inProgress ? "DEVAM EDEN ANTRENMAN" : weekday.toLocaleUpperCase("tr-TR")}</Text>
+      <View style={styles.coachHeroDetails}>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Antrenman</Text>
+          <Text style={styles.coachHeroDetailValue}>: {training.title}</Text>
+        </View>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Sporcu Grubu</Text>
+          <Text style={styles.coachHeroDetailValue}>: {groups || "Grup atanmamış"}</Text>
+        </View>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Durum</Text>
+          <Text style={styles.coachHeroDetailValue}>: {inProgress ? "Devam ediyor" : "Planlandı"}</Text>
+        </View>
+        <View style={styles.coachHeroDetailRow}>
+          <Text style={styles.coachHeroDetailLabel}>Konum</Text>
+          <Text style={styles.coachHeroDetailValue}>: {training.location ?? "Belirtilmedi"}</Text>
+        </View>
       </View>
+      <Pressable onPress={() => router.push("/calendar")} style={styles.coachHeroButton}>
+        <Text style={styles.coachHeroButtonText}>Programı Gör</Text>
+        <MaterialCommunityIcons name="arrow-right" size={24} color={colors.onPrimary} />
+      </Pressable>
     </View>
   );
 }
@@ -811,17 +832,11 @@ const styles = StyleSheet.create({
   greenText: { color: colors.secondary },
   headerBlock: { gap: spacing.sm },
   headerBlockSmallGap: { gap: spacing.sm },
-  heroCard: { backgroundColor: colors.primary, borderRadius: radius.xl, gap: spacing.sm, overflow: "hidden", padding: spacing.xl },
-  heroIcon: { position: "absolute", right: -38, top: -22 },
-  heroKicker: { ...typography.label, color: colors.secondaryContainer, textTransform: "uppercase" },
-  heroText: { ...typography.bodyLarge, color: colors.primaryFixedDim },
-  heroTitle: { ...typography.headline, color: colors.onPrimary },
   iconTitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   infoTitle: { ...typography.title, color: colors.primary },
   kickerDark: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   largeWhite: { ...typography.display, color: colors.onPrimary, fontSize: 42, lineHeight: 48 },
   linkText: { ...typography.label, color: colors.primary },
-  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
   metricsRow: { flexDirection: "row", gap: spacing.md },
   modalBackdrop: { alignItems: "center", backgroundColor: "rgba(11,28,48,0.45)", flex: 1, justifyContent: "center", padding: spacing.lg },
   modalHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.sm },
