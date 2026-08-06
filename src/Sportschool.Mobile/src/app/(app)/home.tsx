@@ -113,9 +113,16 @@ function hasStarted(training: CoachTrainingItem) {
   return new Date(training.startsAt).getTime() <= Date.now();
 }
 
-function isNextTraining(training: { startsAt: string; completedAt: string | null }) {
+function isNextTraining(training: { endsAt: string; completedAt: string | null }) {
   return training.completedAt === null
-    && new Date(training.startsAt).getTime() >= Date.now();
+    && new Date(training.endsAt).getTime() >= Date.now();
+}
+
+function isTrainingInProgress(training: { startsAt: string; endsAt: string; completedAt: string | null }) {
+  const now = Date.now();
+  return training.completedAt === null
+    && new Date(training.startsAt).getTime() <= now
+    && new Date(training.endsAt).getTime() >= now;
 }
 
 function getInitials(value?: string) {
@@ -237,6 +244,7 @@ function CoachTrainingHero({ training }: { training: CoachTrainingItem }) {
   const month = new Intl.DateTimeFormat("tr-TR", { month: "short" }).format(date).replace(".", "");
   const weekday = new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(date);
   const groups = training.groups.map((group) => group.name).join(", ");
+  const inProgress = isTrainingInProgress(training);
 
   return (
     <View style={styles.coachHero}>
@@ -245,7 +253,7 @@ function CoachTrainingHero({ training }: { training: CoachTrainingItem }) {
         <Text style={styles.coachHeroDateText}>{day} {month}</Text>
         <Text style={styles.coachHeroTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
       </View>
-      <Text style={styles.coachHeroWeekday}>{weekday.toLocaleUpperCase("tr-TR")}</Text>
+      <Text style={styles.coachHeroWeekday}>{inProgress ? "DEVAM EDEN ANTRENMAN" : weekday.toLocaleUpperCase("tr-TR")}</Text>
       <View style={styles.coachHeroDetails}>
         <View style={styles.coachHeroDetailRow}>
           <Text style={styles.coachHeroDetailLabel}>Antrenman</Text>
@@ -587,12 +595,13 @@ function AttendanceStat({ label, value, color }: { label: string; value: number;
 
 function HeroTrainingCard({ training }: { training: TrainingResponse }) {
   const groupName = trainingGroupName(training);
+  const inProgress = isTrainingInProgress(training);
   return (
     <View style={styles.heroCard}>
       <MaterialCommunityIcons name="soccer" size={160} color="rgba(255,255,255,0.09)" style={styles.heroIcon} />
       <View style={styles.iconTitleRow}>
         <MaterialCommunityIcons name="clock-outline" size={20} color={colors.secondaryContainer} />
-        <Text style={styles.heroKicker}>Sıradaki Antrenman</Text>
+        <Text style={styles.heroKicker}>{inProgress ? "Devam Eden Antrenman" : "Sıradaki Antrenman"}</Text>
       </View>
       <Text style={styles.heroTitle}>{training.title}</Text>
       <View style={styles.metaRow}>
