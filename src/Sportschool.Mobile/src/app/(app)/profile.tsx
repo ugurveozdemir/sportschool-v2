@@ -58,7 +58,8 @@ export default function ProfileScreen() {
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
-      <View style={styles.profileHero}>
+      {!isCoach ? <Text style={styles.profileTitle}>Profilim</Text> : null}
+      <View style={[styles.profileHero, !isCoach && styles.memberProfileHero]}>
         <View style={styles.avatarWrap}>
           {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={96} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={96} tone="dark" />}
           <View style={styles.verifiedBadge}>
@@ -75,11 +76,19 @@ export default function ProfileScreen() {
 
       {!isCoach ? (
         averages ? (
-          <View style={styles.scoreGrid}>
-            <CircularScore value={averages.technicalDevelopment} label="Teknik" />
-            <CircularScore value={averages.physicalCondition} label="Kondisyon" />
-            <CircularScore value={averages.discipline} label="Disiplin" color={colors.primary} />
-          </View>
+          <SurfaceCard style={styles.developmentCard}>
+            <View style={styles.developmentHeader}>
+              <Text style={styles.developmentTitle}>Gelişim Özeti</Text>
+              <Pressable onPress={() => router.push("/development")}>
+                <Text style={styles.developmentLink}>Detaylar</Text>
+              </Pressable>
+            </View>
+            <View style={styles.scoreGrid}>
+              <CircularScore value={averages.technicalDevelopment} label="Teknik" />
+              <CircularScore value={averages.physicalCondition} label="Kondisyon" />
+              <CircularScore value={averages.discipline} label="Disiplin" color={colors.primary} />
+            </View>
+          </SurfaceCard>
         ) : (
           <SurfaceCard>
             <EmptyState title="Rapor yok" description="Henüz yayınlanmış gelişim raporu bulunmuyor." />
@@ -133,6 +142,10 @@ function initials(name: string) {
 const styles = StyleSheet.create({
   avatarWrap: { position: "relative" },
   card: { gap: spacing.md },
+  developmentCard: { gap: spacing.md },
+  developmentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  developmentLink: { ...typography.label, color: colors.primaryContainer },
+  developmentTitle: { ...typography.title, color: colors.onSurface },
   groupLead: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   groupName: { ...typography.bodyLarge, color: colors.primary, flex: 1 },
   groupRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, justifyContent: "space-between", paddingTop: spacing.md },
@@ -142,9 +155,11 @@ const styles = StyleSheet.create({
   logoutButton: { alignItems: "center", borderColor: colors.outline, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
   logoutText: { ...typography.title, color: colors.error },
   muted: { ...typography.body, color: colors.onSurfaceVariant },
+  memberProfileHero: { backgroundColor: colors.surfaceContainerHighest, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, padding: spacing.lg },
   name: { ...typography.headline, color: colors.primary, textAlign: "center" },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
   profileHero: { alignItems: "center", gap: spacing.md },
+  profileTitle: { ...typography.display, color: colors.primary },
   scoreGrid: { flexDirection: "row", gap: spacing.sm, justifyContent: "space-around" },
   settingIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.lg, height: 42, justifyContent: "center", width: 42 },
   settingRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.md },

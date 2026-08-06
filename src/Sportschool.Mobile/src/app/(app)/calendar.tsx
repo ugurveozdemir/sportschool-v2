@@ -241,8 +241,11 @@ function MemberCalendar({ markedDates, selectedDate, selectedTrainings, training
   const [detail, setDetail] = useState<TrainingItem | null>(null);
   return (
     <>
-      <View style={styles.headerBlock}>
-        <Text style={styles.memberTitle}>Antrenman Programı</Text>
+      <View style={styles.memberHeader}>
+        <View style={styles.flexOne}>
+          <Text style={styles.memberTitle}>Antrenman Programım</Text>
+          <Text style={styles.subtitle}>Haftalık planını ve yaklaşan antrenmanlarını takip et.</Text>
+        </View>
         <ViewToggle view={view} onChange={onChangeView} />
       </View>
       {view === "week" ? (
@@ -986,6 +989,7 @@ const styles = StyleSheet.create({
   dotRow: { flexDirection: "row", gap: 2, height: 8, marginTop: 2 },
   dotSelected: { backgroundColor: colors.secondaryContainer },
   headerBlock: { gap: spacing.lg },
+  memberHeader: { gap: spacing.md },
   legendDot: { borderRadius: 4, height: 8, width: 8 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   legendRow: { flexDirection: "row", gap: spacing.xl, justifyContent: "center" },
