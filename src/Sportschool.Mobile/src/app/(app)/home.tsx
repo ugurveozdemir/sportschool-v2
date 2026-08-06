@@ -13,7 +13,7 @@ import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/t
 import { useAttendance, useDevelopmentSummary, useGroups, useProfile, useTrainings } from "@/features/me/api";
 import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { CircularScore, InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
+import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import type { AttendanceStatus } from "@/shared/constants/domain";
 import { colors } from "@/shared/design/colors";
@@ -105,7 +105,6 @@ export default function HomeScreen() {
       groupCount={groupsQuery.data?.length ?? 0}
       attendance={attendance}
       announcementCount={unreadCountQuery.data?.count ?? 0}
-      developmentSummary={developmentSummary}
     />
   );
 }
@@ -355,7 +354,7 @@ function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visi
   );
 }
 
-function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTraining, groupCount, attendance, announcementCount, developmentSummary }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; profileImageUrl?: string | null; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number; developmentSummary?: DevelopmentSummaryResponse }) {
+function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTraining, groupCount, attendance, announcementCount }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; firstName: string; profileImageUrl?: string | null; nextTraining?: TrainingResponse; groupCount: number; attendance: AttendanceResponse[]; announcementCount: number }) {
   const stats = attendanceStats(attendance);
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={profileImageUrl ? resolveApiUrl(profileImageUrl) : null} label={firstName.slice(0, 1)} size={38} tone="dark" />}>
@@ -380,17 +379,12 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
           onPress={() => router.push("/calendar")}
         />
         <HomeMenuAction
-          highlighted
-          icon="chart-line"
-          label="GELİŞİMİM"
-          onPress={() => router.push("/development")}
-        />
-        <HomeMenuAction
           icon="account-check-outline"
           label="KATILIMIM"
           onPress={() => router.push("/attendance")}
         />
         <HomeMenuAction
+          highlighted
           icon="bullhorn-outline"
           label={announcementCount > 0 ? `DUYURULAR  •  ${announcementCount} YENİ` : "DUYURULAR"}
           onPress={() => router.push("/announcements")}
@@ -401,27 +395,6 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
           onPress={() => router.push("/feed")}
         />
       </View>
-
-      <SurfaceCard style={styles.sectionStack}>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.iconTitleRow}>
-            <MaterialCommunityIcons name="chart-line" size={24} color={colors.secondary} />
-            <Text style={styles.cardTitle}>Gelişim Özeti</Text>
-          </View>
-          <Pressable onPress={() => router.push("/development")}>
-            <Text style={styles.linkText}>Detaylar</Text>
-          </Pressable>
-        </View>
-        {developmentSummary?.averages ? (
-          <View style={styles.scoreRow}>
-            <CircularScore label="Teknik" value={developmentSummary.averages.technicalDevelopment} color={colors.secondary} />
-            <CircularScore label="Kondisyon" value={developmentSummary.averages.physicalCondition} color={colors.primary} />
-            <CircularScore label="Disiplin" value={developmentSummary.averages.discipline} color={colors.secondaryFixedDim} />
-          </View>
-        ) : (
-          <EmptyState title="Rapor yok" description="Henüz yayınlanmış gelişim raporu bulunmuyor." />
-        )}
-      </SurfaceCard>
 
       <View style={styles.metricsRow}>
         <MetricTile icon="account-group-outline" label="Grup" value={`${groupCount}`} />
