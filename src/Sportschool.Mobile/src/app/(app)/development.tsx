@@ -13,7 +13,7 @@ import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { BarChart, InitialsAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { InitialsAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -140,7 +140,6 @@ function CoachTeams({
 function DevelopmentReports({ session, summary }: { session: ReturnType<typeof useSession>["session"]; summary?: DevelopmentSummaryResponse }) {
   const reports = summary?.reports ?? [];
   const averages = summary?.averages;
-  const chartValues = reports.slice(0, 6).reverse().map(reportAverage);
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={38} tone="dark" />}>
@@ -180,14 +179,6 @@ function DevelopmentReports({ session, summary }: { session: ReturnType<typeof u
               ))}
             </View>
           </SurfaceCard>
-
-          {chartValues.length > 0 ? (
-            <SurfaceCard style={styles.chartCard}>
-              <SectionTitle title="Gelişim Seyri" action={`Son ${chartValues.length} rapor`} />
-              <BarChart values={chartValues} />
-              <Text style={styles.chartCaption}>Her sütun, ilgili antrenman raporundaki yedi gelişim alanının ortalamasını gösterir.</Text>
-            </SurfaceCard>
-          ) : null}
 
           <SurfaceCard style={styles.commentCard}>
             <View style={styles.commentHeader}>
@@ -335,8 +326,6 @@ function SkillRow({ icon, label, value, delta }: { icon: keyof typeof MaterialCo
 }
 
 const styles = StyleSheet.create({
-  chartCard: { gap: spacing.md },
-  chartCaption: { ...typography.body, color: colors.onSurfaceVariant },
   commentCard: { gap: spacing.md },
   commentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },
