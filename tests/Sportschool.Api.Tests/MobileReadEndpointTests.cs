@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using Sportschool.Api.Features.Athletes;
+using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.Schools;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 using Sportschool.Api.Tests.Infrastructure;
@@ -166,9 +168,78 @@ public sealed class MobileReadEndpointTests : IClassFixture<TestAppFactory>
         Assert.Equal(profile.Id, report.AthleteProfileId);
     }
 
+    [Fact]
+    public async Task NextTraining_ReturnsFirstUncompletedTrainingForAthletesGroup()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var school = new School
+        {
+            Name = "Next Training School",
+            Code = $"next-{suffix}",
+            NormalizedCode = TextNormalizer.NormalizeSchoolCode($"next-{suffix}")
+        };
+        var coach = TestUsers.Create(school.Id, $"next-coach-{suffix}@example.com", "Next Coach", "password", UserRole.Coach);
+        var athleteUser = TestUsers.Create(school.Id, $"next-athlete-{suffix}@example.com", "Next Athlete", "password", UserRole.Athlete);
+        var athlete = new AthleteProfile
+        {
+            SchoolId = school.Id,
+            User = athleteUser,
+            FirstName = "Next",
+            LastName = "Athlete",
+            BirthDate = new DateOnly(2013, 5, 10),
+            ParentFullName = "Next Parent",
+            ParentPhone = "05000000000"
+        };
+        var group = new TrainingGroup
+        {
+            SchoolId = school.Id,
+            Name = "U13"
+        };
+        var now = DateTimeOffset.UtcNow;
+        var activeTraining = new TrainingSession
+        {
+            SchoolId = school.Id,
+            Coach = coach,
+            Title = "Active Training",
+            StartsAt = now.AddMinutes(-15),
+            EndsAt = now.AddMinutes(45),
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+        var futureTraining = new TrainingSession
+        {
+            SchoolId = school.Id,
+            Coach = coach,
+            Title = "Future Training",
+            StartsAt = now.AddDays(1),
+            EndsAt = now.AddDays(1).AddHours(1),
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Schools.Add(school);
+            db.Users.AddRange(coach, athleteUser);
+            db.TrainingGroups.Add(group);
+            db.AthleteProfiles.Add(athlete);
+            db.GroupAthletes.Add(new GroupAthlete { Group = group, AthleteProfile = athlete });
+            db.TrainingSessions.AddRange(activeTraining, futureTraining);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateAuthenticatedClient(athleteUser, UserRole.Athlete);
+
+        var training = await client.GetFromJsonAsync<NextTrainingResponse>("/api/me/trainings/next");
+
+        Assert.NotNull(training);
+        Assert.Equal(activeTraining.Id, training.Id);
+        Assert.Equal("Active Training", training.Title);
+    }
+
     private sealed record MobileAthleteResponse(Guid Id, string FirstName, string LastName);
 
     private sealed record MobileProfileResponse(string FirstName, string LastName);
 
     private sealed record AthleteReportResponse(Guid AthleteProfileId, string Summary);
+
+    private sealed record NextTrainingResponse(Guid Id, string Title);
 }

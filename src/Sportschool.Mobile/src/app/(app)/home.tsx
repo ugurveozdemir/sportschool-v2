@@ -10,7 +10,7 @@ import { useMemberAnnouncements, useUnreadAnnouncementCount } from "@/features/a
 import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary, useCoachTrainings } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
-import { useAttendance, useDevelopmentSummary, useGroups, useProfile, useTrainings } from "@/features/me/api";
+import { useAttendance, useDevelopmentSummary, useGroups, useNextTraining, useProfile, useTrainings } from "@/features/me/api";
 import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
@@ -34,7 +34,8 @@ export default function HomeScreen() {
   const { athletes, selectedAthleteProfileId, setSelectedAthleteProfileId } = useAthleteSelection();
 
   const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
-  const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);
+  const trainingsQuery = useTrainings(isParent, undefined, selectedAthleteProfileId);
+  const nextTrainingQuery = useNextTraining(!isCoach, selectedAthleteProfileId);
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
   const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
   const developmentQuery = useDevelopmentSummary(!isCoach, selectedAthleteProfileId);
@@ -44,18 +45,20 @@ export default function HomeScreen() {
   const coachTrainingsQuery = useCoachTrainings(isCoach);
   const { refetch: refetchProfile } = profileQuery;
   const { refetch: refetchTrainings } = trainingsQuery;
+  const { refetch: refetchNextTraining } = nextTrainingQuery;
 
   useFocusEffect(useCallback(() => {
     if (isCoach) {
       return;
     }
 
-    void Promise.all([
-      refetchProfile(),
-      refetchTrainings(),
-      queryClient.refetchQueries({ queryKey: ["me", "athletes"], type: "active" })
-    ]);
-  }, [isCoach, queryClient, refetchProfile, refetchTrainings]));
+    void refetchProfile();
+    void refetchNextTraining();
+    if (isParent) {
+      void refetchTrainings();
+    }
+    void queryClient.refetchQueries({ queryKey: ["me", "athletes"], type: "active" });
+  }, [isCoach, isParent, queryClient, refetchNextTraining, refetchProfile, refetchTrainings]));
 
   if (isCoach) {
     return (
@@ -72,7 +75,7 @@ export default function HomeScreen() {
 
   const profile = profileQuery.data;
   const trainings = trainingsQuery.data ?? [];
-  const nextTraining = trainings.find(isNextTraining);
+  const nextTraining = nextTrainingQuery.data ?? undefined;
   const todayTrainingCount = trainings.filter((training) => isSameDay(training.startsAt)).length;
   const announcements = announcementsQuery.data ?? [];
   const attendance = attendanceQuery.data ?? [];

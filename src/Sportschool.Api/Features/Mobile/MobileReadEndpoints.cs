@@ -23,6 +23,7 @@ public static class MobileReadEndpoints
         group.MapGet("/athletes", ListAthletesAsync);
         group.MapGet("/profile", GetProfileAsync);
         group.MapGet("/groups", ListGroupsAsync);
+        group.MapGet("/trainings/next", GetNextTrainingAsync);
         group.MapGet("/trainings", ListTrainingsAsync);
         group.MapGet("/attendance", ListAttendanceAsync);
         group.MapGet("/payments", ListPaymentsAsync);
@@ -130,6 +131,65 @@ public static class MobileReadEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(trainings);
+    }
+
+    private static async Task<IResult> GetNextTrainingAsync(
+        Guid? athleteProfileId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
+        if (profile is null)
+        {
+            return Results.NotFound();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var trainingCandidates = await (
+                from trainingSession in db.TrainingSessions
+                join trainingGroup in db.TrainingSessionGroups on trainingSession.Id equals trainingGroup.TrainingSessionId
+                join membership in db.GroupAthletes on trainingGroup.GroupId equals membership.GroupId
+                where trainingSession.SchoolId == profile.SchoolId
+                    && trainingSession.IsActive
+                    && trainingSession.CompletedAt == null
+                    && membership.AthleteProfileId == profile.Id
+                select new { trainingSession.Id, trainingSession.StartsAt, trainingSession.EndsAt })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var trainingId = trainingCandidates
+            .Where(training => training.EndsAt >= now)
+            .OrderBy(training => training.StartsAt)
+            .Select(training => (Guid?)training.Id)
+            .FirstOrDefault();
+        if (trainingId is null)
+        {
+            return Results.Ok(null);
+        }
+
+        var training = await db.TrainingSessions
+            .Where(x => x.Id == trainingId.Value)
+            .Select(x => new TrainingResponse(
+                x.Id,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
+                x.CoachId,
+                x.Title,
+                x.StartsAt,
+                x.EndsAt,
+                x.Recurrence,
+                x.RecurrenceEndsOn,
+                x.Location,
+                x.Notes,
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return Results.Ok(training);
     }
 
     private static async Task<IResult> ListAttendanceAsync(

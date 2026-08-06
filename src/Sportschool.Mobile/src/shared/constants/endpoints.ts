@@ -5,6 +5,7 @@ export const endpoints = {
   meAthletes: "/api/me/athletes",
   meProfile: "/api/me/profile",
   meGroups: "/api/me/groups",
+  meNextTraining: "/api/me/trainings/next",
   meTrainings: "/api/me/trainings",
   meAttendance: "/api/me/attendance",
   mePayments: "/api/me/payments",

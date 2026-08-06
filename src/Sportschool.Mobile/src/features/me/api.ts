@@ -34,6 +34,14 @@ export function useTrainings(enabled = true, range?: TrainingRange, athleteProfi
   });
 }
 
+export function useNextTraining(enabled = true, athleteProfileId?: string | null) {
+  return useQuery({
+    enabled,
+    queryKey: ["me", "next-training", athleteProfileId],
+    queryFn: () => apiRequest<TrainingResponse | null>(withAthlete(endpoints.meNextTraining, athleteProfileId))
+  });
+}
+
 export function useAttendance(enabled = true, athleteProfileId?: string | null) {
   return useQuery({ enabled, queryKey: ["me", "attendance", athleteProfileId], queryFn: () => apiRequest<AttendanceResponse[]>(withAthlete(endpoints.meAttendance, athleteProfileId)) });
 }
