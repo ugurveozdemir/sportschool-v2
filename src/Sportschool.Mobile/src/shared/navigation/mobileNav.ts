@@ -9,6 +9,7 @@ const coachNav: NavItem[] = [
 
 const athleteNav: NavItem[] = [
   { label: "Ana Sayfa", icon: "home-outline", href: "/home", match: "/home" },
+  { label: "Gelişimim", icon: "chart-line", href: "/development", match: "/development" },
   { label: "Profilim", icon: "account-outline", href: "/profile", match: "/profile" }
 ];
 
@@ -36,5 +37,5 @@ export function getShellTitle(session: Session | null) {
   if (session?.loginRole === "Parent") {
     return "Akademi Takibi";
   }
-  return "Elite Academy";
+  return "TÜRK OCAĞI ELİT AKADEMİ";
 }
