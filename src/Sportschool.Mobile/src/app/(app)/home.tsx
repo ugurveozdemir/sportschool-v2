@@ -10,9 +10,9 @@ import { useMemberAnnouncements, useUnreadAnnouncementCount } from "@/features/a
 import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary, useCoachTrainings } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
-import { useAttendance, useDevelopmentSummary, useGroups, useNextTraining, useProfile, useTrainings } from "@/features/me/api";
+import { useAttendance, useDevelopmentSummary, useGroups, useNextTraining, usePayments, useProfile, useTrainings } from "@/features/me/api";
 import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
-import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, TrainingResponse } from "@/features/me/types";
+import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, PaymentResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
@@ -22,6 +22,7 @@ import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatDate, formatRelativeDay, formatTime, isSameDay } from "@/shared/utils/date";
+import { formatMoney } from "@/shared/utils/money";
 import { getAttendanceLabel } from "@/shared/utils/status";
 
 export default function HomeScreen() {
@@ -40,6 +41,7 @@ export default function HomeScreen() {
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
   const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
   const developmentQuery = useDevelopmentSummary(!isCoach, selectedAthleteProfileId);
+  const paymentsQuery = usePayments(isParent, selectedAthleteProfileId);
   const announcementsQuery = useMemberAnnouncements(!isCoach, true);
   const unreadCountQuery = useUnreadAnnouncementCount(!isCoach);
   const coachSummaryQuery = useCoachSummary(isCoach);
@@ -47,6 +49,7 @@ export default function HomeScreen() {
   const { refetch: refetchProfile } = profileQuery;
   const { refetch: refetchTrainings } = trainingsQuery;
   const { refetch: refetchNextTraining } = nextTrainingQuery;
+  const { refetch: refetchPayments } = paymentsQuery;
 
   useFocusEffect(useCallback(() => {
     if (isCoach) {
@@ -57,9 +60,10 @@ export default function HomeScreen() {
     void refetchNextTraining();
     if (isParent) {
       void refetchTrainings();
+      void refetchPayments();
     }
     void queryClient.refetchQueries({ queryKey: ["me", "athletes"], type: "active" });
-  }, [isCoach, isParent, queryClient, refetchNextTraining, refetchProfile, refetchTrainings]));
+  }, [isCoach, isParent, queryClient, refetchNextTraining, refetchPayments, refetchProfile, refetchTrainings]));
 
   if (isCoach) {
     return (
@@ -88,11 +92,15 @@ export default function HomeScreen() {
         navItems={navItems}
         shellTitle={shellTitle}
         parentName={session?.fullName?.split(" ")[0] ?? "Veli"}
+        childName={profile?.firstName ?? "Sporcu"}
         nextTraining={nextTraining}
         todayTrainingCount={todayTrainingCount}
         announcements={announcements.slice(0, 2)}
+        currentAnnouncementCount={announcements.length}
+        unreadAnnouncementCount={unreadCountQuery.data?.count ?? 0}
         developmentSummary={developmentSummary}
         attendance={attendance}
+        payments={paymentsQuery.data}
       />
     );
   }
@@ -416,71 +424,105 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
   );
 }
 
-function ParentHome({ navItems, shellTitle, parentName, nextTraining, todayTrainingCount, announcements, developmentSummary, attendance }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; developmentSummary?: DevelopmentSummaryResponse; attendance: AttendanceResponse[] }) {
+type ParentHomeProps = {
+  navItems: ReturnType<typeof getMobileNav>;
+  shellTitle: string;
+  parentName: string;
+  childName: string;
+  nextTraining?: TrainingResponse;
+  todayTrainingCount: number;
+  announcements: AnnouncementResponse[];
+  currentAnnouncementCount: number;
+  unreadAnnouncementCount: number;
+  developmentSummary?: DevelopmentSummaryResponse;
+  attendance: AttendanceResponse[];
+  payments?: PaymentResponse[];
+};
+
+function ParentHome({ navItems, shellTitle, parentName, childName, nextTraining, todayTrainingCount, announcements, currentAnnouncementCount, unreadAnnouncementCount, developmentSummary, attendance, payments }: ParentHomeProps) {
   const nextTrainingGroup = nextTraining ? trainingGroupName(nextTraining) : null;
   const stats = attendanceStats(attendance);
   const score = developmentSummary?.averages ? averageMetrics(developmentSummary.averages) : null;
+  const totalDue = payments?.reduce((sum, payment) => sum + (payment.effectiveStatus === "Paid" ? 0 : payment.balance), 0);
   return (
     <ScreenShell title={shellTitle} navItems={navItems} avatar={<SelectedAthleteAvatar />}>
       <View style={styles.headerBlockSmallGap}>
         <Text style={styles.parentTitle}>Merhaba, {parentName}</Text>
-        <Text style={styles.subtitle}>Bugün {todayTrainingCount > 0 ? `${todayTrainingCount} antrenman` : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
+        <Text style={styles.subtitle}>Bugün {todayTrainingCount > 0 ? `${todayTrainingCount} antrenman` : "antrenman yok"} ve {currentAnnouncementCount} güncel duyuru var.</Text>
       </View>
 
       <ParentAthleteSelector />
 
-      <SurfaceCard style={styles.parentTrainingCard}>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.iconTitleRow}>
-            <MaterialCommunityIcons name="soccer" size={24} color={colors.secondary} />
-            <Text style={styles.parentCardTitle}>Sıradaki Antrenman</Text>
+      <Pressable onPress={() => router.push("/calendar")}>
+        <SurfaceCard accent="secondary" style={styles.parentTrainingCard}>
+          <View style={styles.cardHeaderRow}>
+            <View style={styles.iconTitleRow}>
+              <MaterialCommunityIcons name="soccer" size={24} color={colors.secondary} />
+              <Text style={styles.parentCardTitle}>Sıradaki Antrenman</Text>
+            </View>
+            {nextTraining ? (
+              <Pill label={formatRelativeDay(nextTraining.startsAt)} tone={isSameDay(nextTraining.startsAt) ? "success" : "neutral"} />
+            ) : null}
           </View>
           {nextTraining ? (
-            <Pill label={formatRelativeDay(nextTraining.startsAt)} tone={isSameDay(nextTraining.startsAt) ? "success" : "neutral"} />
-          ) : null}
-        </View>
-        {nextTraining ? (
-          <>
-            <Text style={styles.smallMeta}>{[nextTrainingGroup, nextTraining.title].filter(Boolean).join(" • ")}</Text>
-            <View style={styles.parentInfoBox}>
-              <InitialsAvatar label="◷" size={42} tone="dark" />
-              <View>
-                <Text style={styles.kickerDark}>Zaman</Text>
-                <Text style={styles.infoTitle}>{formatRelativeDay(nextTraining.startsAt)} • {formatTime(nextTraining.startsAt)} - {formatTime(nextTraining.endsAt)}</Text>
-              </View>
-            </View>
-            {nextTraining.location ? (
+            <>
+              <Text style={styles.smallMeta}>{[nextTrainingGroup, nextTraining.title].filter(Boolean).join(" • ")}</Text>
               <View style={styles.parentInfoBox}>
-                <InitialsAvatar label="⌖" size={42} tone="light" />
-                <View>
-                  <Text style={styles.kickerDark}>Tesis</Text>
-                  <Text style={styles.infoTitle}>{nextTraining.location}</Text>
+                <InitialsAvatar label="◷" size={42} tone="dark" />
+                <View style={styles.flexOne}>
+                  <Text style={styles.kickerDark}>Zaman</Text>
+                  <Text style={styles.infoTitle}>{formatRelativeDay(nextTraining.startsAt)} • {formatTime(nextTraining.startsAt)} - {formatTime(nextTraining.endsAt)}</Text>
                 </View>
               </View>
-            ) : null}
-          </>
-        ) : (
-          <EmptyState title="Planlanmış antrenman yok" description="Yaklaşan bir antrenman bulunmuyor." />
-        )}
-      </SurfaceCard>
+              {nextTraining.location ? (
+                <View style={styles.parentInfoBox}>
+                  <InitialsAvatar label="⌖" size={42} tone="light" />
+                  <View style={styles.flexOne}>
+                    <Text style={styles.kickerDark}>Tesis</Text>
+                    <Text style={styles.infoTitle}>{nextTraining.location}</Text>
+                  </View>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState title="Planlanmış antrenman yok" description="Yaklaşan bir antrenman bulunmuyor." />
+          )}
+        </SurfaceCard>
+      </Pressable>
 
-      <View style={styles.darkScoreCard}>
-        <Text style={styles.darkCardTitle}>Gelişim Özeti</Text>
-        {developmentSummary?.averages && score !== null ? (
-          <>
-            <Text style={styles.darkSubtitle}>Genel performans puanı</Text>
-            <View style={styles.scoreInline}>
-              <Text style={styles.largeWhite}>{score.toFixed(1)}</Text>
-            </View>
-            <Progress label="Teknik" value={developmentSummary.averages.technicalDevelopment} />
-            <Progress label="Kondisyon" value={developmentSummary.averages.physicalCondition} light />
-          </>
-        ) : (
-          <Text style={styles.darkSubtitle}>Henüz gelişim raporu bulunmuyor.</Text>
-        )}
+      <View style={styles.parentStatusGrid}>
+        <ParentStatusCard icon="calendar-check-outline" label="Katılım" value={stats.total > 0 ? `%${stats.rate}` : "-"} tone="success" onPress={() => router.push("/attendance")} />
+        <ParentStatusCard icon="chart-line" label="Gelişim" value={score !== null ? score.toFixed(0) : "-"} tone="primary" onPress={() => router.push("/development")} />
+        <ParentStatusCard icon="cash-multiple" label="Aidat" value={totalDue === undefined ? "-" : totalDue > 0 ? formatMoney(totalDue) : "Tamam"} tone={totalDue && totalDue > 0 ? "danger" : "success"} onPress={() => router.push("/payments")} />
+        <ParentStatusCard icon="bullhorn-outline" label="Yeni duyuru" value={`${unreadAnnouncementCount}`} tone={unreadAnnouncementCount > 0 ? "primary" : "neutral"} onPress={() => router.push("/announcements")} />
       </View>
 
-      <AttendanceCard stats={stats} />
+      <Pressable onPress={() => router.push("/development")}>
+        <SurfaceCard accent="primary" style={styles.developmentCard}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>Gelişim Özeti</Text>
+            <Text style={styles.linkText}>Detaylar</Text>
+          </View>
+          {developmentSummary?.averages && score !== null ? (
+            <>
+              <Text style={styles.developmentSubtitle}>Genel performans puanı</Text>
+              <Text style={styles.developmentScore}>{score.toFixed(1)}</Text>
+              <Progress label="Teknik" value={developmentSummary.averages.technicalDevelopment} />
+              <Progress label="Kondisyon" value={developmentSummary.averages.physicalCondition} light />
+            </>
+          ) : (
+            <Text style={styles.developmentSubtitle}>Henüz gelişim raporu bulunmuyor.</Text>
+          )}
+        </SurfaceCard>
+      </Pressable>
+
+      <AttendanceCard stats={stats} subjectName={childName} onPress={() => router.push("/attendance")} />
+
+      <View style={styles.parentQuickActions}>
+        <ParentQuickAction icon="play-box-multiple-outline" label="Videolar" onPress={() => router.push("/feed")} />
+        <ParentQuickAction icon="bullhorn-outline" label="Duyurular" onPress={() => router.push("/announcements")} />
+        <ParentQuickAction icon="account-outline" label="Sporcu Profili" onPress={() => router.push("/profile")} />
+      </View>
 
       <SurfaceCard style={styles.noPaddingCard}>
           <View style={styles.cardInsetHeader}>
@@ -538,7 +580,7 @@ function attendanceTone(status: AttendanceStatus | null): "success" | "danger" |
   return status === "Absent" ? "danger" : "neutral";
 }
 
-function AttendanceCard({ stats }: { stats: AttendanceStats }) {
+function AttendanceCard({ stats, subjectName, onPress }: { stats: AttendanceStats; subjectName?: string; onPress?: () => void }) {
   return (
     <SurfaceCard style={styles.sectionStack}>
       <View style={styles.cardHeaderRow}>
@@ -546,13 +588,20 @@ function AttendanceCard({ stats }: { stats: AttendanceStats }) {
           <MaterialCommunityIcons name="calendar-check-outline" size={26} color={colors.secondary} />
           <Text style={styles.cardTitle}>Katılım</Text>
         </View>
-        {stats.total > 0 ? <Text style={styles.attendanceRate}>%{stats.rate}</Text> : null}
+        <View style={styles.cardHeaderAction}>
+          {stats.total > 0 ? <Text style={styles.attendanceRate}>%{stats.rate}</Text> : null}
+          {onPress ? (
+            <Pressable onPress={onPress}>
+              <Text style={styles.linkText}>Detaylar</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
       {stats.total === 0 ? (
         <EmptyState title="Kayıt yok" description="Henüz yoklama kaydı bulunmuyor." />
       ) : (
         <>
-          <Text style={styles.subtitle}>Son {stats.total} antrenmanın {stats.present} tanesine katıldın.</Text>
+          <Text style={styles.subtitle}>{subjectName ? `${subjectName}, son ${stats.total} antrenmanın ${stats.present} tanesine katıldı.` : `Son ${stats.total} antrenmanın ${stats.present} tanesine katıldın.`}</Text>
           <View style={styles.attendanceStatsRow}>
             <AttendanceStat label="Geldi" value={stats.present} color={colors.secondary} />
             <AttendanceStat label="Gelmedi" value={stats.absent} color={colors.error} />
@@ -570,6 +619,28 @@ function AttendanceCard({ stats }: { stats: AttendanceStats }) {
         </>
       )}
     </SurfaceCard>
+  );
+}
+
+function ParentStatusCard({ icon, label, value, tone, onPress }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; value: string; tone: "primary" | "success" | "danger" | "neutral"; onPress: () => void }) {
+  const color = tone === "success" ? colors.secondary : tone === "danger" ? colors.error : tone === "primary" ? colors.primaryContainer : colors.onSurfaceVariant;
+  return (
+    <Pressable onPress={onPress} style={styles.parentStatusPressable}>
+      <SurfaceCard style={styles.parentStatusCard}>
+        <MaterialCommunityIcons name={icon} size={22} color={color} />
+        <Text numberOfLines={1} style={[styles.parentStatusValue, { color }]}>{value}</Text>
+        <Text style={styles.parentStatusLabel}>{label}</Text>
+      </SurfaceCard>
+    </Pressable>
+  );
+}
+
+function ParentQuickAction({ icon, label, onPress }: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.parentQuickAction}>
+      <MaterialCommunityIcons name={icon} size={24} color={colors.primaryContainer} />
+      <Text style={styles.parentQuickActionLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -635,7 +706,7 @@ function Progress({ label, value, light }: { label: string; value: number; light
         <Text style={styles.progressLabel}>{value}%</Text>
       </View>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${value}%`, backgroundColor: light ? colors.primaryFixed : colors.secondaryContainer }]} />
+        <View style={[styles.progressFill, { width: `${value}%`, backgroundColor: light ? colors.secondary : colors.primaryContainer }]} />
       </View>
     </View>
   );
@@ -675,6 +746,7 @@ const styles = StyleSheet.create({
   attendanceList: { gap: spacing.sm },
   attendanceRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.sm },
   attendanceDate: { ...typography.body, color: colors.onSurface },
+  cardHeaderAction: { alignItems: "flex-end", gap: spacing.xs },
   cardHeaderRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   cardInsetHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", padding: spacing.lg },
   cardTitle: { ...typography.headline, color: colors.primary },
@@ -795,11 +867,11 @@ const styles = StyleSheet.create({
   coachWelcome: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   coachWelcomeName: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   coachWelcomeTitle: { ...typography.headline, color: colors.onSurface },
-  darkCardTitle: { ...typography.title, color: colors.onPrimary },
-  darkScoreCard: { backgroundColor: colors.primary, borderRadius: radius.lg, gap: spacing.sm, padding: spacing.lg },
-  darkSubtitle: { ...typography.body, color: colors.primaryFixedDim },
   dateSmall: { ...typography.label, color: colors.outline, marginTop: spacing.sm },
   dateText: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginBottom: 4 },
+  developmentCard: { gap: spacing.sm },
+  developmentScore: { ...typography.display, color: colors.primaryContainer, fontSize: 42, lineHeight: 48 },
+  developmentSubtitle: { ...typography.body, color: colors.onSurfaceVariant },
   displayTitle: { ...typography.display, color: colors.primary },
   emptyAnnouncement: { borderTopColor: colors.outlineVariant, borderTopWidth: 1, padding: spacing.lg },
   eventCard: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingLeft: spacing.xl },
@@ -812,9 +884,8 @@ const styles = StyleSheet.create({
   headerBlock: { gap: spacing.sm },
   headerBlockSmallGap: { gap: spacing.sm },
   iconTitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
-  infoTitle: { ...typography.title, color: colors.primary },
+  infoTitle: { ...typography.title, color: colors.onSurface },
   kickerDark: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
-  largeWhite: { ...typography.display, color: colors.onPrimary, fontSize: 42, lineHeight: 48 },
   linkText: { ...typography.label, color: colors.primary },
   metricsRow: { flexDirection: "row", gap: spacing.md },
   modalBackdrop: { alignItems: "center", backgroundColor: "rgba(11,28,48,0.45)", flex: 1, justifyContent: "center", padding: spacing.lg },
@@ -824,22 +895,29 @@ const styles = StyleSheet.create({
   mutedBold: { ...typography.title, color: colors.outline },
   noPaddingCard: { padding: 0 },
   parentCardTitle: { ...typography.title, color: colors.primary },
-  parentInfoBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.surfaceContainerHigh, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
+  parentInfoBox: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderColor: colors.outlineVariant, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md },
+  parentQuickAction: { alignItems: "center", backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flex: 1, gap: spacing.sm, justifyContent: "center", minHeight: 82, padding: spacing.sm },
+  parentQuickActionLabel: { ...typography.label, color: colors.onSurface, textAlign: "center" },
+  parentQuickActions: { flexDirection: "row", gap: spacing.sm },
+  parentStatusCard: { flex: 1, gap: spacing.xs, minHeight: 102 },
+  parentStatusGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  parentStatusLabel: { ...typography.label, color: colors.onSurfaceVariant },
+  parentStatusPressable: { flexBasis: "47%", flexGrow: 1 },
+  parentStatusValue: { ...typography.title },
   parentTitle: { ...typography.headline, color: colors.primary },
-  parentTrainingCard: { backgroundColor: "rgba(232,255,243,0.45)", gap: spacing.md },
+  parentTrainingCard: { gap: spacing.md },
   pickerRow: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.md, justifyContent: "space-between", padding: spacing.md },
   pickerRowDisabled: { alignItems: "center", backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, flexDirection: "row", gap: spacing.md, justifyContent: "space-between", opacity: 0.55, padding: spacing.md },
   pickerRowMain: { flex: 1, gap: 2 },
   pickerRowMeta: { ...typography.label, color: colors.onSurfaceVariant },
   pickerRowTitle: { ...typography.title, color: colors.onSurface },
   progressFill: { borderRadius: radius.full, height: "100%" },
-  progressLabel: { ...typography.label, color: colors.onPrimary },
-  progressTrack: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: radius.full, height: 7, overflow: "hidden" },
+  progressLabel: { ...typography.label, color: colors.onSurface },
+  progressTrack: { backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, height: 7, overflow: "hidden" },
   progressWrap: { gap: 4 },
   redText: { color: colors.errorContainer },
   rowMeta: { ...typography.body, color: colors.onSurfaceVariant },
   rowTitle: { ...typography.bodyLarge, color: colors.primary },
-  scoreInline: { alignItems: "flex-end", flexDirection: "row", gap: spacing.sm },
   scoreRow: { flexDirection: "row", justifyContent: "space-around" },
   sectionStack: { gap: spacing.lg },
   separator: { backgroundColor: colors.borderSoft, height: 1 },
