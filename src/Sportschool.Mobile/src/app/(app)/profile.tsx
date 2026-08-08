@@ -23,6 +23,7 @@ import { formatDate } from "@/shared/utils/date";
 export default function ProfileScreen() {
   const { session, clearSession } = useSession();
   const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
+  const isParent = session?.loginRole === "Parent";
   const { selectedAthleteProfileId } = useAthleteSelection();
   const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
   const groupsQuery = useGroups(!isCoach, selectedAthleteProfileId);
@@ -59,8 +60,17 @@ export default function ProfileScreen() {
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
-      {!isCoach ? <Text style={styles.profileTitle}>Profilim</Text> : null}
+      {!isCoach ? <Text style={styles.profileTitle}>{isParent ? "Hesabım" : "Profilim"}</Text> : null}
+      {isParent ? (
+        <SurfaceCard style={styles.card}>
+          <SectionTitle title="Veli Hesabım" />
+          <Info label="Ad soyad" value={session?.fullName ?? "-"} />
+          <Info label="Telefon" value={profile?.parentPhone ?? "-"} />
+          <Info label="E-posta" value={session?.email ?? "-"} />
+        </SurfaceCard>
+      ) : null}
       <ParentAthleteSelector />
+      {isParent ? <Text style={styles.sectionHeading}>Sporcu Profili</Text> : null}
       <View style={[styles.profileHero, !isCoach && styles.memberProfileHero]}>
         <View style={styles.avatarWrap}>
           {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={96} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={96} tone="dark" />}
@@ -107,7 +117,7 @@ export default function ProfileScreen() {
         {!isCoach ? <Info label="Kayıt tarihi" value={profile?.createdAt ? formatDate(profile.createdAt) : "-"} /> : null}
       </SurfaceCard>
 
-      {!isCoach ? (
+      {!isCoach && !isParent ? (
         <SurfaceCard style={styles.card}>
           <SectionTitle title="Veli Bilgileri" />
           <Info label="Ad soyad" value={profile?.parentFullName ?? "-"} />
@@ -199,6 +209,7 @@ const styles = StyleSheet.create({
   profileHero: { alignItems: "center", gap: spacing.md },
   profileTitle: { ...typography.display, color: colors.primary },
   scoreGrid: { flexDirection: "row", gap: spacing.sm, justifyContent: "space-around" },
+  sectionHeading: { ...typography.headline, color: colors.onSurface },
   settingIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.lg, height: 42, justifyContent: "center", width: 42 },
   settingRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.md },
   settingsCard: { gap: spacing.md },

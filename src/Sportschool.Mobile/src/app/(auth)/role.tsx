@@ -35,7 +35,7 @@ const roles: {
   },
   {
     mode: "Parent",
-    title: "EBEVEYNLER",
+    title: "VELİLER",
     image: require("../../assets/role-parents.png")
   }
 ];

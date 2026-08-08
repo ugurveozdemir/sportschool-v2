@@ -141,21 +141,33 @@ function CoachTeams({
 function DevelopmentReports({ session, summary }: { session: ReturnType<typeof useSession>["session"]; summary?: DevelopmentSummaryResponse }) {
   const reports = summary?.reports ?? [];
   const averages = summary?.averages;
+  const isParent = session?.loginRole === "Parent";
+  const athleteName = summary?.athleteName ?? "Sporcu";
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar />}>
       <ParentAthleteSelector />
       <View style={styles.memberHeader}>
-        <Text style={styles.title}>Gelişimim</Text>
-        <Text style={styles.subtitle}>Antrenmanlardaki performansını ve antrenör değerlendirmelerini takip et.</Text>
+        <Text style={styles.title}>{isParent ? `${athleteName} Gelişimi` : "Gelişimim"}</Text>
+        <Text style={styles.subtitle}>{isParent ? "Seçili sporcunun performansını ve antrenör değerlendirmelerini takip edin." : "Antrenmanlardaki performansını ve antrenör değerlendirmelerini takip et."}</Text>
       </View>
+
+      {isParent ? (
+        <Pressable onPress={() => router.push("/attendance")} style={styles.attendanceLink}>
+          <View style={styles.attendanceLinkLead}>
+            <MaterialCommunityIcons name="calendar-check-outline" size={22} color={colors.secondary} />
+            <Text style={styles.attendanceLinkText}>Katılım geçmişini görüntüle</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.onSurfaceVariant} />
+        </Pressable>
+      ) : null}
 
       {averages ? (
         <>
           <SurfaceCard style={styles.performanceHero}>
             <Text style={styles.performanceKicker}>GENEL PERFORMANS</Text>
             <Text style={styles.performanceScore}>{averageMetrics(averages).toFixed(0)}</Text>
-            <Text style={styles.performanceCaption}>Son raporlarının ortalama puanı</Text>
+            <Text style={styles.performanceCaption}>{isParent ? "Yayınlanan raporların ortalama puanı" : "Son raporlarının ortalama puanı"}</Text>
             <View style={styles.performanceStats}>
               <PerformanceStat icon="file-chart-outline" label="Rapor" value={`${reports.length}`} />
               <View style={styles.performanceDivider} />
@@ -168,7 +180,7 @@ function DevelopmentReports({ session, summary }: { session: ReturnType<typeof u
           </SurfaceCard>
 
           <SurfaceCard style={styles.skillCard}>
-            <SectionTitle title="Gelişim Alanlarım" action="7 metrik" />
+            <SectionTitle title={isParent ? "Gelişim Alanları" : "Gelişim Alanlarım"} action="7 metrik" />
             <View style={styles.skillList}>
               {scoreLabels.map(([label, key, icon]) => (
                 <SkillRow
@@ -184,7 +196,7 @@ function DevelopmentReports({ session, summary }: { session: ReturnType<typeof u
 
           <SurfaceCard style={styles.commentCard}>
             <View style={styles.commentHeader}>
-              <Text style={styles.sectionHeading}>Raporlarım</Text>
+              <Text style={styles.sectionHeading}>{isParent ? "Antrenör Raporları" : "Raporlarım"}</Text>
               <Text style={styles.reportCount}>{reports.length} rapor</Text>
             </View>
             {reports.map((report) => <ReportRow key={report.id} report={report} />)}
@@ -328,6 +340,9 @@ function SkillRow({ icon, label, value, delta }: { icon: keyof typeof MaterialCo
 }
 
 const styles = StyleSheet.create({
+  attendanceLink: { alignItems: "center", backgroundColor: colors.surfaceContainer, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", justifyContent: "space-between", padding: spacing.md },
+  attendanceLinkLead: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  attendanceLinkText: { ...typography.title, color: colors.onSurface },
   commentCard: { gap: spacing.md },
   commentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   contactButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.lg },

@@ -27,7 +27,7 @@ type PaymentFilter = "all" | "paid" | "unpaid";
 export default function PaymentsScreen() {
   const { session } = useSession();
   const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
-  const { selectedAthleteProfileId } = useAthleteSelection();
+  const { selectedAthlete, selectedAthleteProfileId } = useAthleteSelection();
   const paymentsQuery = usePayments(!isCoach, selectedAthleteProfileId);
 
   if (!isCoach && paymentsQuery.isLoading) {
@@ -38,7 +38,7 @@ export default function PaymentsScreen() {
     return <CoachPayments session={session} />;
   }
 
-  return <MemberPayments session={session} payments={paymentsQuery.data ?? []} />;
+  return <MemberPayments session={session} athleteName={selectedAthlete ? `${selectedAthlete.firstName} ${selectedAthlete.lastName}` : "Sporcu"} payments={paymentsQuery.data ?? []} />;
 }
 
 function CoachPayments({ session }: { session: ReturnType<typeof useSession>["session"] }) {
@@ -386,24 +386,27 @@ function PaymentEditorModal({
   );
 }
 
-function MemberPayments({ session, payments }: { session: ReturnType<typeof useSession>["session"]; payments: PaymentResponse[] }) {
+function MemberPayments({ session, athleteName, payments }: { session: ReturnType<typeof useSession>["session"]; athleteName: string; payments: PaymentResponse[] }) {
+  const currentYear = new Date().getFullYear();
+  const isParent = session?.loginRole === "Parent";
   const unpaid = payments.filter((payment) => payment.effectiveStatus !== "Paid");
   const paid = payments.filter((payment) => payment.effectiveStatus === "Paid");
+  const paidThisYear = paid.filter((payment) => payment.year === currentYear);
   const totalDue = unpaid.reduce((sum, payment) => sum + payment.balance, 0);
-  const totalPaid = paid.reduce((sum, payment) => sum + payment.amount, 0);
-  const nextPayment = unpaid[0] ?? payments[0];
+  const totalPaid = paidThisYear.reduce((sum, payment) => sum + payment.amount, 0);
+  const nextPayment = [...unpaid].sort((a, b) => a.year - b.year || a.month - b.month)[0];
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar fallbackLabel="A" />}>
       <ParentAthleteSelector />
       <View style={styles.headerBlock}>
-        <Text style={styles.title}>Ödemeler ve Aidat</Text>
-        <Text style={styles.subtitle}>Finansal durumunu takip et.</Text>
+        <Text style={styles.title}>{isParent ? "Aidat Takibi" : "Ödemeler ve Aidat"}</Text>
+        <Text style={styles.subtitle}>{isParent ? `${athleteName} için aidat durumunu ve ödeme geçmişini takip edin.` : "Finansal durumunu takip et."}</Text>
       </View>
 
       <View style={styles.summaryGrid}>
         <SummaryCard icon="alert-outline" label="Toplam Borç" value={formatMoney(totalDue)} tone="danger" badge={totalDue > 0 ? "Bekliyor" : "Yok"} />
-        <SummaryCard icon="calendar-clock" label="Sıradaki Ödeme" value={nextPayment ? formatMoney(nextPayment.balance || nextPayment.amount) : formatMoney(0)} tone="primary" badge={nextPayment ? formatMonth(nextPayment.year, nextPayment.month) : "-"} />
+        <SummaryCard icon="calendar-clock" label="Sıradaki Aidat" value={nextPayment ? formatMoney(nextPayment.balance || nextPayment.amount) : formatMoney(0)} tone="primary" badge={nextPayment ? formatMonth(nextPayment.year, nextPayment.month) : "-"} />
         <SummaryCard icon="check-circle-outline" label="Toplam Ödenen" value={formatMoney(totalPaid)} tone="success" badge="Bu yıl" />
       </View>
 
@@ -413,7 +416,7 @@ function MemberPayments({ session, payments }: { session: ReturnType<typeof useS
         </SurfaceCard>
       ) : (
         <>
-          <SectionTitle title="Bekleyen & Gelecek Ödemeler" />
+          <SectionTitle title="Bekleyen ve Gelecek Aidatlar" />
           <View style={styles.list}>
             {unpaid.length === 0 ? (
               <SurfaceCard>

@@ -25,7 +25,7 @@ type AttendanceFilter = "all" | "present" | "absent";
 export default function AttendanceScreen() {
   const { session } = useSession();
   const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
-  const { selectedAthleteProfileId } = useAthleteSelection();
+  const { selectedAthlete, selectedAthleteProfileId } = useAthleteSelection();
   const attendanceQuery = useAttendance(!isCoach, selectedAthleteProfileId);
   const trainingsQuery = useTrainings(!isCoach, undefined, selectedAthleteProfileId);
   const trainingReportsQuery = useCoachTrainingReports(isCoach);
@@ -68,14 +68,16 @@ export default function AttendanceScreen() {
     );
   }
 
-  return <MemberAttendance session={session} records={attendanceQuery.data ?? []} trainings={trainingsQuery.data ?? []} />;
+  return <MemberAttendance session={session} athleteName={selectedAthlete ? `${selectedAthlete.firstName} ${selectedAthlete.lastName}` : "Sporcu"} records={attendanceQuery.data ?? []} trainings={trainingsQuery.data ?? []} />;
 }
 
-function MemberAttendance({ session, records, trainings }: {
+function MemberAttendance({ session, athleteName, records, trainings }: {
   session: ReturnType<typeof useSession>["session"];
+  athleteName: string;
   records: AttendanceResponse[];
   trainings: TrainingResponse[];
 }) {
+  const isParent = session?.loginRole === "Parent";
   const [filter, setFilter] = useState<AttendanceFilter>("all");
   const completedRecords = records.filter(hasAttendanceStatus);
   const presentCount = completedRecords.filter((record) => record.status === "Present").length;
@@ -87,14 +89,14 @@ function MemberAttendance({ session, records, trainings }: {
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar />}>
       <ParentAthleteSelector />
       <View style={styles.headerBlock}>
-        <Text style={styles.title}>Katılımım</Text>
-        <Text style={styles.subtitle}>Antrenmanlara katılım geçmişini takip et.</Text>
+        <Text style={styles.title}>{isParent ? "Antrenman Katılımı" : "Katılımım"}</Text>
+        <Text style={styles.subtitle}>{isParent ? `${athleteName} için antrenman katılım geçmişini takip edin.` : "Antrenmanlara katılım geçmişini takip et."}</Text>
       </View>
 
       <SurfaceCard style={styles.attendanceSummary}>
         <Text style={styles.summaryKicker}>KATILIM ORANI</Text>
         <Text style={styles.summaryRate}>%{attendanceRate}</Text>
-        <Text style={styles.summaryCaption}>{completedRecords.length === 0 ? "Henüz yoklama kaydı bulunmuyor." : `${completedRecords.length} antrenmanın ${presentCount} tanesine katıldın.`}</Text>
+        <Text style={styles.summaryCaption}>{completedRecords.length === 0 ? "Henüz yoklama kaydı bulunmuyor." : isParent ? `${athleteName}, ${completedRecords.length} antrenmanın ${presentCount} tanesine katıldı.` : `${completedRecords.length} antrenmanın ${presentCount} tanesine katıldın.`}</Text>
         <View style={styles.summaryStats}>
           <AttendanceStat icon="check-circle-outline" label="Geldi" value={presentCount} tone="success" />
           <View style={styles.summaryDivider} />

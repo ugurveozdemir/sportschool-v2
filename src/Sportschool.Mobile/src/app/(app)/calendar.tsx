@@ -240,13 +240,15 @@ function CoachCalendar({ markedDates, selectedDate, selectedTrainings, trainings
 }
 
 function MemberCalendar({ markedDates, selectedDate, selectedTrainings, trainings, view, visibleMonth, onChangeMonth, onChangeView, onChangeWeek, onSelectDate }: CalendarProps) {
+  const { session } = useSession();
+  const isParent = session?.loginRole === "Parent";
   const [detail, setDetail] = useState<TrainingItem | null>(null);
   return (
     <>
       <View style={styles.memberHeader}>
         <View style={styles.flexOne}>
-          <Text style={styles.memberTitle}>Antrenman Programım</Text>
-          <Text style={styles.subtitle}>Haftalık planını ve yaklaşan antrenmanlarını takip et.</Text>
+          <Text style={styles.memberTitle}>{isParent ? "Antrenman Programı" : "Antrenman Programım"}</Text>
+          <Text style={styles.subtitle}>{isParent ? "Seçili sporcunun haftalık planını ve yaklaşan antrenmanlarını takip edin." : "Haftalık planını ve yaklaşan antrenmanlarını takip et."}</Text>
         </View>
         <ViewToggle view={view} onChange={onChangeView} />
       </View>

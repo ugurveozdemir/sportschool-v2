@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
 import { useDevelopmentSummary } from "@/features/me/api";
+import { SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import type { TrainingReportResponse } from "@/features/me/types";
 import { Button } from "@/shared/components/Button";
 import { LoadingState } from "@/shared/components/LoadingState";
@@ -27,9 +28,11 @@ const metrics = [
 
 export default function MemberTrainingReportScreen() {
   const { session } = useSession();
-  const { selectedAthleteProfileId } = useAthleteSelection();
+  const { selectedAthlete, selectedAthleteProfileId } = useAthleteSelection();
   const { trainingId } = useLocalSearchParams<{ trainingId: string }>();
   const isMember = session?.loginRole === "Athlete" || session?.loginRole === "Parent";
+  const isParent = session?.loginRole === "Parent";
+  const athleteName = selectedAthlete ? `${selectedAthlete.firstName} ${selectedAthlete.lastName}` : "Sporcu";
   const summaryQuery = useDevelopmentSummary(isMember, selectedAthleteProfileId);
 
   if (summaryQuery.isLoading) {
@@ -39,10 +42,10 @@ export default function MemberTrainingReportScreen() {
   const report = summaryQuery.data?.reports.find((item) => item.trainingSessionId === trainingId);
   if (!report) {
     return (
-      <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
+      <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar />}>
         <SurfaceCard style={styles.emptyCard}>
           <Text style={styles.title}>Rapor bulunamadı</Text>
-          <Text style={styles.subtitle}>Bu antrenman için sana ait bir rapor bulunmuyor.</Text>
+          <Text style={styles.subtitle}>{isParent ? "Bu antrenman için seçili sporcuya ait bir rapor bulunmuyor." : "Bu antrenman için sana ait bir rapor bulunmuyor."}</Text>
           <Button label="Geri Dön" variant="outline" onPress={() => router.back()} />
         </SurfaceCard>
       </ScreenShell>
@@ -50,21 +53,21 @@ export default function MemberTrainingReportScreen() {
   }
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar />}>
       <View style={styles.header}>
         <Pressable accessibilityLabel="Geri dön" onPress={() => router.back()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
         </Pressable>
         <View style={styles.flexOne}>
-          <Text style={styles.title}>Antrenman Raporum</Text>
-          <Text style={styles.subtitle}>{report.trainingTitle}</Text>
+          <Text style={styles.title}>{isParent ? "Antrenman Raporu" : "Antrenman Raporum"}</Text>
+          <Text style={styles.subtitle}>{isParent ? `${athleteName} • ${report.trainingTitle}` : report.trainingTitle}</Text>
         </View>
       </View>
 
       <SurfaceCard style={styles.overviewCard}>
         <Text style={styles.kicker}>{formatDate(report.trainingCompletedAt)}</Text>
         <Text style={styles.overviewScore}>{reportAverage(report).toFixed(0)}</Text>
-        <Text style={styles.overviewCaption}>Bu antrenmandaki genel puanın</Text>
+        <Text style={styles.overviewCaption}>{isParent ? `${athleteName} için genel değerlendirme` : "Bu antrenmandaki genel puanın"}</Text>
         <View style={styles.coachRow}>
           <InitialsAvatar label={initials(report.coachName)} size={34} tone="dark" />
           <View>
