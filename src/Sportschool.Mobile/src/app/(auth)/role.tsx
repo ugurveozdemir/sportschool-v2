@@ -3,13 +3,13 @@ import { StatusBar } from "expo-status-bar";
 import {
   Image,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
   type ImageSourcePropType
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { LoginMode } from "@/shared/constants/roles";
 import { colors } from "@/shared/design/colors";
@@ -46,41 +46,42 @@ export default function RoleScreen() {
       <StatusBar style="light" />
       <Image resizeMode="contain" source={academyLogo} style={styles.watermark} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.brand}>
-          <Image resizeMode="contain" source={academyLogo} style={styles.logo} />
-          <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={styles.academyLabel}>
-            TÜRK OCAĞI LİMASOL ELİT FUTBOL AKADEMİSİ
-          </Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          <View style={styles.brand}>
+            <Image resizeMode="contain" source={academyLogo} style={styles.logo} />
+            <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={styles.academyLabel}>
+              TÜRK OCAĞI LİMASOL ELİT FUTBOL AKADEMİSİ
+            </Text>
+          </View>
 
-        <View style={styles.hero}>
-          <Text style={styles.title}>KIBRIS&apos;IN{"\n"}BİR NUMARALI AKADEMİSİ</Text>
-          <Text style={styles.subtitle}>
-            Futbol eğitimi ile kişisel gelişim eğitimleri{"\n"}
-            Kıbrıs&apos;ta ilk kez{"\n"}
-            <Text style={styles.subtitleStrong}>Türk Ocağı Elit Futbol Akademisi&apos;nde.</Text>
-          </Text>
-        </View>
+          <View style={styles.hero}>
+            <Text style={styles.title}>KIBRIS&apos;IN{"\n"}BİR NUMARALI AKADEMİSİ</Text>
+            <Text style={styles.subtitle}>
+              Futbol eğitimi ile kişisel gelişim eğitimleri{"\n"}
+              Kıbrıs&apos;ta ilk kez{"\n"}
+              <Text style={styles.subtitleStrong}>Türk Ocağı Elit Futbol Akademisi&apos;nde.</Text>
+            </Text>
+          </View>
 
-        <View style={styles.cards}>
-          {roles.map((role) => (
-            <Pressable
-              accessibilityHint={`${role.title.toLocaleLowerCase("tr-TR")} giriş ekranını açar`}
-              key={role.mode}
-              onPress={() => router.push({ pathname: "/login", params: { mode: role.mode } })}
-              style={({ pressed }) => [styles.roleCard, pressed && styles.roleCardPressed]}
-            >
-              <Image resizeMode="cover" source={role.image} style={styles.rolePhoto} />
-              <View style={styles.leftShade} />
-              <View style={styles.roleCopy}>
-                <Text style={styles.roleTitle}>{role.title}</Text>
-              </View>
-            </Pressable>
-          ))}
+          <View style={styles.cards}>
+            {roles.map((role) => (
+              <Pressable
+                accessibilityHint={`${role.title.toLocaleLowerCase("tr-TR")} giriş ekranını açar`}
+                key={role.mode}
+                onPress={() => router.push({ pathname: "/login", params: { mode: role.mode } })}
+                style={({ pressed }) => [styles.roleCard, pressed && styles.roleCardPressed]}
+              >
+                <Image resizeMode="cover" source={role.image} style={styles.rolePhoto} />
+                <View style={styles.leftShade} />
+                <View style={styles.roleCopy}>
+                  <Text style={styles.roleTitle}>{role.title}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </ScrollView>
-
     </SafeAreaView>
   );
 }
@@ -100,11 +101,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   content: {
-    flexGrow: 1,
+    alignSelf: "center",
     gap: spacing.lg,
-    paddingBottom: spacing.lg,
+    maxWidth: 520,
+    width: "100%"
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md
+    paddingVertical: spacing.lg
   },
   hero: {
     alignItems: "center",
