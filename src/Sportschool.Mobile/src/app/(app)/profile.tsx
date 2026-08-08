@@ -102,7 +102,7 @@ export default function ProfileScreen() {
         {!isCoach ? <Info label="Yaş" value={profile ? `${formatAge(profile.birthDate)} yaş` : "-"} /> : null}
         {!isCoach ? <Info label="Baskın ayak" value={profile ? preferredFootLabel(profile.preferredFoot) : "-"} /> : null}
         {!isCoach ? <Info label="E-posta" value={profile?.email ?? "-"} /> : null}
-        {!isCoach ? <Info label="Kayıt tarihi" value={profile ? formatDate(profile.createdAt) : "-"} /> : null}
+        {!isCoach ? <Info label="Kayıt tarihi" value={profile?.createdAt ? formatDate(profile.createdAt) : "-"} /> : null}
       </SurfaceCard>
 
       {!isCoach ? (
