@@ -8,12 +8,13 @@ import { useSession } from "@/core/sessionProvider";
 import { useCreateSchoolGroup, useSchoolGroups } from "@/features/coach/api";
 import type { SchoolGroupResponse } from "@/features/coach/types";
 import { useDevelopmentSummary } from "@/features/me/api";
+import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import type { DevelopmentMetricAverages, DevelopmentSummaryResponse, TrainingReportResponse } from "@/features/me/types";
 import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
+import { ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -142,7 +143,8 @@ function DevelopmentReports({ session, summary }: { session: ReturnType<typeof u
   const averages = summary?.averages;
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={38} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar />}>
+      <ParentAthleteSelector />
       <View style={styles.memberHeader}>
         <Text style={styles.title}>Gelişimim</Text>
         <Text style={styles.subtitle}>Antrenmanlardaki performansını ve antrenör değerlendirmelerini takip et.</Text>

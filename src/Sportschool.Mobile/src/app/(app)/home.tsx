@@ -11,7 +11,8 @@ import type { AnnouncementResponse } from "@/features/announcements/types";
 import { useCoachSummary, useCoachTrainings } from "@/features/coach/api";
 import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/types";
 import { useAttendance, useDevelopmentSummary, useGroups, useNextTraining, useProfile, useTrainings } from "@/features/me/api";
-import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, MobileAthleteResponse, TrainingResponse } from "@/features/me/types";
+import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
+import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
@@ -31,7 +32,7 @@ export default function HomeScreen() {
   const isParent = session?.loginRole === "Parent";
   const navItems = getMobileNav(session);
   const shellTitle = getShellTitle(session);
-  const { athletes, selectedAthleteProfileId, setSelectedAthleteProfileId } = useAthleteSelection();
+  const { selectedAthleteProfileId } = useAthleteSelection();
 
   const profileQuery = useProfile(!isCoach, selectedAthleteProfileId);
   const trainingsQuery = useTrainings(isParent, undefined, selectedAthleteProfileId);
@@ -87,10 +88,6 @@ export default function HomeScreen() {
         navItems={navItems}
         shellTitle={shellTitle}
         parentName={session?.fullName?.split(" ")[0] ?? "Veli"}
-        childName={profile?.firstName ?? "Sporcu"}
-        athletes={athletes}
-        selectedAthleteProfileId={selectedAthleteProfileId}
-        onSelectAthlete={setSelectedAthleteProfileId}
         nextTraining={nextTraining}
         todayTrainingCount={todayTrainingCount}
         announcements={announcements.slice(0, 2)}
@@ -419,31 +416,18 @@ function AthleteHome({ navItems, shellTitle, firstName, profileImageUrl, nextTra
   );
 }
 
-function ParentHome({ navItems, shellTitle, parentName, childName, athletes, selectedAthleteProfileId, onSelectAthlete, nextTraining, todayTrainingCount, announcements, developmentSummary, attendance }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; childName: string; athletes: MobileAthleteResponse[]; selectedAthleteProfileId: string | null; onSelectAthlete: (athleteProfileId: string) => void; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; developmentSummary?: DevelopmentSummaryResponse; attendance: AttendanceResponse[] }) {
+function ParentHome({ navItems, shellTitle, parentName, nextTraining, todayTrainingCount, announcements, developmentSummary, attendance }: { navItems: ReturnType<typeof getMobileNav>; shellTitle: string; parentName: string; nextTraining?: TrainingResponse; todayTrainingCount: number; announcements: AnnouncementResponse[]; developmentSummary?: DevelopmentSummaryResponse; attendance: AttendanceResponse[] }) {
   const nextTrainingGroup = nextTraining ? trainingGroupName(nextTraining) : null;
-  const selectedAthlete = athletes.find((athlete) => athlete.id === selectedAthleteProfileId);
   const stats = attendanceStats(attendance);
   const score = developmentSummary?.averages ? averageMetrics(developmentSummary.averages) : null;
   return (
-    <ScreenShell title={shellTitle} navItems={navItems} avatar={<ProfileAvatar uri={selectedAthlete?.profileImageUrl ? resolveApiUrl(selectedAthlete.profileImageUrl) : null} label={childName.slice(0, 1)} size={38} tone="light" />}>
+    <ScreenShell title={shellTitle} navItems={navItems} avatar={<SelectedAthleteAvatar />}>
       <View style={styles.headerBlockSmallGap}>
-        <Text style={styles.parentTitle}>Günaydın, {parentName}</Text>
+        <Text style={styles.parentTitle}>Merhaba, {parentName}</Text>
         <Text style={styles.subtitle}>Bugün {todayTrainingCount > 0 ? `${todayTrainingCount} antrenman` : "antrenman yok"} ve {announcements.length} güncel duyuru var.</Text>
-        {athletes.length > 1 ? (
-          <View style={styles.childSwitch}>
-            {athletes.map((athlete) => {
-              const isSelected = athlete.id === selectedAthleteProfileId;
-              const name = `${athlete.firstName} ${athlete.lastName}`;
-              return (
-                <Pressable key={athlete.id} onPress={() => onSelectAthlete(athlete.id)} style={isSelected ? styles.childSwitchActive : styles.childSwitchInactive}>
-                  <ProfileAvatar uri={athlete.profileImageUrl ? resolveApiUrl(athlete.profileImageUrl) : null} label={athlete.firstName.slice(0, 1)} size={24} tone={isSelected ? "dark" : "light"} />
-                  <Text style={isSelected ? styles.childSwitchActiveText : styles.childSwitchText} numberOfLines={1}>{name}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
       </View>
+
+      <ParentAthleteSelector />
 
       <SurfaceCard style={styles.parentTrainingCard}>
         <View style={styles.cardHeaderRow}>
@@ -811,11 +795,6 @@ const styles = StyleSheet.create({
   coachWelcome: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   coachWelcomeName: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
   coachWelcomeTitle: { ...typography.headline, color: colors.onSurface },
-  childSwitch: { backgroundColor: colors.surfaceContainerLow, borderColor: colors.surfaceContainerHigh, borderRadius: radius.full, borderWidth: 1, flexDirection: "row", padding: 4 },
-  childSwitchActive: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.full, flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.sm },
-  childSwitchActiveText: { ...typography.label, color: colors.onPrimary },
-  childSwitchInactive: { alignItems: "center", flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", padding: spacing.sm },
-  childSwitchText: { ...typography.label, color: colors.onSurfaceVariant },
   darkCardTitle: { ...typography.title, color: colors.onPrimary },
   darkScoreCard: { backgroundColor: colors.primary, borderRadius: radius.lg, gap: spacing.sm, padding: spacing.lg },
   darkSubtitle: { ...typography.body, color: colors.primaryFixedDim },

@@ -8,10 +8,11 @@ import { useSession } from "@/core/sessionProvider";
 import { useSchoolGroups, useCoachTrainings, useCreateCoachTraining } from "@/features/coach/api";
 import type { SchoolGroupResponse, CreateCoachTrainingRequest } from "@/features/coach/types";
 import { useTrainings } from "@/features/me/api";
+import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
+import { Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -95,7 +96,8 @@ export default function CalendarScreen() {
   }
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={isCoach ? undefined : <InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "E"} size={38} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={isCoach ? undefined : <SelectedAthleteAvatar fallbackLabel="E" />}>
+      {!isCoach ? <ParentAthleteSelector /> : null}
       {isCoach ? (
         <CoachCalendar
           markedDates={markedDates}

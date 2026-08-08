@@ -9,6 +9,7 @@ import { useSession } from "@/core/sessionProvider";
 import { logout } from "@/features/auth/api";
 import { useCoachGroups } from "@/features/coach/api";
 import { useDevelopmentSummary, useGroups, useProfile } from "@/features/me/api";
+import { ParentAthleteSelector } from "@/features/me/ParentAthleteSelector";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { CircularScore, InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
       {!isCoach ? <Text style={styles.profileTitle}>Profilim</Text> : null}
+      <ParentAthleteSelector />
       <View style={[styles.profileHero, !isCoach && styles.memberProfileHero]}>
         <View style={styles.avatarWrap}>
           {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={96} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={96} tone="dark" />}

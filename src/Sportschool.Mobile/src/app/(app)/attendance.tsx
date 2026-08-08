@@ -8,10 +8,11 @@ import { useSession } from "@/core/sessionProvider";
 import { useCoachTrainingReports } from "@/features/coach/api";
 import type { CoachTrainingReportListItem } from "@/features/coach/types";
 import { useAttendance, useTrainings } from "@/features/me/api";
+import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import type { AttendanceResponse, TrainingResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
-import { InitialsAvatar, MetricTile, Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
+import { MetricTile, Pill, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
 import { spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
@@ -83,7 +84,8 @@ function MemberAttendance({ session, records, trainings }: {
   const visibleRecords = completedRecords.filter((record) => filter === "all" || record.status === (filter === "present" ? "Present" : "Absent"));
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "S"} size={38} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar />}>
+      <ParentAthleteSelector />
       <View style={styles.headerBlock}>
         <Text style={styles.title}>Katılımım</Text>
         <Text style={styles.subtitle}>Antrenmanlara katılım geçmişini takip et.</Text>

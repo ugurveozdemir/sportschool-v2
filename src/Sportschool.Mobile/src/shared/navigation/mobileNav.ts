@@ -16,7 +16,7 @@ const athleteNav: NavItem[] = [
 const parentNav: NavItem[] = [
   { label: "Panel", icon: "view-dashboard-outline", href: "/home", match: "/home" },
   { label: "Takvim", icon: "calendar-month-outline", href: "/calendar", match: "/calendar" },
-  { label: "Videolar", icon: "play-box-multiple-outline", href: "/feed", match: "/feed" },
+  { label: "Gelişim", icon: "chart-line", href: "/development", match: "/development" },
   { label: "Ödemeler", icon: "cash-multiple", href: "/payments", match: "/payments" }
 ];
 

@@ -7,6 +7,7 @@ import { useSession } from "@/core/sessionProvider";
 import { usePaymentSettings, useSchoolMonthlyPayments, useUpdateAthleteFee, useUpdatePaymentSettings, useUpsertSchoolPayment } from "@/features/coach/api";
 import type { SchoolMonthlyPaymentResponse } from "@/features/coach/types";
 import { usePayments } from "@/features/me/api";
+import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import type { PaymentResponse } from "@/features/me/types";
 import { Button } from "@/shared/components/Button";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -393,7 +394,8 @@ function MemberPayments({ session, payments }: { session: ReturnType<typeof useS
   const nextPayment = unpaid[0] ?? payments[0];
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<InitialsAvatar label={session?.fullName?.slice(0, 1) ?? "A"} size={38} tone="dark" />}>
+    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)} avatar={<SelectedAthleteAvatar fallbackLabel="A" />}>
+      <ParentAthleteSelector />
       <View style={styles.headerBlock}>
         <Text style={styles.title}>Ödemeler ve Aidat</Text>
         <Text style={styles.subtitle}>Finansal durumunu takip et.</Text>
