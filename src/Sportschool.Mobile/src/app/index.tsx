@@ -8,7 +8,7 @@ import { spacing } from "@/shared/design/spacing";
 import { fontFamily } from "@/shared/design/typography";
 
 const academyLogo = require("../../logo/sportschool_logo.png");
-const INTRO_DURATION_MS = 1500;
+const INTRO_DURATION_MS = 2500;
 
 export default function IndexRoute() {
   const { isReady, session } = useSession();
