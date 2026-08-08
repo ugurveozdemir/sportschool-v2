@@ -24,6 +24,7 @@ docs/api-usage-examples.local.md
 # Local feature planning notes
 MEDIA_FEATURE_PLAN.md
 DEPLOYMENT_STRATEGY.md
+PRODUCTION_READINESS_REVIEW.md
 
 # User-specific files
 *.rsuser
