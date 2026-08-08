@@ -52,7 +52,7 @@ public static class MobileReadEndpoints
         MediaAccessUrlService mediaUrls,
         CancellationToken cancellationToken)
     {
-        var profile = await FindCurrentAthleteProfileAsync(athleteProfileId, currentUser, db, cancellationToken);
+        var profile = await FindCurrentAthleteProfileWithContactDetailsAsync(athleteProfileId, currentUser, db, cancellationToken);
         return profile is null ? Results.NotFound() : Results.Ok(MobileProfileResponse.From(profile, mediaUrls));
     }
 
@@ -298,6 +298,27 @@ public static class MobileReadEndpoints
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    private static Task<Athletes.AthleteProfile?> FindCurrentAthleteProfileWithContactDetailsAsync(
+        Guid? athleteProfileId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<Athletes.AthleteProfile> query = CurrentAthleteProfiles(currentUser, db);
+        query = query
+            .Include(x => x.User)
+            .Include(x => x.Parent);
+        if (athleteProfileId is not null)
+        {
+            query = query.Where(x => x.Id == athleteProfileId.Value);
+        }
+
+        return query
+            .OrderBy(x => x.FirstName)
+            .ThenBy(x => x.LastName)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     private static IQueryable<Athletes.AthleteProfile> CurrentAthleteProfiles(
         ClaimsPrincipal currentUser,
         SportschoolDbContext db)
@@ -341,8 +362,12 @@ public sealed record MobileProfileResponse(
     string FirstName,
     string LastName,
     DateOnly BirthDate,
+    Athletes.PreferredFoot PreferredFoot,
+    string Email,
     string ParentFullName,
     string ParentPhone,
+    string? ParentEmail,
+    DateTimeOffset CreatedAt,
     string? ProfileImageUrl)
 {
     public static MobileProfileResponse From(Athletes.AthleteProfile profile, MediaAccessUrlService mediaUrls)
@@ -354,8 +379,12 @@ public sealed record MobileProfileResponse(
             profile.FirstName,
             profile.LastName,
             profile.BirthDate,
+            profile.PreferredFoot,
+            profile.User.Email,
             profile.ParentFullName,
             profile.ParentPhone,
+            profile.Parent?.Email,
+            profile.CreatedAt,
             profile.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(profile.SchoolId, profile.Id, profile.ProfileImageVersion));
     }
 }

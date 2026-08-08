@@ -44,6 +44,7 @@ public sealed class MobileReadEndpointTests : IClassFixture<TestAppFactory>
                 FirstName = "Ada",
                 LastName = "Yilmaz",
                 BirthDate = new DateOnly(2012, 5, 10),
+                PreferredFoot = PreferredFoot.Left,
                 ParentFullName = "Parent User",
                 ParentPhone = "+905551112233"
             });
@@ -59,6 +60,9 @@ public sealed class MobileReadEndpointTests : IClassFixture<TestAppFactory>
         var profile = await response.Content.ReadFromJsonAsync<MobileProfileResponse>();
         Assert.NotNull(profile);
         Assert.Equal("Ada", profile.FirstName);
+        Assert.Equal("athlete@example.com", profile.Email);
+        Assert.Equal("parent@example.com", profile.ParentEmail);
+        Assert.Equal("Left", profile.PreferredFoot);
     }
 
     [Fact]
@@ -237,7 +241,12 @@ public sealed class MobileReadEndpointTests : IClassFixture<TestAppFactory>
 
     private sealed record MobileAthleteResponse(Guid Id, string FirstName, string LastName);
 
-    private sealed record MobileProfileResponse(string FirstName, string LastName);
+    private sealed record MobileProfileResponse(
+        string FirstName,
+        string LastName,
+        string Email,
+        string? ParentEmail,
+        string PreferredFoot);
 
     private sealed record AthleteReportResponse(Guid AthleteProfileId, string Summary);
 

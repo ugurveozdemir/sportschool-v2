@@ -97,12 +97,29 @@ export default function ProfileScreen() {
       ) : null}
 
       <SurfaceCard style={styles.card}>
-        <SectionTitle title="Kişisel Bilgiler" />
+        <SectionTitle title="Sporcu Bilgileri" />
         {!isCoach ? <Info label="Doğum tarihi" value={profile ? formatDate(profile.birthDate) : "-"} /> : null}
-        {!isCoach ? <Info label="Veli" value={profile?.parentFullName ?? "-"} /> : null}
-        {!isCoach ? <Info label="Veli telefonu" value={profile?.parentPhone ?? "-"} /> : null}
-        <Info label="E-posta" value={session?.email ?? "-"} />
+        {!isCoach ? <Info label="Yaş" value={profile ? `${formatAge(profile.birthDate)} yaş` : "-"} /> : null}
+        {!isCoach ? <Info label="Baskın ayak" value={profile ? preferredFootLabel(profile.preferredFoot) : "-"} /> : null}
+        {!isCoach ? <Info label="E-posta" value={profile?.email ?? "-"} /> : null}
+        {!isCoach ? <Info label="Kayıt tarihi" value={profile ? formatDate(profile.createdAt) : "-"} /> : null}
       </SurfaceCard>
+
+      {!isCoach ? (
+        <SurfaceCard style={styles.card}>
+          <SectionTitle title="Veli Bilgileri" />
+          <Info label="Ad soyad" value={profile?.parentFullName ?? "-"} />
+          <Info label="Telefon" value={profile?.parentPhone ?? "-"} />
+          <Info label="E-posta" value={profile?.parentEmail ?? "-"} />
+        </SurfaceCard>
+      ) : null}
+
+      {isCoach ? (
+        <SurfaceCard style={styles.card}>
+          <SectionTitle title="Kişisel Bilgiler" />
+          <Info label="E-posta" value={session?.email ?? "-"} />
+        </SurfaceCard>
+      ) : null}
 
       <SurfaceCard style={styles.card}>
         <SectionTitle title="Gruplar" />
@@ -137,6 +154,25 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function initials(name: string) {
   return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function preferredFootLabel(value: "Unknown" | "Right" | "Left" | "Both") {
+  return {
+    Unknown: "Belirtilmedi",
+    Right: "Sağ",
+    Left: "Sol",
+    Both: "İki ayaklı"
+  }[value];
+}
+
+function formatAge(birthDate: string) {
+  const today = new Date();
+  const birth = new Date(`${birthDate}T00:00:00`);
+  let age = today.getFullYear() - birth.getFullYear();
+  const hasNotHadBirthday = today.getMonth() < birth.getMonth()
+    || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+  if (hasNotHadBirthday) age--;
+  return age;
 }
 
 const styles = StyleSheet.create({

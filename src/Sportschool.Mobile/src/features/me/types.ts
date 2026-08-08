@@ -15,8 +15,12 @@ export type MobileProfileResponse = {
   firstName: string;
   lastName: string;
   birthDate: string;
+  preferredFoot: "Unknown" | "Right" | "Left" | "Both";
+  email: string;
   parentFullName: string;
   parentPhone: string;
+  parentEmail: string | null;
+  createdAt: string;
   profileImageUrl: string | null;
 };
 
