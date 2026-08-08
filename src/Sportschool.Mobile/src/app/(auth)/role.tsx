@@ -122,9 +122,9 @@ const styles = StyleSheet.create({
     right: "45%"
   },
   logo: {
-    height: 216,
+    height: 256,
     marginBottom: -6,
-    width: 152
+    width: 180
   },
   roleCard: {
     backgroundColor: colors.primaryContainer,
