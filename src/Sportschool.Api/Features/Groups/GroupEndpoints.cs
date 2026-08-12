@@ -84,6 +84,7 @@ public static class GroupEndpoints
     }
 
     private static async Task<IResult> ListGroupsAsync(
+        string? search,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -94,13 +95,59 @@ public static class GroupEndpoints
             return Results.Forbid();
         }
 
-        var groups = await db.TrainingGroups
-            .Where(x => x.SchoolId == schoolId.Value && x.IsActive)
+        var normalizedSearch = search?.Trim();
+        var groupsQuery = db.TrainingGroups
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId.Value && x.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            var searchPattern = $"%{normalizedSearch}%";
+            groupsQuery = groupsQuery.Where(x => EF.Functions.Like(x.Name, searchPattern));
+        }
+
+        var groups = await groupsQuery
             .OrderBy(x => x.Name)
-            .Select(x => GroupResponse.From(x))
+            .Select(x => new { x.Id, x.SchoolId, x.Name, x.Description, x.IsActive })
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(groups);
+        var groupIds = groups.Select(x => x.Id).ToArray();
+        if (groupIds.Length == 0)
+        {
+            return Results.Ok(Array.Empty<GroupResponse>());
+        }
+
+        var athleteCounts = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x => groupIds.Contains(x.GroupId)
+                && x.AthleteProfile.IsActive
+                && x.AthleteProfile.User.IsActive)
+            .GroupBy(x => x.GroupId)
+            .Select(x => new { GroupId = x.Key, Count = x.Count() })
+            .ToDictionaryAsync(x => x.GroupId, x => x.Count, cancellationToken);
+
+        var upcomingTrainingGroups = await db.TrainingSessionGroups
+            .AsNoTracking()
+            .Where(x => groupIds.Contains(x.GroupId)
+                && x.TrainingSession.SchoolId == schoolId.Value
+                && x.TrainingSession.IsActive
+                && x.TrainingSession.CompletedAt == null)
+            .Select(x => new { x.GroupId, x.TrainingSession.StartsAt, x.TrainingSession.StartedAt })
+            .ToListAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        var upcomingTrainingCounts = upcomingTrainingGroups
+            .Where(x => x.StartedAt is null && x.StartsAt >= now)
+            .GroupBy(x => x.GroupId)
+            .ToDictionary(x => x.Key, x => x.Count());
+
+        return Results.Ok(groups.Select(group => new GroupResponse(
+            group.Id,
+            group.SchoolId,
+            group.Name,
+            group.Description,
+            group.IsActive,
+            athleteCounts.GetValueOrDefault(group.Id),
+            upcomingTrainingCounts.GetValueOrDefault(group.Id))));
     }
 
     private static async Task<IResult> CreateGroupAsync(
@@ -280,11 +327,18 @@ public sealed record CreateGroupRequest(string Name, string? Description);
 
 public sealed record UpdateGroupRequest(string Name, string? Description);
 
-public sealed record GroupResponse(Guid Id, Guid SchoolId, string Name, string? Description, bool IsActive)
+public sealed record GroupResponse(
+    Guid Id,
+    Guid SchoolId,
+    string Name,
+    string? Description,
+    bool IsActive,
+    int AthleteCount,
+    int UpcomingTrainingCount)
 {
     public static GroupResponse From(TrainingGroup group)
     {
-        return new GroupResponse(group.Id, group.SchoolId, group.Name, group.Description, group.IsActive);
+        return new GroupResponse(group.Id, group.SchoolId, group.Name, group.Description, group.IsActive, 0, 0);
     }
 }
 

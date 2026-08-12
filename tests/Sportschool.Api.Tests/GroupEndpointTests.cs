@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Schools;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 using Sportschool.Api.Tests.Infrastructure;
@@ -12,6 +13,73 @@ namespace Sportschool.Api.Tests;
 
 public sealed class GroupEndpointTests
 {
+    [Fact]
+    public async Task SchoolAdminCanSearchGroupsAndSeeRosterAndUpcomingTrainingSummaries()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-group-summary@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var athleteUser = TestUsers.Create(schoolId, "athlete-group-summary@example.com", "Athlete", "password", UserRole.Athlete);
+        var athlete = new AthleteProfile
+        {
+            SchoolId = schoolId,
+            User = athleteUser,
+            FirstName = "Deniz",
+            LastName = "Kaya",
+            BirthDate = new DateOnly(2013, 1, 1),
+            ParentFullName = "Veli Kaya",
+            ParentPhone = "555"
+        };
+        var group = new TrainingGroup { SchoolId = schoolId, Name = "Başlangıç grubu" };
+        var otherGroup = new TrainingGroup { SchoolId = schoolId, Name = "İleri seviye" };
+        var upcomingTraining = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = admin.Id,
+            Title = "Yaklaşan antrenman",
+            StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+            EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+        var alreadyStartedTraining = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = admin.Id,
+            Title = "Başlamış antrenman",
+            StartsAt = DateTimeOffset.UtcNow.AddHours(-1),
+            EndsAt = DateTimeOffset.UtcNow.AddHours(1),
+            StartedAt = DateTimeOffset.UtcNow.AddHours(-1),
+            StartedByUserId = admin.Id,
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(new School
+            {
+                Id = schoolId,
+                Name = "Group Summary School",
+                Code = "group-summary-school",
+                NormalizedCode = TextNormalizer.NormalizeSchoolCode("group-summary-school")
+            });
+            db.Users.AddRange(admin, athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            db.TrainingGroups.AddRange(group, otherGroup);
+            db.GroupAthletes.Add(new GroupAthlete { Group = group, AthleteProfile = athlete });
+            db.TrainingSessions.AddRange(upcomingTraining, alreadyStartedTraining);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        var groups = await client.GetFromJsonAsync<GroupResponse[]>("/api/school/groups?search=Başlangıç");
+
+        var summary = Assert.Single(groups!);
+        Assert.Equal(group.Id, summary.Id);
+        Assert.Equal(1, summary.AthleteCount);
+        Assert.Equal(1, summary.UpcomingTrainingCount);
+    }
+
     [Fact]
     public async Task SchoolAdminCanManageGroupAndAthleteRoster()
     {

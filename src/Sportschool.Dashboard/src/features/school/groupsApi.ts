@@ -6,6 +6,8 @@ export type SchoolGroup = {
   name: string;
   description: string | null;
   isActive: boolean;
+  athleteCount: number;
+  upcomingTrainingCount: number;
 };
 
 export type GroupAthlete = {
@@ -17,8 +19,9 @@ export type GroupAthlete = {
   profileImageUrl: string | null;
 };
 
-export function listGroups(): Promise<SchoolGroup[]> {
-  return apiRequest<SchoolGroup[]>("/api/school/groups/");
+export function listGroups(search = ""): Promise<SchoolGroup[]> {
+  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  return apiRequest<SchoolGroup[]>(`/api/school/groups/${query}`);
 }
 
 export function createGroup(input: { name: string; description?: string }): Promise<SchoolGroup> {

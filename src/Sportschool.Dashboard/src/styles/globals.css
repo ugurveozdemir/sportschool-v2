@@ -83,6 +83,69 @@ body {
   padding: 8px 0;
 }
 
+.group-roster-card,
+.group-roster-editor-card {
+  border-color: #e5e7eb;
+}
+
+.group-roster-search {
+  max-width: 420px;
+}
+
+.group-roster-summary {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 16px 0;
+}
+
+.group-roster-table .ant-table-cell {
+  vertical-align: middle;
+}
+
+.group-roster-cards {
+  display: none;
+}
+
+.group-roster-item-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.group-identity-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.group-identity-copy > span {
+  overflow-wrap: anywhere;
+}
+
+.group-summary-tags {
+  margin-top: 16px;
+}
+
+.group-roster-table .group-summary-tags {
+  margin-top: 0;
+}
+
+.group-roster-empty {
+  margin: 48px 0;
+}
+
+.group-roster-editor-card {
+  display: none;
+  margin-top: 16px;
+}
+
+.group-roster-editor-card .ant-typography {
+  margin-top: 0;
+}
+
 .group-roster-loading {
   margin: 16px 0;
 }
@@ -500,13 +563,15 @@ body {
 
 @media (max-width: 900px) {
   .athlete-page-heading,
-  .coach-page-heading {
+  .coach-page-heading,
+  .group-page-heading {
     flex-direction: column;
     flex-wrap: wrap;
   }
 
   .athlete-page-heading > button,
-  .coach-page-heading > button {
+  .coach-page-heading > button,
+  .group-page-heading > button {
     width: 100%;
   }
 
@@ -559,6 +624,30 @@ body {
 
   .coach-roster-pagination {
     text-align: center;
+  }
+
+  .group-roster-search {
+    font-size: 16px;
+    max-width: none;
+  }
+
+  .group-roster-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .group-roster-table {
+    display: none;
+  }
+
+  .group-roster-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .group-roster-editor-card {
+    display: block;
   }
 }
 

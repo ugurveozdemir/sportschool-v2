@@ -38,7 +38,7 @@ export function TrainingsPage() {
     queryKey: ["school", "trainings", period],
     queryFn: () => period === "upcoming" ? listTrainings(rangeStart, rangeEnd) : listTrainings(pastRangeStart, rangeStart)
   });
-  const groupsQuery = useQuery({ queryKey: ["school", "groups"], queryFn: listGroups });
+  const groupsQuery = useQuery({ queryKey: ["school", "groups"], queryFn: () => listGroups() });
   const coachesQuery = useQuery({ queryKey: ["school", "coaches"], queryFn: listCoaches });
   const recurrence = Form.useWatch("recurrence", form);
 

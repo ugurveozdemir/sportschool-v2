@@ -1,7 +1,7 @@
-import { EditOutlined, PlusOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
+import { MoreOutlined, PlusOutlined, TeamOutlined, UserOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Avatar, Button, Checkbox, Empty, Form, Input, Modal, Popconfirm, Space, Table, Typography, message } from "antd";
-import { useState } from "react";
+import { Alert, Avatar, Button, Card, Checkbox, Dropdown, Empty, Form, Input, Modal, Space, Table, Tag, Typography, message } from "antd";
+import { useEffect, useState } from "react";
 import { ApiError } from "../../app/api/apiClient";
 import { listAthletes } from "./athletesApi";
 import {
@@ -23,11 +23,18 @@ type GroupFormValues = {
 export function GroupsPage() {
   const queryClient = useQueryClient();
   const [form] = Form.useForm<GroupFormValues>();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<SchoolGroup | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<SchoolGroup | null>(null);
   const [selectedAthleteIds, setSelectedAthleteIds] = useState<string[] | null>(null);
-  const groupsQuery = useQuery({ queryKey: ["school", "groups"], queryFn: listGroups });
+  const [deactivationTarget, setDeactivationTarget] = useState<SchoolGroup | null>(null);
+  const groupsQuery = useQuery({
+    queryKey: ["school", "groups", { search }],
+    queryFn: () => listGroups(search),
+    placeholderData: (previousData) => previousData
+  });
   const groupAthletesQuery = useQuery({
     enabled: selectedGroup !== null,
     queryKey: ["school", "groups", selectedGroup?.id, "athletes"],
@@ -42,6 +49,11 @@ export function GroupsPage() {
   const invalidateGroups = () => queryClient.invalidateQueries({ queryKey: ["school", "groups"] });
   const invalidateMembers = () => queryClient.invalidateQueries({ queryKey: ["school", "groups", selectedGroup?.id, "athletes"] });
   const rosterAthleteIds = selectedAthleteIds ?? (groupAthletesQuery.data ?? []).map((athlete) => athlete.id);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const saveGroup = useMutation({
     mutationFn: (values: GroupFormValues) => editingGroup
@@ -62,6 +74,8 @@ export function GroupsPage() {
     mutationFn: deactivateGroup,
     onSuccess: () => {
       message.success("Grup pasife alındı.");
+      if (selectedGroup?.id === deactivationTarget?.id) closeRoster();
+      setDeactivationTarget(null);
       void invalidateGroups();
       void queryClient.invalidateQueries({ queryKey: ["school", "dashboard"] });
     },
@@ -109,9 +123,41 @@ export function GroupsPage() {
     setIsModalOpen(true);
   }
 
+  function handleAction(action: string, group: SchoolGroup) {
+    if (action === "roster") {
+      if (selectedGroup?.id === group.id) {
+        closeRoster();
+      } else {
+        openRoster(group);
+      }
+      return;
+    }
+
+    if (action === "edit") {
+      openEditGroup(group);
+      return;
+    }
+
+    setDeactivationTarget(group);
+  }
+
+  if (groupsQuery.isError) {
+    return (
+      <Alert
+        showIcon
+        type="error"
+        message="Gruplar yüklenemedi."
+        description="Listeyi yenileyip tekrar deneyin."
+        action={<Button onClick={() => void groupsQuery.refetch()}>Tekrar dene</Button>}
+      />
+    );
+  }
+
+  const groups = groupsQuery.data ?? [];
+
   return (
     <div>
-      <div className="page-heading">
+      <div className="page-heading group-page-heading">
         <div>
           <Typography.Title level={2}>Gruplar</Typography.Title>
           <Typography.Paragraph type="secondary">Grupları oluşturun ve sporcu kadrolarını yönetin.</Typography.Paragraph>
@@ -119,62 +165,92 @@ export function GroupsPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateGroup}>Grup ekle</Button>
       </div>
 
-      <Table<SchoolGroup>
-        rowKey="id"
-        loading={groupsQuery.isLoading}
-        dataSource={groupsQuery.data ?? []}
-        pagination={false}
-        locale={{ emptyText: <Empty description="Henüz grup oluşturulmadı." /> }}
-        expandable={{
-          expandedRowKeys: selectedGroup ? [selectedGroup.id] : [],
-          expandIcon: () => null,
-          expandedRowRender: (group) => group.id === selectedGroup?.id && (
-            <div className="group-roster-editor">
-              <Typography.Text type="secondary">Gruba dahil olacak sporcuları seçin.</Typography.Text>
-              {athletesQuery.isLoading || groupAthletesQuery.isLoading
-                ? <Typography.Paragraph className="group-roster-loading">Sporcular yükleniyor...</Typography.Paragraph>
-                : (athletesQuery.data ?? []).length > 0
-                  ? (
-                    <Checkbox.Group value={rosterAthleteIds} onChange={(values) => setSelectedAthleteIds(values.filter((value): value is string => typeof value === "string"))}>
-                      <div className="athlete-checkbox-grid">
-                        {(athletesQuery.data ?? []).map((athlete) => (
-                          <Checkbox key={athlete.id} className="athlete-checkbox" value={athlete.id} disabled={updateRoster.isPending}>
-                            <Avatar size="small" src={athlete.profileImageUrl ?? undefined} icon={<UserOutlined />} />
-                            <span>
-                              <Typography.Text strong>{athlete.firstName} {athlete.lastName}</Typography.Text>
-                              <Typography.Text type="secondary">{athlete.parentFullName}</Typography.Text>
-                            </span>
-                          </Checkbox>
-                        ))}
+      <Card className="group-roster-card">
+        <Input.Search
+          className="group-roster-search"
+          allowClear
+          value={searchInput}
+          placeholder="Grup ara"
+          aria-label="Grup ara"
+          onChange={(event) => setSearchInput(event.target.value)}
+          onSearch={(value) => {
+            setSearchInput(value);
+            setSearch(value.trim());
+          }}
+          onClear={() => {
+            setSearchInput("");
+            setSearch("");
+          }}
+        />
+
+        <div className="group-roster-summary" aria-live="polite">
+          <Typography.Text type="secondary">{search ? `${groups.length} grup bulundu` : `${groups.length} aktif grup`}</Typography.Text>
+          {search && <Typography.Text type="secondary">“{search}” aranıyor</Typography.Text>}
+        </div>
+
+        {groupsQuery.isLoading && !groupsQuery.data
+          ? <Card loading bordered={false} />
+          : groups.length === 0
+            ? <Empty className="group-roster-empty" description={emptyDescription(search)} />
+            : (
+              <>
+                <div className="group-roster-table">
+                  <Table<SchoolGroup>
+                    rowKey="id"
+                    loading={groupsQuery.isFetching}
+                    dataSource={groups}
+                    pagination={false}
+                    expandable={{
+                      expandedRowKeys: selectedGroup ? [selectedGroup.id] : [],
+                      expandIcon: () => null,
+                      expandedRowRender: (group) => group.id === selectedGroup?.id && <GroupRosterEditor />
+                    }}
+                    columns={[
+                      { title: "Grup", key: "group", render: (_, group) => <GroupIdentity group={group} /> },
+                      { title: "Kadro ve plan", key: "summary", render: (_, group) => <GroupSummary group={group} /> },
+                      { title: "İşlemler", key: "actions", align: "right", render: (_, group) => <GroupActions group={group} onAction={handleAction} /> }
+                    ]}
+                  />
+                </div>
+
+                <div className="group-roster-cards">
+                  {groups.map((group) => (
+                    <Card key={group.id} className="group-roster-item">
+                      <div className="group-roster-item-heading">
+                        <GroupIdentity group={group} />
+                        <GroupActions group={group} onAction={handleAction} />
                       </div>
-                    </Checkbox.Group>
-                  )
-                  : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Seçilebilecek sporcu bulunmuyor." />}
-              <Space>
-                <Button type="primary" loading={updateRoster.isPending} disabled={athletesQuery.isLoading || groupAthletesQuery.isLoading} onClick={() => updateRoster.mutate()}>Kaydet</Button>
-                <Button disabled={updateRoster.isPending} onClick={closeRoster}>Kapat</Button>
-              </Space>
-            </div>
-          )
+                      <GroupSummary group={group} />
+                    </Card>
+                  ))}
+                </div>
+
+                {selectedGroup && (
+                  <Card className="group-roster-editor-card">
+                    <Typography.Title level={4}>{selectedGroup.name} kadrosu</Typography.Title>
+                    <GroupRosterEditor />
+                  </Card>
+                )}
+              </>
+            )}
+      </Card>
+
+      <Modal
+        title="Grup pasife alınsın mı?"
+        open={deactivationTarget !== null}
+        okText="Pasife al"
+        cancelText="Vazgeç"
+        okButtonProps={{ danger: true }}
+        confirmLoading={deactivate.isPending}
+        onCancel={() => setDeactivationTarget(null)}
+        onOk={() => {
+          if (deactivationTarget) deactivate.mutate(deactivationTarget.id);
         }}
-        columns={[
-          { title: "Grup", dataIndex: "name", key: "name" },
-          { title: "Açıklama", dataIndex: "description", key: "description", render: (value: string | null) => value ?? "—" },
-          {
-            title: "İşlemler",
-            key: "actions",
-            render: (_, group) => (
-              <Space size="small" wrap>
-                <Button size="small" icon={<TeamOutlined />} onClick={() => selectedGroup?.id === group.id ? closeRoster() : openRoster(group)}>Kadro</Button>
-                <Button size="small" icon={<EditOutlined />} onClick={() => openEditGroup(group)}>Düzenle</Button>
-                <Popconfirm title="Bu grup pasife alınsın mı?" description="Yeni antrenman ve kadro ataması yapılamaz." okText="Pasife al" cancelText="Vazgeç" onConfirm={() => deactivate.mutate(group.id)}>
-                  <Button danger size="small" loading={deactivate.isPending}>Pasife al</Button>
-                </Popconfirm>
-              </Space>
-            )
-          }
-        ]}
-      />
+      >
+        <Typography.Paragraph>
+          {deactivationTarget?.name ?? "Bu grup"} için yeni kadro ve antrenman ataması yapılamaz.
+        </Typography.Paragraph>
+      </Modal>
 
       <Modal
         title={editingGroup ? "Grubu düzenle" : "Yeni grup"}
@@ -192,6 +268,83 @@ export function GroupsPage() {
       </Modal>
     </div>
   );
+
+  function GroupRosterEditor() {
+    return (
+      <div className="group-roster-editor">
+        <Typography.Text type="secondary">Gruba dahil olacak sporcuları seçin.</Typography.Text>
+        {athletesQuery.isLoading || groupAthletesQuery.isLoading
+          ? <Typography.Paragraph className="group-roster-loading">Sporcular yükleniyor...</Typography.Paragraph>
+          : (athletesQuery.data ?? []).length > 0
+            ? (
+              <Checkbox.Group value={rosterAthleteIds} onChange={(values) => setSelectedAthleteIds(values.filter((value): value is string => typeof value === "string"))}>
+                <div className="athlete-checkbox-grid">
+                  {(athletesQuery.data ?? []).map((athlete) => (
+                    <Checkbox key={athlete.id} className="athlete-checkbox" value={athlete.id} disabled={updateRoster.isPending}>
+                      <Avatar size="small" src={athlete.profileImageUrl ?? undefined} icon={<UserOutlined />} />
+                      <span>
+                        <Typography.Text strong>{athlete.firstName} {athlete.lastName}</Typography.Text>
+                        <Typography.Text type="secondary">{athlete.parentFullName}</Typography.Text>
+                      </span>
+                    </Checkbox>
+                  ))}
+                </div>
+              </Checkbox.Group>
+            )
+            : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Seçilebilecek sporcu bulunmuyor." />}
+        <Space>
+          <Button type="primary" loading={updateRoster.isPending} disabled={athletesQuery.isLoading || groupAthletesQuery.isLoading} onClick={() => updateRoster.mutate()}>Kaydet</Button>
+          <Button disabled={updateRoster.isPending} onClick={closeRoster}>Kapat</Button>
+        </Space>
+      </div>
+    );
+  }
+}
+
+function GroupIdentity({ group }: { group: SchoolGroup }) {
+  return (
+    <span className="group-identity-copy">
+      <Typography.Text strong>{group.name}</Typography.Text>
+      <Typography.Text type="secondary">{group.description ?? "Açıklama eklenmemiş."}</Typography.Text>
+    </span>
+  );
+}
+
+function GroupSummary({ group }: { group: SchoolGroup }) {
+  const athleteText = group.athleteCount === 1 ? "1 sporcu" : `${group.athleteCount} sporcu`;
+  const trainingText = group.upcomingTrainingCount === 1 ? "1 yaklaşan antrenman" : `${group.upcomingTrainingCount} yaklaşan antrenman`;
+
+  return (
+    <Space className="group-summary-tags" size={[4, 4]} wrap>
+      <Tag icon={<TeamOutlined />} color="blue">{athleteText}</Tag>
+      {group.upcomingTrainingCount > 0
+        ? <Tag color="green">{trainingText}</Tag>
+        : <Typography.Text type="secondary">Yaklaşan antrenman yok</Typography.Text>}
+    </Space>
+  );
+}
+
+function GroupActions({ group, onAction }: { group: SchoolGroup; onAction: (action: string, group: SchoolGroup) => void }) {
+  return (
+    <Dropdown
+      trigger={["click"]}
+      menu={{
+        items: [
+          { key: "roster", label: "Kadroyu düzenle" },
+          { key: "edit", label: "Grubu düzenle" },
+          { type: "divider" },
+          { key: "deactivate", danger: true, label: "Pasife al" }
+        ],
+        onClick: ({ key }) => onAction(key, group)
+      }}
+    >
+      <Button type="text" icon={<MoreOutlined />} aria-label={`${group.name} işlemleri`} />
+    </Dropdown>
+  );
+}
+
+function emptyDescription(search: string): string {
+  return search ? `“${search}” ile eşleşen grup bulunamadı.` : "Henüz aktif grup bulunmuyor.";
 }
 
 function errorMessage(error: Error): string {
