@@ -57,6 +57,19 @@ export default function IndexRoute() {
         <Text style={styles.academyName}>TÜRK OCAĞI ELİT FUTBOL AKADEMİSİ</Text>
         <View style={styles.divider} />
         <Text style={styles.slogan}>KIBRIS&apos;IN BİR NUMARALI AKADEMİSİ</Text>
+        <Text
+          accessibilityLabel="İyi birey, iyi vatandaş, iyi futbolcu"
+          style={styles.motto}
+        >
+          <Text style={styles.mottoLight}>İYİ </Text>
+          <Text style={styles.mottoAccent}>BİREY</Text>
+          {"\n"}
+          <Text style={styles.mottoLight}>İYİ </Text>
+          <Text style={styles.mottoAccent}>VATANDAŞ,</Text>
+          {"\n"}
+          <Text style={styles.mottoLight}>İYİ </Text>
+          <Text style={styles.mottoAccent}>FUTBOLCU</Text>
+        </Text>
       </Animated.View>
     </View>
   );
@@ -81,6 +94,20 @@ const styles = StyleSheet.create({
   logo: {
     height: 190,
     width: 135
+  },
+  motto: {
+    color: colors.onSurface,
+    fontFamily: fontFamily.headingBold,
+    fontSize: 15,
+    letterSpacing: 1.25,
+    lineHeight: 22,
+    textAlign: "center"
+  },
+  mottoAccent: {
+    color: colors.primaryContainer
+  },
+  mottoLight: {
+    color: colors.onSurface
   },
   presentation: {
     alignItems: "center",
