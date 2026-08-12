@@ -17,6 +17,7 @@ public static class TrainingEndpoints
 
         group.MapPost("/trainings", CreateTrainingAsync);
         group.MapGet("/trainings", ListTrainingsAsync);
+        group.MapGet("/trainings/{id:guid}", GetTrainingAsync);
         group.MapPut("/trainings/{id:guid}", UpdateTrainingAsync);
         group.MapDelete("/trainings/{id:guid}", DeactivateTrainingAsync);
         group.MapGet("/groups/{groupId:guid}/trainings", ListGroupTrainingsAsync);
@@ -82,6 +83,53 @@ public static class TrainingEndpoints
             .ToList();
 
         return Results.Ok(trainings);
+    }
+
+    private static async Task<IResult> GetTrainingAsync(
+        Guid id,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var training = await db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.Id == id && x.SchoolId == schoolId.Value && x.IsActive)
+            .Select(x => new TrainingDetailsResponse(
+                x.Id,
+                x.Title,
+                x.StartsAt,
+                x.EndsAt,
+                x.Groups
+                    .OrderBy(group => group.Group.Name)
+                    .Select(group => new TrainingGroupSummary(group.GroupId, group.Group.Name))
+                    .ToArray(),
+                x.CoachId,
+                x.Coach.FullName,
+                x.Location,
+                x.Notes,
+                new AttendanceSummary(
+                    x.StartedAt != null
+                        ? db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)
+                        : x.Groups
+                            .SelectMany(group => group.Group.Athletes)
+                            .Where(a => a.AthleteProfile.IsActive && a.AthleteProfile.User.IsActive)
+                            .Select(a => a.AthleteProfileId)
+                            .Distinct()
+                            .Count(),
+                    db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id && a.Status != null)),
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return training is null ? Results.NotFound() : Results.Ok(training);
     }
 
     private static async Task<IResult> CreateTrainingAsync(
@@ -486,6 +534,22 @@ public sealed record UpdateTrainingRequest(
     Guid? CoachId = null);
 
 public sealed record TrainingListResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    IReadOnlyCollection<TrainingGroupSummary> Groups,
+    Guid CoachId,
+    string CoachName,
+    string? Location,
+    string? Notes,
+    AttendanceSummary AttendanceSummary,
+    DateTimeOffset? StartedAt,
+    Guid? StartedByUserId,
+    DateTimeOffset? CompletedAt,
+    Guid? CompletedByUserId);
+
+public sealed record TrainingDetailsResponse(
     Guid Id,
     string Title,
     DateTimeOffset StartsAt,

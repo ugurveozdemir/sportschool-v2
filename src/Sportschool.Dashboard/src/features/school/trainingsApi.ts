@@ -42,6 +42,10 @@ export function listTrainings(from: Date, to: Date): Promise<Training[]> {
   return apiRequest<Training[]>(`/api/school/trainings?${query}`);
 }
 
+export function getTraining(trainingId: string): Promise<Training> {
+  return apiRequest<Training>(`/api/school/trainings/${trainingId}`);
+}
+
 export function createTraining(input: TrainingInput): Promise<Training> {
   return apiRequest<Training>("/api/school/trainings", { method: "POST", body: input });
 }

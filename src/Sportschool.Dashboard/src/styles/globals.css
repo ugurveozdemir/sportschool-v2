@@ -624,6 +624,83 @@ body {
   padding: 32px 0 16px;
 }
 
+.training-roster-row {
+  cursor: pointer;
+}
+
+.training-roster-row:hover > td {
+  background: #f8fafc !important;
+}
+
+.training-detail-hero,
+.training-detail-stat,
+.training-detail-notes {
+  border-color: #e5e7eb;
+}
+
+.training-detail-heading,
+.training-detail-meta {
+  display: flex;
+}
+
+.training-detail-heading {
+  justify-content: space-between;
+}
+
+.training-detail-meta {
+  color: #64748b;
+  gap: 16px;
+}
+
+.training-detail-meta span {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.training-detail-stats {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 16px 0;
+}
+
+.training-detail-stat-icon {
+  align-items: center;
+  background: #eff6ff;
+  border-radius: 8px;
+  color: #2563eb;
+  display: inline-flex;
+  font-size: 20px;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.training-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.training-detail-link {
+  height: auto;
+  padding: 0;
+}
+
+.training-attendance-copy {
+  margin: 12px 0 0;
+}
+
+.training-detail-notes {
+  margin-top: 16px;
+}
+
+.training-notes-copy {
+  margin-bottom: 0;
+  white-space: pre-wrap;
+}
+
 .full-width {
   width: 100%;
 }
@@ -769,6 +846,15 @@ body {
 
   .training-roster-pagination {
     justify-content: center;
+  }
+
+  .training-detail-stats,
+  .training-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .training-roster-item-clickable {
+    cursor: pointer;
   }
 
   .athlete-page-heading,

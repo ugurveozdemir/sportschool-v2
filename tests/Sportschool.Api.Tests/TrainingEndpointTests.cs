@@ -459,6 +459,48 @@ public sealed class TrainingEndpointTests
     }
 
     [Fact]
+    public async Task GetTrainingDetails_ReturnsTrainingForItsSchool()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var trainingId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-details@example.com", "Coach A", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "train-details"));
+            db.TrainingGroups.Add(new TrainingGroup { Id = groupId, SchoolId = schoolId, Name = "Group A" });
+            db.Users.Add(coach);
+            db.TrainingSessions.Add(new TrainingSession
+            {
+                Id = trainingId,
+                SchoolId = schoolId,
+                CoachId = coach.Id,
+                Title = "Training Details",
+                StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+                EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                Location = "Main Field",
+                Notes = "Bring water",
+                Groups = { new TrainingSessionGroup { GroupId = groupId } }
+            });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+        using var response = await client.GetAsync($"/api/school/trainings/{trainingId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var details = await response.Content.ReadFromJsonAsync<TrainingDetailsResponse>(JsonOptions);
+        Assert.NotNull(details);
+        Assert.Equal("Training Details", details.Title);
+        Assert.Equal("Coach A", details.CoachName);
+        Assert.Equal("Main Field", details.Location);
+        Assert.Equal("Bring water", details.Notes);
+        Assert.Equal([groupId], details.Groups.Select(x => x.Id));
+    }
+
+    [Fact]
     public async Task ModifyTrainingSession_TenantIsolation_Enforced()
     {
         await using var factory = new TestAppFactory();

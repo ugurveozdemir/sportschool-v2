@@ -2,6 +2,7 @@ import { MoreOutlined, PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Card, Dropdown, Empty, Form, Input, Modal, Pagination, Segmented, Select, Space, Table, Tag, Typography, message } from "antd";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
 import { listCoaches } from "./coachesApi";
 import { listGroups } from "./groupsApi";
@@ -32,6 +33,7 @@ const pastRangeStart = new Date(rangeStart);
 pastRangeStart.setDate(pastRangeStart.getDate() - 90);
 
 export function TrainingsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form] = Form.useForm<TrainingFormValues>();
   const [searchInput, setSearchInput] = useState("");
@@ -269,6 +271,10 @@ export function TrainingsPage() {
                     loading={trainingsQuery.isFetching}
                     dataSource={visibleTrainings}
                     pagination={false}
+                    onRow={(training) => ({
+                      className: "training-roster-row",
+                      onClick: () => navigate(`/antrenmanlar/${training.id}`)
+                    })}
                     columns={[
                       { title: "Tarih", key: "date", render: (_, training) => <TrainingDate training={training} /> },
                       { title: "Antrenman", key: "training", render: (_, training) => <TrainingTitle training={training} /> },
@@ -276,17 +282,34 @@ export function TrainingsPage() {
                       { title: "Antrenör", dataIndex: "coachName", key: "coachName" },
                       { title: "Durum", key: "status", render: (_, training) => <TrainingStatusTag training={training} now={now} /> },
                       { title: "Yoklama", key: "attendance", render: (_, training) => <AttendanceSummary training={training} /> },
-                      { title: "İşlemler", key: "actions", align: "right", render: (_, training) => <TrainingActions training={training} now={now} onAction={handleAction} /> }
+                      {
+                        title: "İşlemler",
+                        key: "actions",
+                        align: "right",
+                        render: (_, training) => <span onClick={(event) => event.stopPropagation()}><TrainingActions training={training} now={now} onAction={handleAction} /></span>
+                      }
                     ]}
                   />
                 </div>
 
                 <div className="training-roster-cards">
                   {visibleTrainings.map((training) => (
-                    <Card key={training.id} className="training-roster-item">
+                    <Card
+                      key={training.id}
+                      className="training-roster-item training-roster-item-clickable"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/antrenmanlar/${training.id}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          navigate(`/antrenmanlar/${training.id}`);
+                        }
+                      }}
+                    >
                       <div className="training-roster-item-heading">
                         <TrainingTitle training={training} />
-                        <TrainingActions training={training} now={now} onAction={handleAction} />
+                        <span onClick={(event) => event.stopPropagation()}><TrainingActions training={training} now={now} onAction={handleAction} /></span>
                       </div>
                       <div className="training-roster-item-details">
                         <div><Typography.Text type="secondary">Tarih</Typography.Text><TrainingDate training={training} /></div>
