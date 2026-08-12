@@ -9,7 +9,7 @@ import { useSession } from "@/core/sessionProvider";
 import { logout } from "@/features/auth/api";
 import { useCoachGroups } from "@/features/coach/api";
 import { useDevelopmentSummary, useGroups, useProfile } from "@/features/me/api";
-import { ParentAthleteSelector } from "@/features/me/ParentAthleteSelector";
+import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { CircularScore, InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
@@ -59,7 +59,11 @@ export default function ProfileScreen() {
   const averages = developmentQuery.data?.averages;
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
+    <ScreenShell
+      title={getShellTitle(session)}
+      navItems={getMobileNav(session)}
+      avatar={isCoach ? undefined : <SelectedAthleteAvatar fallbackLabel="A" />}
+    >
       {!isCoach ? <Text style={styles.profileTitle}>{isParent ? "Hesabım" : "Profilim"}</Text> : null}
       {isParent ? (
         <SurfaceCard style={styles.card}>

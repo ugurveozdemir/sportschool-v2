@@ -8,7 +8,6 @@ import Svg, { Circle } from "react-native-svg";
 
 import { useUnreadAnnouncementCount } from "@/features/announcements/api";
 import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
-import { AkademiLogo } from "@/shared/components/AkademiLogo";
 import { useSession } from "@/core/sessionProvider";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
@@ -65,7 +64,7 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
 
   return (
     <View style={styles.topBar}>
-      <View style={styles.topLead}>{avatar ?? <AkademiLogo size={30} />}</View>
+      <View style={styles.topLead}>{avatar ?? <AcademyLogoAvatar size={30} />}</View>
       <Text style={styles.topTitle}>{title}</Text>
       <View style={styles.topActions}>
         {!isAthlete ? (

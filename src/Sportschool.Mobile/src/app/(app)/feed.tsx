@@ -7,6 +7,7 @@ import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native"
 import { useSession } from "@/core/sessionProvider";
 import { useFeed } from "@/features/feed/api";
 import type { AthleteFeedVideo } from "@/features/feed/types";
+import { SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
@@ -37,6 +38,7 @@ export default function FeedScreen() {
     <ScreenShell
       title={getShellTitle(session)}
       navItems={getMobileNav(session)}
+      avatar={<SelectedAthleteAvatar />}
       contentStyle={styles.content}
       refreshControl={<RefreshControl refreshing={feedQuery.isRefetching} onRefresh={() => void refetch()} tintColor={colors.primary} />}
     >

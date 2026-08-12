@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
+import { SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import {
   useCreateAnnouncement,
   useDeleteAnnouncement,
@@ -108,7 +109,11 @@ export default function AnnouncementsScreen() {
   }
 
   return (
-    <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
+    <ScreenShell
+      title={getShellTitle(session)}
+      navItems={getMobileNav(session)}
+      avatar={canManage ? undefined : <SelectedAthleteAvatar />}
+    >
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
           <Text style={styles.pageTitle}>Duyurular</Text>
