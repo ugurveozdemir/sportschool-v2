@@ -142,6 +142,103 @@ body {
   margin-top: 16px;
 }
 
+.group-profile-card,
+.group-members-card,
+.group-upcoming-card,
+.group-history-card,
+.group-detail-roster-editor {
+  border-color: #e5e7eb;
+}
+
+.group-profile-summary {
+  align-items: center;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+.group-profile-summary .ant-typography {
+  margin-top: 0;
+}
+
+.group-profile-summary .ant-typography-paragraph {
+  margin-bottom: 8px;
+}
+
+.group-stats-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 16px 0;
+}
+
+.group-stat-card .ant-card-body {
+  padding: 18px;
+}
+
+.group-stat-icon {
+  color: #1677ff;
+  font-size: 20px;
+  line-height: 32px;
+}
+
+.group-detail-roster-editor,
+.group-history-card {
+  margin-top: 16px;
+}
+
+.group-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.group-members-table .ant-table-cell {
+  vertical-align: middle;
+}
+
+.group-members-cards {
+  display: none;
+}
+
+.group-athlete-identity {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.group-member-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-training-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group-training-item {
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 16px;
+}
+
+.group-training-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.group-training-item-heading {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
 .group-roster-editor-card .ant-typography {
   margin-top: 0;
 }
@@ -648,6 +745,25 @@ body {
 
   .group-roster-editor-card {
     display: block;
+  }
+
+  .group-profile-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .group-stats-grid,
+  .group-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .group-members-table {
+    display: none;
+  }
+
+  .group-members-cards {
+    display: grid;
+    gap: 8px;
   }
 }
 

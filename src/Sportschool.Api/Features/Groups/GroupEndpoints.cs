@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Media;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -14,6 +16,8 @@ public static class GroupEndpoints
         var group = app.MapGroup("/api/school/groups");
 
         group.MapGet("/", ListGroupsAsync)
+            .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
+        group.MapGet("/{groupId:guid}", GetGroupAsync)
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
         group.MapGet("/{groupId:guid}/athletes", ListGroupAthletesAsync)
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString(), UserRole.Coach.ToString()));
@@ -30,6 +34,104 @@ public static class GroupEndpoints
             .RequireAuthorization(policy => policy.RequireRole(UserRole.SchoolAdmin.ToString()));
 
         return group;
+    }
+
+    private static async Task<IResult> GetGroupAsync(
+        Guid groupId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        MediaAccessUrlService mediaUrls,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var group = await db.TrainingGroups
+            .AsNoTracking()
+            .Where(x => x.Id == groupId && x.SchoolId == schoolId.Value && x.IsActive)
+            .Select(x => new
+            {
+                x.Id,
+                x.SchoolId,
+                x.Name,
+                x.Description,
+                x.IsActive,
+                x.CreatedAt
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (group is null)
+        {
+            return Results.NotFound();
+        }
+
+        var athleteRows = await db.GroupAthletes
+            .AsNoTracking()
+            .Where(x => x.GroupId == groupId
+                && x.AthleteProfile.SchoolId == schoolId.Value
+                && x.AthleteProfile.IsActive
+                && x.AthleteProfile.User.IsActive)
+            .OrderBy(x => x.AthleteProfile.LastName)
+            .ThenBy(x => x.AthleteProfile.FirstName)
+            .Select(x => new
+            {
+                x.AthleteProfile.Id,
+                x.AthleteProfile.FirstName,
+                x.AthleteProfile.LastName,
+                x.AthleteProfile.ParentFullName,
+                x.AthleteProfile.ParentPhone,
+                x.AthleteProfile.ProfileImageStorageKey,
+                x.AthleteProfile.ProfileImageVersion
+            })
+            .ToListAsync(cancellationToken);
+
+        var now = DateTimeOffset.UtcNow;
+        var groupTrainings = db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId.Value
+                && x.IsActive
+                && x.Groups.Any(trainingGroup => trainingGroup.GroupId == groupId));
+
+        var trainingRows = await groupTrainings
+            .Select(GroupTrainingResponse.Project())
+            .ToListAsync(cancellationToken);
+        var upcomingRows = trainingRows
+            .Where(x => x.StartsAt >= now && x.StartedAt is null && x.CompletedAt is null)
+            .OrderBy(x => x.StartsAt)
+            .ToList();
+        var recentRows = trainingRows
+            .Where(x => x.StartsAt < now || x.StartedAt is not null || x.CompletedAt is not null)
+            .OrderByDescending(x => x.StartsAt)
+            .ToList();
+        var upcomingTrainingCount = upcomingRows.Count;
+        var completedTrainingCount = trainingRows.Count(x => x.CompletedAt is not null);
+        var upcomingTrainings = upcomingRows.Take(10).ToArray();
+        var recentTrainings = recentRows.Take(10).ToArray();
+
+        var athletes = athleteRows.Select(x => new GroupAthleteResponse(
+            x.Id,
+            x.FirstName,
+            x.LastName,
+            x.ParentFullName,
+            x.ParentPhone,
+            x.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(schoolId.Value, x.Id, x.ProfileImageVersion)));
+
+        return Results.Ok(new GroupDetailResponse(
+            group.Id,
+            group.SchoolId,
+            group.Name,
+            group.Description,
+            group.IsActive,
+            group.CreatedAt,
+            athleteRows.Count,
+            upcomingTrainingCount,
+            completedTrainingCount,
+            athletes.ToArray(),
+            upcomingTrainings,
+            recentTrainings));
     }
 
     private static async Task<IResult> ListGroupAthletesAsync(
@@ -349,3 +451,43 @@ public sealed record GroupAthleteResponse(
     string ParentFullName,
     string ParentPhone,
     string? ProfileImageUrl);
+
+public sealed record GroupDetailResponse(
+    Guid Id,
+    Guid SchoolId,
+    string Name,
+    string? Description,
+    bool IsActive,
+    DateTimeOffset CreatedAt,
+    int AthleteCount,
+    int UpcomingTrainingCount,
+    int CompletedTrainingCount,
+    IReadOnlyCollection<GroupAthleteResponse> Athletes,
+    IReadOnlyCollection<GroupTrainingResponse> UpcomingTrainings,
+    IReadOnlyCollection<GroupTrainingResponse> RecentTrainings);
+
+public sealed record GroupTrainingResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    Guid CoachId,
+    string CoachName,
+    string? Location,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt)
+{
+    public static Expression<Func<TrainingSession, GroupTrainingResponse>> Project()
+    {
+        return training => new GroupTrainingResponse(
+            training.Id,
+            training.Title,
+            training.StartsAt,
+            training.EndsAt,
+            training.CoachId,
+            training.Coach.FullName,
+            training.Location,
+            training.StartedAt,
+            training.CompletedAt);
+    }
+}

@@ -19,9 +19,33 @@ export type GroupAthlete = {
   profileImageUrl: string | null;
 };
 
+export type GroupTraining = {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  coachId: string;
+  coachName: string;
+  location: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+};
+
+export type GroupDetail = SchoolGroup & {
+  createdAt: string;
+  athletes: GroupAthlete[];
+  completedTrainingCount: number;
+  upcomingTrainings: GroupTraining[];
+  recentTrainings: GroupTraining[];
+};
+
 export function listGroups(search = ""): Promise<SchoolGroup[]> {
   const query = search ? `?search=${encodeURIComponent(search)}` : "";
   return apiRequest<SchoolGroup[]>(`/api/school/groups/${query}`);
+}
+
+export function getGroup(groupId: string): Promise<GroupDetail> {
+  return apiRequest<GroupDetail>(`/api/school/groups/${groupId}`);
 }
 
 export function createGroup(input: { name: string; description?: string }): Promise<SchoolGroup> {

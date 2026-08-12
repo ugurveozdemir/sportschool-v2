@@ -2,6 +2,7 @@ import { MoreOutlined, PlusOutlined, TeamOutlined, UserOutlined } from "@ant-des
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Avatar, Button, Card, Checkbox, Dropdown, Empty, Form, Input, Modal, Space, Table, Tag, Typography, message } from "antd";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
 import { listAthletes } from "./athletesApi";
 import {
@@ -22,6 +23,7 @@ type GroupFormValues = {
 
 export function GroupsPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [form] = Form.useForm<GroupFormValues>();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -130,6 +132,11 @@ export function GroupsPage() {
       } else {
         openRoster(group);
       }
+      return;
+    }
+
+    if (action === "details") {
+      navigate(`/gruplar/${group.id}`);
       return;
     }
 
@@ -330,6 +337,7 @@ function GroupActions({ group, onAction }: { group: SchoolGroup; onAction: (acti
       trigger={["click"]}
       menu={{
         items: [
+          { key: "details", label: "Detayı aç" },
           { key: "roster", label: "Kadroyu düzenle" },
           { key: "edit", label: "Grubu düzenle" },
           { type: "divider" },

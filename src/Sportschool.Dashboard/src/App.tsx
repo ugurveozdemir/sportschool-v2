@@ -20,6 +20,7 @@ import { AthleteDetailPage } from "./features/school/AthleteDetailPage";
 import { AnnouncementsPage } from "./features/school/AnnouncementsPage";
 import { CoachesPage } from "./features/school/CoachesPage";
 import { CoachDetailPage } from "./features/school/CoachDetailPage";
+import { GroupDetailPage } from "./features/school/GroupDetailPage";
 import { GroupsPage } from "./features/school/GroupsPage";
 import { PaymentsPage } from "./features/school/PaymentsPage";
 import { SchoolDashboardPage } from "./features/school/SchoolDashboardPage";
@@ -90,6 +91,14 @@ export function App() {
                 </RoleGuard>
               }
             />
+            <Route
+              path="/gruplar/:groupId"
+              element={
+                <RoleGuard roles={["SchoolAdmin"]}>
+                  <GroupDetailPage />
+                </RoleGuard>
+              }
+            />
           </Route>
           <Route path="*" element={<CatchAllNavigate to="/" />} />
         </Routes>
@@ -111,6 +120,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     ? "/sporcular"
     : location.pathname.startsWith("/antrenorler/")
       ? "/antrenorler"
+      : location.pathname.startsWith("/gruplar/")
+        ? "/gruplar"
       : location.pathname;
   const menuItems: MenuProps["items"] = isPlatformOwner
     ? [{ key: "/", icon: <ApartmentOutlined />, label: "Okullar" }]

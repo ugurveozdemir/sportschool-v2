@@ -14,6 +14,78 @@ namespace Sportschool.Api.Tests;
 public sealed class GroupEndpointTests
 {
     [Fact]
+    public async Task SchoolAdminCanReadGroupDetailWithRosterAndTrainingSummary()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-group-detail@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var athleteUser = TestUsers.Create(schoolId, "athlete-group-detail@example.com", "Athlete", "password", UserRole.Athlete);
+        var athlete = new AthleteProfile
+        {
+            SchoolId = schoolId,
+            User = athleteUser,
+            FirstName = "Ece",
+            LastName = "Yılmaz",
+            BirthDate = new DateOnly(2013, 1, 1),
+            ParentFullName = "Veli Yılmaz",
+            ParentPhone = "555"
+        };
+        var group = new TrainingGroup { SchoolId = schoolId, Name = "U13 Detay" };
+        var upcomingTraining = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = admin.Id,
+            Title = "Teknik çalışma",
+            StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+            EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+        var completedTraining = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = admin.Id,
+            Title = "Tamamlanan çalışma",
+            StartsAt = DateTimeOffset.UtcNow.AddDays(-1),
+            EndsAt = DateTimeOffset.UtcNow.AddDays(-1).AddHours(1),
+            StartedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            StartedByUserId = admin.Id,
+            CompletedAt = DateTimeOffset.UtcNow.AddDays(-1).AddHours(1),
+            CompletedByUserId = admin.Id,
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(new School
+            {
+                Id = schoolId,
+                Name = "Group Detail School",
+                Code = "group-detail-school",
+                NormalizedCode = TextNormalizer.NormalizeSchoolCode("group-detail-school")
+            });
+            db.Users.AddRange(admin, athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            db.TrainingGroups.Add(group);
+            db.GroupAthletes.Add(new GroupAthlete { Group = group, AthleteProfile = athlete });
+            db.TrainingSessions.AddRange(upcomingTraining, completedTraining);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        var detail = await client.GetFromJsonAsync<GroupDetailResponse>($"/api/school/groups/{group.Id}");
+
+        Assert.NotNull(detail);
+        Assert.Equal(group.Id, detail.Id);
+        Assert.Equal(1, detail.AthleteCount);
+        Assert.Equal(1, detail.UpcomingTrainingCount);
+        Assert.Equal(1, detail.CompletedTrainingCount);
+        Assert.Equal(athlete.Id, Assert.Single(detail.Athletes).Id);
+        Assert.Equal("Teknik çalışma", Assert.Single(detail.UpcomingTrainings).Title);
+        Assert.Equal("Tamamlanan çalışma", Assert.Single(detail.RecentTrainings).Title);
+    }
+
+    [Fact]
     public async Task SchoolAdminCanSearchGroupsAndSeeRosterAndUpcomingTrainingSummaries()
     {
         await using var factory = new TestAppFactory();
