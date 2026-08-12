@@ -55,21 +55,19 @@ export default function IndexRoute() {
           style={styles.logo}
         />
         <Text style={styles.academyName}>TÜRK OCAĞI ELİT FUTBOL AKADEMİSİ</Text>
-        <View style={styles.divider} />
-        <Text style={styles.slogan}>KIBRIS&apos;IN BİR NUMARALI AKADEMİSİ</Text>
         <Text
           accessibilityLabel="İyi birey, iyi vatandaş, iyi futbolcu"
           style={styles.motto}
         >
           <Text style={styles.mottoLight}>İYİ </Text>
           <Text style={styles.mottoAccent}>BİREY</Text>
-          {"\n"}
-          <Text style={styles.mottoLight}>İYİ </Text>
+          <Text style={styles.mottoLight}> İYİ </Text>
           <Text style={styles.mottoAccent}>VATANDAŞ,</Text>
-          {"\n"}
-          <Text style={styles.mottoLight}>İYİ </Text>
+          <Text style={styles.mottoLight}> İYİ </Text>
           <Text style={styles.mottoAccent}>FUTBOLCU</Text>
         </Text>
+        <View style={styles.divider} />
+        <Text style={styles.slogan}>KIBRIS&apos;IN BİR NUMARALI AKADEMİSİ</Text>
       </Animated.View>
     </View>
   );
@@ -79,10 +77,10 @@ const styles = StyleSheet.create({
   academyName: {
     color: colors.onSurface,
     fontFamily: fontFamily.headingExtraBold,
-    fontSize: 21,
-    letterSpacing: 1.1,
-    lineHeight: 27,
-    maxWidth: 310,
+    fontSize: 24,
+    letterSpacing: 0.9,
+    lineHeight: 31,
+    maxWidth: 340,
     textAlign: "center"
   },
   divider: {
@@ -92,15 +90,15 @@ const styles = StyleSheet.create({
     width: 56
   },
   logo: {
-    height: 190,
-    width: 135
+    height: 220,
+    width: 155
   },
   motto: {
     color: colors.onSurface,
     fontFamily: fontFamily.headingBold,
-    fontSize: 15,
-    letterSpacing: 1.25,
-    lineHeight: 22,
+    fontSize: 15.5,
+    letterSpacing: 0.4,
+    lineHeight: 23,
     textAlign: "center"
   },
   mottoAccent: {
@@ -123,9 +121,9 @@ const styles = StyleSheet.create({
   slogan: {
     color: colors.primaryContainer,
     fontFamily: fontFamily.headingBold,
-    fontSize: 15,
-    letterSpacing: 1.6,
-    lineHeight: 21,
+    fontSize: 17,
+    letterSpacing: 1.7,
+    lineHeight: 24,
     textAlign: "center"
   }
 });
