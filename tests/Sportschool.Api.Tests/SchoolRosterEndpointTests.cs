@@ -7,6 +7,7 @@ using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Schools;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 using Sportschool.Api.Tests.Infrastructure;
@@ -40,13 +41,75 @@ public sealed class SchoolRosterEndpointTests
         using var client = factory.CreateAuthenticatedClient(adminA, UserRole.SchoolAdmin);
 
         var users = await client.GetFromJsonAsync<List<SchoolUserResponse>>("/api/school/users", JsonOptions);
-        var coaches = await client.GetFromJsonAsync<List<SchoolUserResponse>>("/api/school/coaches", JsonOptions);
+        var coaches = await client.GetFromJsonAsync<List<CoachRosterResponse>>("/api/school/coaches", JsonOptions);
 
         Assert.Equal(2, users!.Count);
         Assert.All(users, user => Assert.Equal(schoolAId, user.SchoolId));
         var coach = Assert.Single(coaches!);
         Assert.Equal(coachA.Id, coach.Id);
         Assert.Contains(UserRole.Coach, coach.Roles);
+    }
+
+    [Fact]
+    public async Task SchoolAdminCanSearchPaginateCoachesAndSeeUpcomingTrainingSummary()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-coach-roster@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var coachWithTraining = TestUsers.Create(schoolId, "ayse.demir@example.com", "Ayşe Demir", "password", UserRole.Coach);
+        var coachWithoutTraining = TestUsers.Create(schoolId, "zeynep.kaya@example.com", "Zeynep Kaya", "password", UserRole.Coach);
+        var group = new TrainingGroup { SchoolId = schoolId, Name = "U12" };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Coach Roster School", "coach-roster"));
+            db.Users.AddRange(admin, coachWithTraining, coachWithoutTraining);
+            db.TrainingGroups.Add(group);
+            db.TrainingSessions.AddRange(
+                new TrainingSession
+                {
+                    SchoolId = schoolId,
+                    CoachId = coachWithTraining.Id,
+                    Title = "Yaklaşan teknik antrenman",
+                    StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+                    EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+                    Groups = { new TrainingSessionGroup { Group = group } }
+                },
+                new TrainingSession
+                {
+                    SchoolId = schoolId,
+                    CoachId = coachWithTraining.Id,
+                    Title = "İkinci antrenman",
+                    StartsAt = DateTimeOffset.UtcNow.AddDays(2),
+                    EndsAt = DateTimeOffset.UtcNow.AddDays(2).AddHours(1),
+                    Groups = { new TrainingSessionGroup { Group = group } }
+                });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        var firstPage = await client.GetFromJsonAsync<PaginatedList<CoachRosterResponse>>(
+            "/api/school/coaches?page=1&pageSize=1",
+            JsonOptions);
+        var searchResult = await client.GetFromJsonAsync<PaginatedList<CoachRosterResponse>>(
+            "/api/school/coaches?search=kaya&page=1&pageSize=20",
+            JsonOptions);
+
+        Assert.NotNull(firstPage);
+        Assert.Equal(2, firstPage.TotalCount);
+        var coach = Assert.Single(firstPage.Items);
+        Assert.Equal(coachWithTraining.Id, coach.Id);
+        Assert.Equal(2, coach.UpcomingTrainingCount);
+        Assert.NotNull(coach.NextTraining);
+        Assert.Equal("Yaklaşan teknik antrenman", coach.NextTraining.Title);
+        Assert.Equal("U12", Assert.Single(coach.NextTraining.Groups).Name);
+
+        Assert.NotNull(searchResult);
+        Assert.Equal(1, searchResult.TotalCount);
+        var searchedCoach = Assert.Single(searchResult.Items);
+        Assert.Equal(coachWithoutTraining.Id, searchedCoach.Id);
+        Assert.Null(searchedCoach.NextTraining);
     }
 
     [Fact]

@@ -67,6 +67,9 @@ public static class SchoolManagementEndpoints
     }
 
     private static async Task<IResult> ListCoachesAsync(
+        string? search,
+        int? page,
+        int? pageSize,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         CancellationToken cancellationToken)
@@ -77,16 +80,101 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
-        var coaches = await db.Users
+        var query = db.Users
             .AsNoTracking()
             .Include(x => x.Roles)
             .Where(x => x.SchoolId == schoolId.Value
                 && x.IsActive
-                && x.Roles.Any(role => role.Role == UserRole.Coach))
-            .OrderBy(x => x.FullName)
-            .ToListAsync(cancellationToken);
+                && x.Roles.Any(role => role.Role == UserRole.Coach));
 
-        return Results.Ok(coaches.Select(SchoolUserResponse.From));
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLower();
+            query = query.Where(x =>
+                x.FullName.ToLower().Contains(normalizedSearch) ||
+                x.Email.ToLower().Contains(normalizedSearch));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var orderedQuery = query
+            .OrderBy(x => x.FullName)
+            .ThenBy(x => x.Email);
+
+        if (page.HasValue && pageSize.HasValue)
+        {
+            var coaches = await orderedQuery
+                .Skip((page.Value - 1) * pageSize.Value)
+                .Take(pageSize.Value)
+                .ToListAsync(cancellationToken);
+            var items = await CreateCoachRosterResponsesAsync(coaches);
+
+            return Results.Ok(new PaginatedList<CoachRosterResponse>(items, totalCount, page.Value, pageSize.Value));
+        }
+
+        var allCoaches = await orderedQuery.ToListAsync(cancellationToken);
+        return Results.Ok(await CreateCoachRosterResponsesAsync(allCoaches));
+
+        async Task<List<CoachRosterResponse>> CreateCoachRosterResponsesAsync(List<AppUser> coaches)
+        {
+            if (coaches.Count == 0)
+            {
+                return [];
+            }
+
+            var coachIds = coaches.Select(x => x.Id).ToArray();
+            var trainingCandidates = await db.TrainingSessions
+                .AsNoTracking()
+                .Where(x => x.SchoolId == schoolId.Value
+                    && x.IsActive
+                    && x.CompletedAt == null)
+                .Select(x => new { x.Id, x.CoachId, x.Title, x.StartsAt })
+                .ToListAsync(cancellationToken);
+            var upcomingTrainingRows = trainingCandidates
+                .Where(x => x.StartsAt >= DateTimeOffset.UtcNow && coachIds.Contains(x.CoachId))
+                .OrderBy(x => x.StartsAt)
+                .ToList();
+            var nextTrainingByCoachId = upcomingTrainingRows
+                .GroupBy(x => x.CoachId)
+                .ToDictionary(x => x.Key, x => x.First());
+            var upcomingTrainingCountByCoachId = upcomingTrainingRows
+                .GroupBy(x => x.CoachId)
+                .ToDictionary(x => x.Key, x => x.Count());
+            var nextTrainingIds = nextTrainingByCoachId.Values.Select(x => x.Id).ToArray();
+            var groupsByTrainingId = await db.TrainingSessionGroups
+                .AsNoTracking()
+                .Where(x => nextTrainingIds.Contains(x.TrainingSessionId)
+                    && x.Group.SchoolId == schoolId.Value
+                    && x.Group.IsActive)
+                .OrderBy(x => x.Group.Name)
+                .Select(x => new
+                {
+                    x.TrainingSessionId,
+                    Group = new AthleteGroupResponse(x.Group.Id, x.Group.Name)
+                })
+                .ToListAsync(cancellationToken);
+            var groupsByNextTrainingId = groupsByTrainingId
+                .GroupBy(x => x.TrainingSessionId)
+                .ToDictionary(x => x.Key, x => (IReadOnlyCollection<AthleteGroupResponse>)x.Select(row => row.Group).ToArray());
+
+            return coaches.Select(coach =>
+            {
+                var nextTraining = nextTrainingByCoachId.GetValueOrDefault(coach.Id);
+                return new CoachRosterResponse(
+                    coach.Id,
+                    coach.SchoolId!.Value,
+                    coach.Email,
+                    coach.FullName,
+                    coach.Roles.Select(x => x.Role).Order().ToArray(),
+                    nextTraining is null
+                        ? null
+                        : new CoachUpcomingTrainingResponse(
+                            nextTraining.Id,
+                            nextTraining.Title,
+                            nextTraining.StartsAt,
+                            groupsByNextTrainingId.GetValueOrDefault(nextTraining.Id, [])),
+                    upcomingTrainingCountByCoachId.GetValueOrDefault(coach.Id));
+            }).ToList();
+        }
     }
 
     private static async Task<IResult> ListAthletesAsync(
@@ -632,5 +720,20 @@ public sealed record CoachResponse(Guid Id, Guid SchoolId, string Email, string 
         return new CoachResponse(user.Id, user.SchoolId!.Value, user.Email, user.FullName, temporaryPassword);
     }
 }
+
+public sealed record CoachRosterResponse(
+    Guid Id,
+    Guid SchoolId,
+    string Email,
+    string FullName,
+    UserRole[] Roles,
+    CoachUpcomingTrainingResponse? NextTraining,
+    int UpcomingTrainingCount);
+
+public sealed record CoachUpcomingTrainingResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartsAt,
+    IReadOnlyCollection<AthleteGroupResponse> Groups);
 
 public sealed record PaginatedList<T>(IReadOnlyCollection<T> Items, int TotalCount, int Page, int PageSize);
