@@ -255,7 +255,6 @@ public static class SchoolManagementEndpoints
             .CountAsync(x => x.SchoolId == schoolId.Value && x.CoachId == coachId, cancellationToken);
 
         var stats = new CoachProfileStatsResponse(
-            trainingRows.Count,
             trainingRows.Count(x => x.StartedByUserId == coachId),
             trainingRows.Count(x => x.CompletedByUserId == coachId),
             activeTrainingRows.Count(x => x.StartedAt is null && x.CompletedAt is null && x.StartsAt >= now),
@@ -869,7 +868,6 @@ public sealed record CoachDetailResponse(
     IReadOnlyCollection<CoachTrainingHistoryResponse> RecentTrainings);
 
 public sealed record CoachProfileStatsResponse(
-    int AssignedTrainingCount,
     int StartedTrainingCount,
     int CompletedTrainingCount,
     int UpcomingTrainingCount,

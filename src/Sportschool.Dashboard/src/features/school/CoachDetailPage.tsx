@@ -80,7 +80,6 @@ export function CoachDetailPage() {
       </Card>
 
       <div className="coach-stats-grid">
-        <StatCard icon={<CalendarOutlined />} label="Atanan antrenman" value={coach.stats.assignedTrainingCount} />
         <StatCard icon={<PlayCircleOutlined />} label="Başlattığı" value={coach.stats.startedTrainingCount} />
         <StatCard icon={<CheckCircleOutlined />} label="Bitirdiği" value={coach.stats.completedTrainingCount} description={completionDescription} />
         <StatCard icon={<CalendarOutlined />} label="Yaklaşan" value={coach.stats.upcomingTrainingCount} />

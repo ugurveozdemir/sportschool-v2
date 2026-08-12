@@ -30,7 +30,6 @@ export type PaginatedCoaches = {
 };
 
 export type CoachProfileStats = {
-  assignedTrainingCount: number;
   startedTrainingCount: number;
   completedTrainingCount: number;
   upcomingTrainingCount: number;

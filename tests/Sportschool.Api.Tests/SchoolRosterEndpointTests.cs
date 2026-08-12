@@ -180,7 +180,6 @@ public sealed class SchoolRosterEndpointTests
 
         Assert.NotNull(detail);
         Assert.Equal(coach.Id, detail.Id);
-        Assert.Equal(3, detail.Stats.AssignedTrainingCount);
         Assert.Equal(2, detail.Stats.StartedTrainingCount);
         Assert.Equal(1, detail.Stats.CompletedTrainingCount);
         Assert.Equal(1, detail.Stats.UpcomingTrainingCount);
