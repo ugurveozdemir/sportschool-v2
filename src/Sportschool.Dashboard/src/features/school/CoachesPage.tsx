@@ -2,6 +2,7 @@ import { CopyOutlined, MoreOutlined, PlusOutlined, UserOutlined } from "@ant-des
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Avatar, Button, Card, Dropdown, Empty, Form, Input, Modal, Pagination, Space, Table, Tag, Typography, message } from "antd";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
 import { createCoach, deactivateCoach, listCoachRoster, type Coach, type CreatedCoach } from "./coachesApi";
 
@@ -225,7 +226,7 @@ function CoachIdentity({ coach }: { coach: Coach }) {
     <span className="coach-identity">
       <Avatar icon={<UserOutlined />} />
       <span className="coach-identity-copy">
-        <Typography.Text strong>{coach.fullName}</Typography.Text>
+        <Link to={`/antrenorler/${coach.id}`}><Typography.Text strong>{coach.fullName}</Typography.Text></Link>
         <Typography.Link href={`mailto:${coach.email}`}>{coach.email}</Typography.Link>
       </span>
     </span>

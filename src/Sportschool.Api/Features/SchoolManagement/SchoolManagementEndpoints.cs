@@ -4,6 +4,7 @@ using Sportschool.Api.Data;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Groups;
 using Sportschool.Api.Features.Media;
+using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -20,6 +21,7 @@ public static class SchoolManagementEndpoints
 
         adminGroup.MapGet("/users", ListUsersAsync);
         adminGroup.MapGet("/coaches", ListCoachesAsync);
+        adminGroup.MapGet("/coaches/{coachId:guid}", GetCoachAsync);
         adminGroup.MapPost("/coaches", UpsertCoachAsync);
         adminGroup.MapPost("/athletes", CreateAthleteAsync);
         adminGroup.MapGet("/athletes/{athleteProfileId:guid}", GetAthleteAsync);
@@ -175,6 +177,124 @@ public static class SchoolManagementEndpoints
                     upcomingTrainingCountByCoachId.GetValueOrDefault(coach.Id));
             }).ToList();
         }
+    }
+
+    private static async Task<IResult> GetCoachAsync(
+        Guid coachId,
+        ClaimsPrincipal currentUser,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var schoolId = CurrentUser.GetSchoolId(currentUser);
+        if (schoolId is null)
+        {
+            return Results.Forbid();
+        }
+
+        var coach = await db.Users
+            .AsNoTracking()
+            .Include(x => x.Roles)
+            .FirstOrDefaultAsync(x => x.Id == coachId
+                && x.SchoolId == schoolId.Value
+                && x.IsActive
+                && x.Roles.Any(role => role.Role == UserRole.Coach), cancellationToken);
+        if (coach is null)
+        {
+            return Results.NotFound();
+        }
+
+        var trainingRows = await db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId.Value && x.CoachId == coachId)
+            .Select(x => new
+            {
+                x.Id,
+                x.Title,
+                x.StartsAt,
+                x.EndsAt,
+                x.StartedAt,
+                x.StartedByUserId,
+                x.CompletedAt,
+                x.CompletedByUserId,
+                x.IsActive
+            })
+            .ToListAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        var activeTrainingRows = trainingRows.Where(x => x.IsActive).ToList();
+        var nextTrainingRow = activeTrainingRows
+            .Where(x => x.StartedAt is null && x.CompletedAt is null && x.StartsAt >= now)
+            .OrderBy(x => x.StartsAt)
+            .FirstOrDefault();
+        var historyTrainingRows = trainingRows
+            .Where(x => x.StartedAt is not null || x.CompletedAt is not null)
+            .OrderByDescending(x => x.CompletedAt ?? x.StartedAt ?? x.StartsAt)
+            .Take(8)
+            .ToList();
+        var trainingIds = trainingRows.Select(x => x.Id).ToArray();
+        var groupRows = await db.TrainingSessionGroups
+            .AsNoTracking()
+            .Where(x => trainingIds.Contains(x.TrainingSessionId)
+                && x.Group.SchoolId == schoolId.Value
+                && x.Group.IsActive)
+            .OrderBy(x => x.Group.Name)
+            .Select(x => new
+            {
+                x.TrainingSessionId,
+                Group = new AthleteGroupResponse(x.Group.Id, x.Group.Name)
+            })
+            .ToListAsync(cancellationToken);
+        var groupsByTrainingId = groupRows
+            .GroupBy(x => x.TrainingSessionId)
+            .ToDictionary(x => x.Key, x => (IReadOnlyCollection<AthleteGroupResponse>)x.Select(row => row.Group).ToArray());
+        var groups = groupRows
+            .Select(x => x.Group)
+            .DistinctBy(x => x.Id)
+            .OrderBy(x => x.Name)
+            .ToArray();
+        var reportCount = await db.TrainingAthleteReports
+            .CountAsync(x => x.SchoolId == schoolId.Value && x.CoachId == coachId, cancellationToken);
+
+        var stats = new CoachProfileStatsResponse(
+            trainingRows.Count,
+            trainingRows.Count(x => x.StartedByUserId == coachId),
+            trainingRows.Count(x => x.CompletedByUserId == coachId),
+            activeTrainingRows.Count(x => x.StartedAt is null && x.CompletedAt is null && x.StartsAt >= now),
+            activeTrainingRows.Count(x => x.StartedAt is not null && x.CompletedAt is null),
+            reportCount);
+        var nextTraining = nextTrainingRow is null
+            ? null
+            : new CoachUpcomingTrainingResponse(
+                nextTrainingRow.Id,
+                nextTrainingRow.Title,
+                nextTrainingRow.StartsAt,
+                groupsByTrainingId.GetValueOrDefault(nextTrainingRow.Id, []));
+        var recentTrainings = historyTrainingRows
+            .Select(training => new CoachTrainingHistoryResponse(
+                training.Id,
+                training.Title,
+                training.StartsAt,
+                training.EndsAt,
+                training.StartedAt,
+                training.CompletedAt,
+                training.CompletedAt is not null
+                    ? "Completed"
+                    : training.StartedAt is not null
+                        ? "InProgress"
+                        : "Scheduled",
+                groupsByTrainingId.GetValueOrDefault(training.Id, [])))
+            .ToArray();
+
+        return Results.Ok(new CoachDetailResponse(
+            coach.Id,
+            schoolId.Value,
+            coach.Email,
+            coach.FullName,
+            coach.Roles.Select(x => x.Role).Order().ToArray(),
+            coach.CreatedAt,
+            stats,
+            nextTraining,
+            groups,
+            recentTrainings));
     }
 
     private static async Task<IResult> ListAthletesAsync(
@@ -734,6 +854,36 @@ public sealed record CoachUpcomingTrainingResponse(
     Guid Id,
     string Title,
     DateTimeOffset StartsAt,
+    IReadOnlyCollection<AthleteGroupResponse> Groups);
+
+public sealed record CoachDetailResponse(
+    Guid Id,
+    Guid SchoolId,
+    string Email,
+    string FullName,
+    UserRole[] Roles,
+    DateTimeOffset CreatedAt,
+    CoachProfileStatsResponse Stats,
+    CoachUpcomingTrainingResponse? NextTraining,
+    IReadOnlyCollection<AthleteGroupResponse> Groups,
+    IReadOnlyCollection<CoachTrainingHistoryResponse> RecentTrainings);
+
+public sealed record CoachProfileStatsResponse(
+    int AssignedTrainingCount,
+    int StartedTrainingCount,
+    int CompletedTrainingCount,
+    int UpcomingTrainingCount,
+    int InProgressTrainingCount,
+    int ReportCount);
+
+public sealed record CoachTrainingHistoryResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
+    string Status,
     IReadOnlyCollection<AthleteGroupResponse> Groups);
 
 public sealed record PaginatedList<T>(IReadOnlyCollection<T> Items, int TotalCount, int Page, int PageSize);

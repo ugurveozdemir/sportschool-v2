@@ -216,9 +216,11 @@ body {
 
 .coach-identity {
   align-items: center;
+  color: inherit;
   display: inline-flex;
   gap: 8px;
   min-width: 0;
+  text-decoration: none;
 }
 
 .coach-identity-copy,
@@ -266,6 +268,57 @@ body {
 .coach-roster-pagination {
   margin-top: 20px;
   text-align: right;
+}
+
+.coach-profile-card,
+.coach-groups-card,
+.coach-history-card {
+  border-color: #e5e7eb;
+}
+
+.coach-profile-summary {
+  align-items: center;
+  display: flex;
+  gap: 20px;
+}
+
+.coach-profile-summary .ant-typography {
+  margin: 0;
+}
+
+.coach-stats-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin: 16px 0;
+}
+
+.coach-stat-card .ant-card-body {
+  padding: 18px;
+}
+
+.coach-stat-icon {
+  color: #1677ff;
+  font-size: 20px;
+  line-height: 32px;
+}
+
+.coach-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.coach-next-training,
+.coach-training-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coach-groups-card,
+.coach-history-card {
+  margin-top: 16px;
 }
 
 .detail-back-button {
@@ -428,7 +481,15 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .coach-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
   .athlete-profile-summary {
+    align-items: flex-start;
+  }
+
+  .coach-profile-summary {
     align-items: flex-start;
   }
 

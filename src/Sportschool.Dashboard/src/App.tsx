@@ -19,6 +19,7 @@ import { AthletesPage } from "./features/school/AthletesPage";
 import { AthleteDetailPage } from "./features/school/AthleteDetailPage";
 import { AnnouncementsPage } from "./features/school/AnnouncementsPage";
 import { CoachesPage } from "./features/school/CoachesPage";
+import { CoachDetailPage } from "./features/school/CoachDetailPage";
 import { GroupsPage } from "./features/school/GroupsPage";
 import { PaymentsPage } from "./features/school/PaymentsPage";
 import { SchoolDashboardPage } from "./features/school/SchoolDashboardPage";
@@ -81,6 +82,14 @@ export function App() {
                 </RoleGuard>
               }
             />
+            <Route
+              path="/antrenorler/:coachId"
+              element={
+                <RoleGuard roles={["SchoolAdmin"]}>
+                  <CoachDetailPage />
+                </RoleGuard>
+              }
+            />
           </Route>
           <Route path="*" element={<CatchAllNavigate to="/" />} />
         </Routes>
@@ -98,7 +107,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (!session) return null;
 
   const isPlatformOwner = session.loginRole === "PlatformOwner";
-  const selectedMenuKey = location.pathname.startsWith("/sporcular/") ? "/sporcular" : location.pathname;
+  const selectedMenuKey = location.pathname.startsWith("/sporcular/")
+    ? "/sporcular"
+    : location.pathname.startsWith("/antrenorler/")
+      ? "/antrenorler"
+      : location.pathname;
   const menuItems: MenuProps["items"] = isPlatformOwner
     ? [{ key: "/", icon: <ApartmentOutlined />, label: "Okullar" }]
     : [

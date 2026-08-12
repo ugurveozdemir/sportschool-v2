@@ -29,6 +29,39 @@ export type PaginatedCoaches = {
   pageSize: number;
 };
 
+export type CoachProfileStats = {
+  assignedTrainingCount: number;
+  startedTrainingCount: number;
+  completedTrainingCount: number;
+  upcomingTrainingCount: number;
+  inProgressTrainingCount: number;
+  reportCount: number;
+};
+
+export type CoachTrainingHistory = {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  status: "Scheduled" | "InProgress" | "Completed";
+  groups: CoachGroup[];
+};
+
+export type CoachDetail = {
+  id: string;
+  schoolId: string;
+  email: string;
+  fullName: string;
+  roles: string[];
+  createdAt: string;
+  stats: CoachProfileStats;
+  nextTraining: CoachUpcomingTraining | null;
+  groups: CoachGroup[];
+  recentTrainings: CoachTrainingHistory[];
+};
+
 export type CreatedCoach = {
   id: string;
   schoolId: string;
@@ -45,6 +78,10 @@ export function listCoachRoster(search: string, page: number, pageSize: number):
 
 export function listCoaches(): Promise<Coach[]> {
   return apiRequest<Coach[]>("/api/school/coaches");
+}
+
+export function getCoach(coachId: string): Promise<CoachDetail> {
+  return apiRequest<CoachDetail>(`/api/school/coaches/${coachId}`);
 }
 
 export function createCoach(input: { fullName: string; email: string }): Promise<CreatedCoach> {

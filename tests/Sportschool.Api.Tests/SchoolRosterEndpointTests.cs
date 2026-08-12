@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Groups;
+using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Trainings;
@@ -110,6 +111,87 @@ public sealed class SchoolRosterEndpointTests
         var searchedCoach = Assert.Single(searchResult.Items);
         Assert.Equal(coachWithoutTraining.Id, searchedCoach.Id);
         Assert.Null(searchedCoach.NextTraining);
+    }
+
+    [Fact]
+    public async Task SchoolAdminCanGetCoachProfileWithLifecycleStatsAndHistory()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-coach-detail@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var coach = TestUsers.Create(schoolId, "coach-detail@example.com", "Coach Detail", "password", UserRole.Coach);
+        var athleteUser = TestUsers.Create(schoolId, "athlete-coach-detail@example.com", "Athlete Detail", "password", UserRole.Athlete);
+        var athlete = CreateAthleteProfile(schoolId, athleteUser, "Athlete", "Detail");
+        var group = new TrainingGroup { SchoolId = schoolId, Name = "U14" };
+        var completedTraining = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = coach.Id,
+            Title = "Tamamlanan antrenman",
+            StartsAt = DateTimeOffset.UtcNow.AddDays(-2),
+            EndsAt = DateTimeOffset.UtcNow.AddDays(-2).AddHours(1),
+            StartedAt = DateTimeOffset.UtcNow.AddDays(-2),
+            StartedByUserId = coach.Id,
+            CompletedAt = DateTimeOffset.UtcNow.AddDays(-2).AddHours(1),
+            CompletedByUserId = coach.Id,
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+        var inProgressTraining = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = coach.Id,
+            Title = "Devam eden antrenman",
+            StartsAt = DateTimeOffset.UtcNow.AddHours(-1),
+            EndsAt = DateTimeOffset.UtcNow.AddHours(1),
+            StartedAt = DateTimeOffset.UtcNow.AddHours(-1),
+            StartedByUserId = coach.Id,
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+        var upcomingTraining = new TrainingSession
+        {
+            SchoolId = schoolId,
+            CoachId = coach.Id,
+            Title = "Yaklaşan antrenman",
+            StartsAt = DateTimeOffset.UtcNow.AddDays(1),
+            EndsAt = DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            Groups = { new TrainingSessionGroup { Group = group } }
+        };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Coach Detail School", "coach-detail"));
+            db.Users.AddRange(admin, coach, athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            db.TrainingGroups.Add(group);
+            db.TrainingSessions.AddRange(completedTraining, inProgressTraining, upcomingTraining);
+            db.TrainingAthleteReports.Add(new TrainingAthleteReport
+            {
+                SchoolId = schoolId,
+                TrainingSessionId = completedTraining.Id,
+                AthleteProfileId = athlete.Id,
+                CoachId = coach.Id
+            });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        var detail = await client.GetFromJsonAsync<CoachDetailResponse>($"/api/school/coaches/{coach.Id}", JsonOptions);
+
+        Assert.NotNull(detail);
+        Assert.Equal(coach.Id, detail.Id);
+        Assert.Equal(3, detail.Stats.AssignedTrainingCount);
+        Assert.Equal(2, detail.Stats.StartedTrainingCount);
+        Assert.Equal(1, detail.Stats.CompletedTrainingCount);
+        Assert.Equal(1, detail.Stats.UpcomingTrainingCount);
+        Assert.Equal(1, detail.Stats.InProgressTrainingCount);
+        Assert.Equal(1, detail.Stats.ReportCount);
+        Assert.NotNull(detail.NextTraining);
+        Assert.Equal(upcomingTraining.Id, detail.NextTraining.Id);
+        Assert.Equal("U14", Assert.Single(detail.Groups).Name);
+        Assert.Equal(2, detail.RecentTrainings.Count);
+        Assert.Contains(detail.RecentTrainings, training => training.Id == completedTraining.Id && training.Status == "Completed");
+        Assert.Contains(detail.RecentTrainings, training => training.Id == inProgressTraining.Id && training.Status == "InProgress");
     }
 
     [Fact]
