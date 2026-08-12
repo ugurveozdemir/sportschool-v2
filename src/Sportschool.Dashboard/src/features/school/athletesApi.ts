@@ -13,6 +13,7 @@ export type Athlete = {
   parentFullName: string;
   parentPhone: string;
   profileImageUrl: string | null;
+  groups: AthleteGroup[];
 };
 
 export type AthleteDetail = Athlete & {
@@ -34,6 +35,13 @@ export type Group = {
   isActive: boolean;
 };
 
+export type PaginatedAthletes = {
+  items: Athlete[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+};
+
 export type CreateAthleteInput = {
   firstName: string;
   lastName: string;
@@ -51,6 +59,18 @@ export type CreateAthleteInput = {
 export function listAthletes(search: string): Promise<Athlete[]> {
   const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
   return apiRequest<Athlete[]>(`/api/school/athletes${query}`);
+}
+
+export function listAthleteRoster(
+  search: string,
+  groupId: string | undefined,
+  page: number,
+  pageSize: number
+): Promise<PaginatedAthletes> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (search.trim()) params.set("search", search.trim());
+  if (groupId) params.set("groupId", groupId);
+  return apiRequest<PaginatedAthletes>(`/api/school/athletes?${params.toString()}`);
 }
 
 export function getAthlete(athleteId: string): Promise<AthleteDetail> {

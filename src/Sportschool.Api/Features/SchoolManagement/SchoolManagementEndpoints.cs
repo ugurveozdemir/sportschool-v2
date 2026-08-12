@@ -91,6 +91,7 @@ public static class SchoolManagementEndpoints
 
     private static async Task<IResult> ListAthletesAsync(
         string? search,
+        Guid? groupId,
         int? page,
         int? pageSize,
         ClaimsPrincipal currentUser,
@@ -118,6 +119,15 @@ public static class SchoolManagementEndpoints
                 x.ParentFullName.ToLower().Contains(normalizedSearch));
         }
 
+        if (groupId.HasValue)
+        {
+            query = query.Where(x => db.GroupAthletes.Any(
+                membership => membership.GroupId == groupId.Value
+                    && membership.AthleteProfileId == x.Id
+                    && membership.Group.SchoolId == schoolId.Value
+                    && membership.Group.IsActive));
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
 
         var orderedQuery = query
@@ -130,7 +140,7 @@ public static class SchoolManagementEndpoints
                 .Skip((page.Value - 1) * pageSize.Value)
                 .Take(pageSize.Value)
                 .ToListAsync(cancellationToken);
-            var items = athletes.Select(x => AthleteRosterResponse.From(x, mediaUrls)).ToList();
+            var items = await CreateRosterResponsesAsync(athletes);
 
             return Results.Ok(new PaginatedList<AthleteRosterResponse>(items, totalCount, page.Value, pageSize.Value));
         }
@@ -138,9 +148,41 @@ public static class SchoolManagementEndpoints
         {
             var athletes = await orderedQuery
                 .ToListAsync(cancellationToken);
-            var items = athletes.Select(x => AthleteRosterResponse.From(x, mediaUrls)).ToList();
+            var items = await CreateRosterResponsesAsync(athletes);
 
             return Results.Ok(items);
+        }
+
+        async Task<List<AthleteRosterResponse>> CreateRosterResponsesAsync(List<AthleteProfile> athletes)
+        {
+            if (athletes.Count == 0)
+            {
+                return [];
+            }
+
+            var athleteIds = athletes.Select(x => x.Id).ToArray();
+            var groupRows = await db.GroupAthletes
+                .AsNoTracking()
+                .Where(x => athleteIds.Contains(x.AthleteProfileId)
+                    && x.Group.SchoolId == schoolId.Value
+                    && x.Group.IsActive)
+                .OrderBy(x => x.Group.Name)
+                .Select(x => new
+                {
+                    x.AthleteProfileId,
+                    Group = new AthleteGroupResponse(x.Group.Id, x.Group.Name)
+                })
+                .ToListAsync(cancellationToken);
+            var groupsByAthleteId = groupRows
+                .GroupBy(x => x.AthleteProfileId)
+                .ToDictionary(x => x.Key, x => (IReadOnlyCollection<AthleteGroupResponse>)x.Select(row => row.Group).ToArray());
+
+            return athletes
+                .Select(x => AthleteRosterResponse.From(
+                    x,
+                    groupsByAthleteId.GetValueOrDefault(x.Id, []),
+                    mediaUrls))
+                .ToList();
         }
     }
 
@@ -392,7 +434,10 @@ public static class SchoolManagementEndpoints
 
         return Results.Created(
             $"/api/school/athletes/{athleteProfile.Id}",
-            AthleteRosterResponse.From(athleteProfile, mediaUrls));
+            AthleteRosterResponse.From(
+                athleteProfile,
+                group is null ? [] : [new AthleteGroupResponse(group.Id, group.Name)],
+                mediaUrls));
     }
 
     private static async Task<IResult> DeactivateCoachAsync(
@@ -516,9 +561,13 @@ public sealed record AthleteRosterResponse(
     PreferredFoot PreferredFoot,
     string ParentFullName,
     string ParentPhone,
-    string? ProfileImageUrl)
+    string? ProfileImageUrl,
+    IReadOnlyCollection<AthleteGroupResponse> Groups)
 {
-    public static AthleteRosterResponse From(AthleteProfile athlete, MediaAccessUrlService mediaUrls)
+    public static AthleteRosterResponse From(
+        AthleteProfile athlete,
+        IReadOnlyCollection<AthleteGroupResponse> groups,
+        MediaAccessUrlService mediaUrls)
     {
         return new AthleteRosterResponse(
             athlete.Id,
@@ -530,7 +579,8 @@ public sealed record AthleteRosterResponse(
             athlete.PreferredFoot,
             athlete.ParentFullName,
             athlete.ParentPhone,
-            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion));
+            athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion),
+            groups);
     }
 }
 

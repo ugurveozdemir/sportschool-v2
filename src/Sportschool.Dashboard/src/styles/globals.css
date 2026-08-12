@@ -120,6 +120,79 @@ body {
   align-items: center;
   display: inline-flex;
   gap: 8px;
+  min-width: 0;
+}
+
+.athlete-identity-copy,
+.athlete-parent-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.athlete-identity-copy > span,
+.athlete-parent-copy > span {
+  overflow-wrap: anywhere;
+}
+
+.athlete-roster-card {
+  border-color: #e5e7eb;
+}
+
+.athlete-roster-toolbar {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
+}
+
+.athlete-roster-summary {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 16px 0;
+}
+
+.athlete-roster-table .ant-table-cell {
+  vertical-align: middle;
+}
+
+.athlete-group-list {
+  max-width: 240px;
+}
+
+.athlete-roster-cards {
+  display: none;
+}
+
+.athlete-roster-item-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.athlete-roster-item-details {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.athlete-roster-item-details > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.athlete-roster-empty {
+  margin: 48px 0;
+}
+
+.athlete-roster-pagination {
+  margin-top: 20px;
+  text-align: right;
 }
 
 .detail-back-button {
@@ -287,6 +360,50 @@ body {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .athlete-page-heading {
+    flex-direction: column;
+    flex-wrap: wrap;
+  }
+
+  .athlete-page-heading > button {
+    width: 100%;
+  }
+
+  .athlete-roster-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .athlete-roster-toolbar .ant-input {
+    font-size: 16px;
+  }
+
+  .athlete-roster-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .athlete-roster-table {
+    display: none;
+  }
+
+  .athlete-roster-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .athlete-roster-pagination {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .athlete-roster-item-details {
     grid-template-columns: 1fr;
   }
 }

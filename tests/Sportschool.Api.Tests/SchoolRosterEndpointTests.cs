@@ -448,6 +448,59 @@ public sealed class SchoolRosterEndpointTests
     }
 
     [Fact]
+    public async Task SchoolAdminCanListAthletes_WithGroupFilterAndPagination()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-group-filter@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var athleteAUser = TestUsers.Create(schoolId, "athlete-group-a@example.com", "Ali A", "password", UserRole.Athlete);
+        var athleteBUser = TestUsers.Create(schoolId, "athlete-group-b@example.com", "Bora B", "password", UserRole.Athlete);
+        var athleteCUser = TestUsers.Create(schoolId, "athlete-group-c@example.com", "Can C", "password", UserRole.Athlete);
+        var underTwelve = new TrainingGroup { SchoolId = schoolId, Name = "U12" };
+        var underFourteen = new TrainingGroup { SchoolId = schoolId, Name = "U14" };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Group Filter School", "group-filter"));
+            db.Users.AddRange(admin, athleteAUser, athleteBUser, athleteCUser);
+
+            var athleteA = CreateAthleteProfile(schoolId, athleteAUser, "Ali", "A");
+            var athleteB = CreateAthleteProfile(schoolId, athleteBUser, "Bora", "B");
+            var athleteC = CreateAthleteProfile(schoolId, athleteCUser, "Can", "C");
+            db.AthleteProfiles.AddRange(athleteA, athleteB, athleteC);
+            db.TrainingGroups.AddRange(underTwelve, underFourteen);
+            db.GroupAthletes.AddRange(
+                new GroupAthlete { Group = underTwelve, AthleteProfile = athleteA },
+                new GroupAthlete { Group = underTwelve, AthleteProfile = athleteB },
+                new GroupAthlete { Group = underFourteen, AthleteProfile = athleteC });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        var result = await client.GetFromJsonAsync<PaginatedList<AthleteRosterResponse>>(
+            $"/api/school/athletes?groupId={underTwelve.Id}&page=1&pageSize=1",
+            JsonOptions);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(1, result.PageSize);
+        var firstAthlete = Assert.Single(result.Items);
+        var firstGroup = Assert.Single(firstAthlete.Groups);
+        Assert.Equal("U12", firstGroup.Name);
+
+        var secondPage = await client.GetFromJsonAsync<PaginatedList<AthleteRosterResponse>>(
+            $"/api/school/athletes?groupId={underTwelve.Id}&page=2&pageSize=1",
+            JsonOptions);
+
+        Assert.NotNull(secondPage);
+        Assert.Equal(2, secondPage.TotalCount);
+        Assert.Single(secondPage.Items);
+        Assert.NotEqual(firstAthlete.Id, secondPage.Items.Single().Id);
+    }
+
+    [Fact]
     public async Task SchoolAdminCanGetAthleteDetailsFromCurrentSchool()
     {
         await using var factory = new TestAppFactory();
