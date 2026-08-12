@@ -14,6 +14,7 @@ export type Training = {
   coachId: string;
   coachName: string;
   location: string | null;
+  notes: string | null;
   startedAt: string | null;
   startedByUserId: string | null;
   completedAt: string | null;

@@ -582,6 +582,48 @@ body {
   margin-bottom: 16px;
 }
 
+.training-roster-card {
+  border-color: #e5e7eb;
+}
+
+.training-roster-toolbar {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(150px, 1fr));
+  margin-bottom: 12px;
+}
+
+.training-roster-summary {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.training-date-copy,
+.training-title-copy {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.training-group-list {
+  display: flex;
+}
+
+.training-roster-cards {
+  display: none;
+}
+
+.training-roster-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.training-roster-empty {
+  padding: 32px 0 16px;
+}
+
 .full-width {
   width: 100%;
 }
@@ -667,6 +709,68 @@ body {
 }
 
 @media (max-width: 900px) {
+  .training-page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .training-page-heading > .ant-btn {
+    width: 100%;
+  }
+
+  .training-roster-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .training-roster-toolbar .ant-input {
+    font-size: 16px;
+  }
+
+  .training-roster-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .training-roster-table {
+    display: none;
+  }
+
+  .training-roster-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .training-roster-item .ant-card-body {
+    padding: 16px;
+  }
+
+  .training-roster-item-heading {
+    align-items: flex-start;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .training-roster-item-details {
+    display: grid;
+    gap: 14px 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 16px;
+  }
+
+  .training-roster-item-details > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .training-roster-pagination {
+    justify-content: center;
+  }
+
   .athlete-page-heading,
   .coach-page-heading,
   .group-page-heading {
@@ -777,7 +881,8 @@ body {
 
 @media (max-width: 480px) {
   .athlete-roster-item-details,
-  .coach-roster-item-details {
+  .coach-roster-item-details,
+  .training-roster-item-details {
     grid-template-columns: 1fr;
   }
 }

@@ -60,6 +60,7 @@ public static class TrainingEndpoints
                 x.CoachId,
                 x.Coach.FullName,
                 x.Location,
+                x.Notes,
                 new AttendanceSummary(
                     x.StartedAt != null
                         ? db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id)
@@ -272,9 +273,9 @@ public static class TrainingEndpoints
             return Results.NotFound();
         }
 
-        if (training.StartedAt is not null)
+        if (training.StartedAt is not null || training.StartsAt <= DateTimeOffset.UtcNow)
         {
-            return Results.Conflict(new { detail = "Başlatılmış antrenman düzenlenemez." });
+            return Results.Conflict(new { detail = "Başlamış veya zamanı geçmiş antrenman düzenlenemez." });
         }
 
         if (CurrentUser.IsCoachSession(currentUser) && training.CoachId != userId.Value)
@@ -338,6 +339,11 @@ public static class TrainingEndpoints
         if (CurrentUser.IsCoachSession(currentUser) && training.CoachId != userId.Value)
         {
             return Results.NotFound();
+        }
+
+        if (training.StartedAt is not null || training.StartsAt <= DateTimeOffset.UtcNow)
+        {
+            return Results.Conflict(new { detail = "Başlamış veya zamanı geçmiş antrenman iptal edilemez." });
         }
 
         training.IsActive = false;
@@ -488,6 +494,7 @@ public sealed record TrainingListResponse(
     Guid CoachId,
     string CoachName,
     string? Location,
+    string? Notes,
     AttendanceSummary AttendanceSummary,
     DateTimeOffset? StartedAt,
     Guid? StartedByUserId,

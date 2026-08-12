@@ -413,6 +413,52 @@ public sealed class TrainingEndpointTests
     }
 
     [Fact]
+    public async Task ExpiredTrainingCannotBeUpdatedOrDeactivated()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var trainingId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-expired@example.com", "Coach A", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "train-expired"));
+            db.TrainingGroups.Add(new TrainingGroup { Id = groupId, SchoolId = schoolId, Name = "Group A" });
+            db.Users.Add(coach);
+            db.TrainingSessions.Add(new TrainingSession
+            {
+                Id = trainingId,
+                SchoolId = schoolId,
+                CoachId = coach.Id,
+                Title = "Expired Training",
+                StartsAt = DateTimeOffset.UtcNow.AddHours(-2),
+                EndsAt = DateTimeOffset.UtcNow.AddHours(-1),
+                Groups = { new TrainingSessionGroup { GroupId = groupId } }
+            });
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+        var update = new UpdateTrainingRequest(
+            [groupId],
+            "Updated Training",
+            DateTimeOffset.UtcNow.AddDays(1),
+            DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            null,
+            null);
+
+        using var updateResponse = await client.PutAsJsonAsync($"/api/school/trainings/{trainingId}", update, JsonOptions);
+        using var deactivateResponse = await client.DeleteAsync($"/api/school/trainings/{trainingId}");
+
+        Assert.Equal(HttpStatusCode.Conflict, updateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, deactivateResponse.StatusCode);
+        var session = await factory.QueryAsync(db => db.TrainingSessions.SingleAsync(x => x.Id == trainingId));
+        Assert.True(session.IsActive);
+        Assert.Equal("Expired Training", session.Title);
+    }
+
+    [Fact]
     public async Task ModifyTrainingSession_TenantIsolation_Enforced()
     {
         await using var factory = new TestAppFactory();
