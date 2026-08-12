@@ -80,6 +80,15 @@ export default function RoleScreen() {
               </Pressable>
             ))}
           </View>
+
+          <Pressable
+            accessibilityLabel="Intro ekranını tekrar göster"
+            accessibilityRole="button"
+            onPress={() => router.replace("/")}
+            style={({ pressed }) => [styles.previewButton, pressed && styles.previewButtonPressed]}
+          >
+            <Text style={styles.previewButtonText}>INTRO&apos;YU TEKRAR GÖSTER</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -157,6 +166,23 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.headingExtraBold,
     fontSize: 23,
     letterSpacing: -0.5
+  },
+  previewButton: {
+    alignSelf: "center",
+    borderColor: colors.primaryContainer,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm
+  },
+  previewButtonPressed: {
+    opacity: 0.7
+  },
+  previewButtonText: {
+    color: colors.primaryContainer,
+    fontFamily: fontFamily.bold,
+    fontSize: 12,
+    letterSpacing: 0.7
   },
   safeArea: {
     backgroundColor: colors.background,
