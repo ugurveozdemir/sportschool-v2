@@ -103,6 +103,10 @@ body {
   vertical-align: middle;
 }
 
+.group-clickable-row {
+  cursor: pointer;
+}
+
 .group-roster-cards {
   display: none;
 }
@@ -112,6 +116,10 @@ body {
   display: flex;
   gap: 12px;
   justify-content: space-between;
+}
+
+.group-roster-item {
+  cursor: pointer;
 }
 
 .group-identity-copy {

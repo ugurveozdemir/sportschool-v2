@@ -207,6 +207,14 @@ export function GroupsPage() {
                     loading={groupsQuery.isFetching}
                     dataSource={groups}
                     pagination={false}
+                    onRow={(group) => ({
+                      className: "group-clickable-row",
+                      onClick: (event) => {
+                        const target = event.target as HTMLElement;
+                        if (target.closest("button, a, [role='menuitem']")) return;
+                        navigate(`/gruplar/${group.id}`);
+                      }
+                    })}
                     expandable={{
                       expandedRowKeys: selectedGroup ? [selectedGroup.id] : [],
                       expandIcon: () => null,
@@ -222,7 +230,7 @@ export function GroupsPage() {
 
                 <div className="group-roster-cards">
                   {groups.map((group) => (
-                    <Card key={group.id} className="group-roster-item">
+                    <Card key={group.id} className="group-roster-item" onClick={() => navigate(`/gruplar/${group.id}`)}>
                       <div className="group-roster-item-heading">
                         <GroupIdentity group={group} />
                         <GroupActions group={group} onAction={handleAction} />
@@ -346,7 +354,7 @@ function GroupActions({ group, onAction }: { group: SchoolGroup; onAction: (acti
         onClick: ({ key }) => onAction(key, group)
       }}
     >
-      <Button type="text" icon={<MoreOutlined />} aria-label={`${group.name} işlemleri`} />
+      <Button type="text" icon={<MoreOutlined />} aria-label={`${group.name} işlemleri`} onClick={(event) => event.stopPropagation()} />
     </Dropdown>
   );
 }
