@@ -21,4 +21,15 @@ public sealed class HealthEndpointTests : IClassFixture<TestAppFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task UnknownApiRoute_ReturnsNotFoundInsteadOfDashboardHtml()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/unknown-route");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotEqual("text/html", response.Content.Headers.ContentType?.MediaType);
+    }
 }

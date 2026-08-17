@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.FileProviders;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Announcements;
 using Sportschool.Api.Features.Applications;
@@ -123,13 +124,21 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
     app.MapBootstrapEndpoints();
 }
 
-app.UseStaticFiles();
+var dashboardRoot = Path.Combine(app.Environment.WebRootPath, "dashboard");
+if (Directory.Exists(dashboardRoot))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(dashboardRoot)
+    });
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
     .WithName("GetHealth");
-app.MapMethods("/favicon.ico", [HttpMethods.Get, HttpMethods.Head], () => Results.Redirect("/dashboard/favicon.svg"));
+app.MapMethods("/favicon.ico", [HttpMethods.Get, HttpMethods.Head], () => Results.Redirect("/favicon.svg"));
 app.MapAuthEndpoints();
 app.MapAnnouncementEndpoints();
 app.MapAthleteApplicationEndpoints();
@@ -147,7 +156,11 @@ app.MapSchoolManagementEndpoints();
 app.MapDashboardEndpoints();
 app.MapAthleteMediaEndpoints();
 app.MapMediaAccessEndpoints();
-app.MapFallbackToFile("/dashboard/{*path:nonfile}", "dashboard/index.html");
+app.MapMethods(
+    "/api/{**path}",
+    [HttpMethods.Get, HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete, HttpMethods.Options, HttpMethods.Head],
+    () => Results.NotFound());
+app.MapFallbackToFile("/{*path:nonfile}", "dashboard/index.html");
 
 app.Run();
 

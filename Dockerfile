@@ -1,12 +1,11 @@
 # syntax=docker/dockerfile:1
 
-# --- Stage 1: build the React dashboard into the API's wwwroot ---
+# --- Stage 1: build the React dashboard into the API's dashboard directory ---
 FROM node:24-alpine AS dashboard-build
 WORKDIR /src/Sportschool.Dashboard
 COPY src/Sportschool.Dashboard/package*.json ./
 RUN npm ci
 COPY src/Sportschool.Dashboard/ ./
-# vite outDir is ../Sportschool.Api/wwwroot/dashboard, so output lands at /src/Sportschool.Api/wwwroot/dashboard
 RUN npm run build
 
 # --- Stage 2: restore + publish the API (includes the built dashboard) ---
