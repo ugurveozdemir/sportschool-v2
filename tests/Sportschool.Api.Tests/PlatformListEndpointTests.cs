@@ -13,6 +13,32 @@ namespace Sportschool.Api.Tests;
 public sealed class PlatformListEndpointTests
 {
     [Fact]
+    public async Task ActivateSchool_AllowsSchoolUsersToAccessTheApiAgain()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var platformOwner = TestUsers.Create(null, "platform-activate-school@example.com", "Platform Owner", "password", UserRole.PlatformOwner);
+        var schoolAdmin = TestUsers.Create(schoolId, "admin-activate-school@example.com", "School Admin", "password", UserRole.SchoolAdmin, UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Activate Tenant", "activate-school", isActive: false));
+            db.Users.AddRange(platformOwner, schoolAdmin);
+            return Task.CompletedTask;
+        });
+
+        using var platformClient = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+        using var schoolClient = factory.CreateAuthenticatedClient(schoolAdmin, UserRole.SchoolAdmin);
+        using var activateResponse = await platformClient.PostAsync($"/api/platform/schools/{schoolId}/activate", null);
+        using var schoolResponse = await schoolClient.GetAsync("/api/school/athletes");
+
+        Assert.Equal(HttpStatusCode.NoContent, activateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, schoolResponse.StatusCode);
+        var schoolIsActive = await factory.QueryAsync(db => db.Schools.Where(x => x.Id == schoolId).Select(x => x.IsActive).SingleAsync());
+        Assert.True(schoolIsActive);
+    }
+
+    [Fact]
     public async Task DeactivateSchool_RevokesRefreshTokensAndBlocksCurrentAccessTokens()
     {
         await using var factory = new TestAppFactory();

@@ -1,8 +1,9 @@
-import { DeleteOutlined, EditOutlined, LockOutlined, PlusOutlined, TeamOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, LockOutlined, PlusOutlined, TeamOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Drawer, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
 import { useState } from "react";
 import {
+  activateSchool,
   createSchool,
   createSchoolAdmin,
   deactivateSchool,
@@ -63,6 +64,15 @@ export function SchoolsPage() {
     onError: showRequestError
   });
 
+  const activate = useMutation({
+    mutationFn: activateSchool,
+    onSuccess: () => {
+      message.success("Okul yeniden aktifleştirildi.");
+      void invalidateSchools();
+    },
+    onError: showRequestError
+  });
+
   const addAdmin = useMutation({
     mutationFn: (values: AdminFormValues) => createSchoolAdmin(selectedSchool!.id, values),
     onSuccess: () => {
@@ -118,6 +128,11 @@ export function SchoolsPage() {
             >
               <Button danger size="small" loading={deactivate.isPending}>Pasife al</Button>
             </Popconfirm>
+          )}
+          {!school.isActive && (
+            <Button size="small" type="primary" icon={<CheckCircleOutlined />} loading={activate.isPending} onClick={() => activate.mutate(school.id)}>
+              Aktifleştir
+            </Button>
           )}
         </Space>
       )

@@ -19,6 +19,7 @@ public static class PlatformEndpoints
         group.MapPost("/schools", CreateSchoolAsync);
         group.MapPut("/schools/{schoolId:guid}", UpdateSchoolAsync);
         group.MapDelete("/schools/{schoolId:guid}", DeactivateSchoolAsync);
+        group.MapPost("/schools/{schoolId:guid}/activate", ActivateSchoolAsync);
         group.MapGet("/schools/{schoolId:guid}/admins", ListSchoolAdminsAsync);
         group.MapPost("/schools/{schoolId:guid}/admins", CreateSchoolAdminAsync);
         group.MapPut("/schools/{schoolId:guid}/admins/{adminId:guid}/password", UpdateSchoolAdminPasswordAsync);
@@ -126,6 +127,23 @@ public static class PlatformEndpoints
         {
             refreshToken.RevokedAt = revokedAt;
         }
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> ActivateSchoolAsync(
+        Guid schoolId,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var school = await db.Schools.FirstOrDefaultAsync(x => x.Id == schoolId, cancellationToken);
+        if (school is null)
+        {
+            return Results.NotFound();
+        }
+
+        school.IsActive = true;
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.NoContent();

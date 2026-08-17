@@ -31,6 +31,10 @@ export function deactivateSchool(schoolId: string): Promise<void> {
   return apiRequest<void>(`/api/platform/schools/${schoolId}`, { method: "DELETE" });
 }
 
+export function activateSchool(schoolId: string): Promise<void> {
+  return apiRequest<void>(`/api/platform/schools/${schoolId}/activate`, { method: "POST" });
+}
+
 export function listSchoolAdmins(schoolId: string): Promise<SchoolAdmin[]> {
   return apiRequest<SchoolAdmin[]>(`/api/platform/schools/${schoolId}/admins`);
 }
