@@ -216,6 +216,7 @@ public sealed class SchoolRosterEndpointTests
         var coach = await response.Content.ReadFromJsonAsync<CoachResponse>(JsonOptions);
         Assert.NotNull(coach);
         Assert.False(string.IsNullOrWhiteSpace(coach.TemporaryPassword));
+        Assert.False(coach.IsReactivated);
 
         var persistedCoach = await factory.QueryAsync(db => db.Users
             .Include(x => x.Roles)
@@ -223,6 +224,37 @@ public sealed class SchoolRosterEndpointTests
         var hasher = new PasswordHasher();
         Assert.True(hasher.Verify(coach.TemporaryPassword!, persistedCoach.PasswordHash));
         Assert.Contains(persistedCoach.Roles, x => x.Role == UserRole.Coach);
+    }
+
+    [Fact]
+    public async Task SchoolAdminCanReactivateInactiveCoach()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-reactivate-coach@example.com", "Admin", "password", UserRole.SchoolAdmin);
+        var coach = TestUsers.Create(schoolId, "inactive-coach@example.com", "Old Coach Name", "password", UserRole.Coach);
+        coach.IsActive = false;
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Reactivate Coach School", "reactivate-coach"));
+            db.Users.AddRange(admin, coach);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        using var response = await client.PostAsJsonAsync(
+            "/api/school/coaches",
+            new CreateCoachRequest(coach.Email, "Updated Coach Name"));
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<CoachResponse>(JsonOptions);
+        Assert.NotNull(result);
+        Assert.True(result.IsReactivated);
+        Assert.Null(result.TemporaryPassword);
+        var updatedCoach = await factory.QueryAsync(db => db.Users.SingleAsync(x => x.Id == coach.Id));
+        Assert.True(updatedCoach.IsActive);
+        Assert.Equal("Updated Coach Name", updatedCoach.FullName);
     }
 
     [Fact]
@@ -431,22 +463,25 @@ public sealed class SchoolRosterEndpointTests
         var admin = TestUsers.Create(schoolId, "admin-protect@example.com", "Admin", "password", UserRole.SchoolAdmin, UserRole.Coach);
         var otherAdmin = TestUsers.Create(schoolId, "other-admin-protect@example.com", "Other Admin", "password", UserRole.SchoolAdmin, UserRole.Coach);
         var parent = TestUsers.Create(schoolId, "parent-protect@example.com", "Parent", "password", UserRole.Parent);
+        var coachParent = TestUsers.Create(schoolId, "coach-parent-protect@example.com", "Coach Parent", "password", UserRole.Coach, UserRole.Parent);
 
         await factory.SeedAsync(db =>
         {
             db.Schools.Add(CreateSchool(schoolId, "Tenant School", "deact-protect"));
-            db.Users.AddRange(admin, otherAdmin, parent);
+            db.Users.AddRange(admin, otherAdmin, parent, coachParent);
             return Task.CompletedTask;
         });
 
         using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
         using var adminResponse = await client.DeleteAsync($"/api/school/coaches/{otherAdmin.Id}");
         using var parentResponse = await client.DeleteAsync($"/api/school/coaches/{parent.Id}");
+        using var coachParentResponse = await client.DeleteAsync($"/api/school/coaches/{coachParent.Id}");
 
         Assert.Equal(System.Net.HttpStatusCode.NotFound, adminResponse.StatusCode);
         Assert.Equal(System.Net.HttpStatusCode.NotFound, parentResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, coachParentResponse.StatusCode);
         var users = await factory.QueryAsync(db => db.Users
-            .Where(x => x.Id == otherAdmin.Id || x.Id == parent.Id)
+            .Where(x => x.Id == otherAdmin.Id || x.Id == parent.Id || x.Id == coachParent.Id)
             .Select(x => new { x.Id, x.IsActive })
             .ToListAsync());
         Assert.All(users, user => Assert.True(user.IsActive));

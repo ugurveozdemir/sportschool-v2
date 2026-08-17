@@ -101,7 +101,7 @@ export function CoachesPage() {
       <div className="page-heading coach-page-heading">
         <div>
           <Typography.Title level={2}>Antrenörler</Typography.Title>
-          <Typography.Paragraph type="secondary">Antrenör hesaplarını ve yaklaşan antrenmanlarını yönetin.</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">Antrenör hesaplarını yönetin. Pasif bir hesabı aynı e-postayla yeniden aktifleştirebilirsiniz.</Typography.Paragraph>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Antrenör ekle</Button>
       </div>
@@ -204,8 +204,10 @@ export function CoachesPage() {
         </Form>
       </Modal>
 
-      <Modal title="Antrenör hesabı hazır" open={createdCoach !== null} footer={<Button type="primary" onClick={() => setCreatedCoach(null)}>Tamam</Button>} closable={false}>
-        {createdCoach?.temporaryPassword ? (
+      <Modal title={createdCoach?.isReactivated ? "Antrenör yeniden aktifleştirildi" : "Antrenör hesabı hazır"} open={createdCoach !== null} footer={<Button type="primary" onClick={() => setCreatedCoach(null)}>Tamam</Button>} closable={false}>
+        {createdCoach?.isReactivated ? (
+          <Typography.Paragraph><Typography.Text strong>{createdCoach.fullName}</Typography.Text> mevcut şifresiyle yeniden giriş yapabilir.</Typography.Paragraph>
+        ) : createdCoach?.temporaryPassword ? (
           <>
             <Typography.Paragraph><Typography.Text strong>{createdCoach.fullName}</Typography.Text> için geçici şifre oluşturuldu. Bu şifre yalnızca şimdi görüntülenir.</Typography.Paragraph>
             <Space.Compact className="temporary-password-control">

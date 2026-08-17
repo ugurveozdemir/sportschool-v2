@@ -67,6 +67,7 @@ export type CreatedCoach = {
   email: string;
   fullName: string;
   temporaryPassword: string | null;
+  isReactivated: boolean;
 };
 
 export function listCoachRoster(search: string, page: number, pageSize: number): Promise<PaginatedCoaches> {

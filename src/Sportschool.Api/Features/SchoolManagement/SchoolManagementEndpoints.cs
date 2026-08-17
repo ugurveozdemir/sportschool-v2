@@ -432,7 +432,18 @@ public static class SchoolManagementEndpoints
         {
             if (!existingUser.IsActive)
             {
-                return Results.Conflict();
+                var isCoachOnly = existingUser.Roles.Count == 1
+                    && existingUser.Roles[0].Role == UserRole.Coach;
+                if (!isCoachOnly)
+                {
+                    return Results.Conflict();
+                }
+
+                existingUser.IsActive = true;
+                existingUser.FullName = request.FullName.Trim();
+                await db.SaveChangesAsync(cancellationToken);
+
+                return Results.Ok(CoachResponse.From(existingUser, temporaryPassword: null, isReactivated: true));
             }
 
             if (existingUser.Roles.Any(x => x.Role == UserRole.Coach))
@@ -677,7 +688,7 @@ public static class SchoolManagementEndpoints
                     && x.SchoolId == schoolId.Value
                     && x.IsActive
                     && x.Roles.Any(role => role.Role == UserRole.Coach)
-                    && !x.Roles.Any(role => role.Role == UserRole.SchoolAdmin),
+                    && x.Roles.All(role => role.Role == UserRole.Coach),
                 cancellationToken);
 
         if (user is null)
@@ -838,11 +849,11 @@ public sealed record AthleteDetailResponse(
     }
 }
 
-public sealed record CoachResponse(Guid Id, Guid SchoolId, string Email, string FullName, string? TemporaryPassword)
+public sealed record CoachResponse(Guid Id, Guid SchoolId, string Email, string FullName, string? TemporaryPassword, bool IsReactivated)
 {
-    public static CoachResponse From(AppUser user, string? temporaryPassword)
+    public static CoachResponse From(AppUser user, string? temporaryPassword, bool isReactivated = false)
     {
-        return new CoachResponse(user.Id, user.SchoolId!.Value, user.Email, user.FullName, temporaryPassword);
+        return new CoachResponse(user.Id, user.SchoolId!.Value, user.Email, user.FullName, temporaryPassword, isReactivated);
     }
 }
 
