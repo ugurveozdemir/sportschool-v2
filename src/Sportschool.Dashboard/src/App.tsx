@@ -10,22 +10,24 @@ import {
 import { Authenticated, Refine, useLogout } from "@refinedev/core";
 import routerProvider, { CatchAllNavigate } from "@refinedev/react-router";
 import { Avatar, Button, Card, Layout, Menu, Space, Typography, type MenuProps } from "antd";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
 import { authProvider } from "./app/auth/authProvider";
 import { getStoredSession, type UserRole } from "./app/auth/sessionStore";
 import { LoginPage } from "./app/pages/LoginPage";
-import { SchoolsPage } from "./features/platform/SchoolsPage";
-import { AthletesPage } from "./features/school/AthletesPage";
-import { AthleteDetailPage } from "./features/school/AthleteDetailPage";
-import { AnnouncementsPage } from "./features/school/AnnouncementsPage";
-import { CoachesPage } from "./features/school/CoachesPage";
-import { CoachDetailPage } from "./features/school/CoachDetailPage";
-import { GroupDetailPage } from "./features/school/GroupDetailPage";
-import { GroupsPage } from "./features/school/GroupsPage";
-import { PaymentsPage } from "./features/school/PaymentsPage";
-import { SchoolDashboardPage } from "./features/school/SchoolDashboardPage";
-import { TrainingDetailPage } from "./features/school/TrainingDetailPage";
-import { TrainingsPage } from "./features/school/TrainingsPage";
+
+const SchoolsPage = lazy(() => import("./features/platform/SchoolsPage").then(({ SchoolsPage }) => ({ default: SchoolsPage })));
+const AthletesPage = lazy(() => import("./features/school/AthletesPage").then(({ AthletesPage }) => ({ default: AthletesPage })));
+const AthleteDetailPage = lazy(() => import("./features/school/AthleteDetailPage").then(({ AthleteDetailPage }) => ({ default: AthleteDetailPage })));
+const AnnouncementsPage = lazy(() => import("./features/school/AnnouncementsPage").then(({ AnnouncementsPage }) => ({ default: AnnouncementsPage })));
+const CoachesPage = lazy(() => import("./features/school/CoachesPage").then(({ CoachesPage }) => ({ default: CoachesPage })));
+const CoachDetailPage = lazy(() => import("./features/school/CoachDetailPage").then(({ CoachDetailPage }) => ({ default: CoachDetailPage })));
+const GroupDetailPage = lazy(() => import("./features/school/GroupDetailPage").then(({ GroupDetailPage }) => ({ default: GroupDetailPage })));
+const GroupsPage = lazy(() => import("./features/school/GroupsPage").then(({ GroupsPage }) => ({ default: GroupsPage })));
+const PaymentsPage = lazy(() => import("./features/school/PaymentsPage").then(({ PaymentsPage }) => ({ default: PaymentsPage })));
+const SchoolDashboardPage = lazy(() => import("./features/school/SchoolDashboardPage").then(({ SchoolDashboardPage }) => ({ default: SchoolDashboardPage })));
+const TrainingDetailPage = lazy(() => import("./features/school/TrainingDetailPage").then(({ TrainingDetailPage }) => ({ default: TrainingDetailPage })));
+const TrainingsPage = lazy(() => import("./features/school/TrainingsPage").then(({ TrainingsPage }) => ({ default: TrainingsPage })));
 
 type AppModule = {
   path: string;
@@ -164,7 +166,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <Button loading={isLoggingOut} onClick={() => logout()}>Çıkış</Button>
           </Space>
         </Layout.Header>
-        <Layout.Content className="app-content">{children}</Layout.Content>
+        <Layout.Content className="app-content">
+          <Suspense fallback={<Card loading bordered={false} />}>
+            {children}
+          </Suspense>
+        </Layout.Content>
       </Layout>
     </Layout>
   );
