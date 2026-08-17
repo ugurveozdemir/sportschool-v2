@@ -10,7 +10,9 @@ namespace Sportschool.Api.Features.Auth;
 public static class AuthEndpoints
 {
     private const int LoginAttemptLimit = 10;
+    private const int RefreshAttemptLimit = 10;
     private static readonly TimeSpan LoginAttemptWindow = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan RefreshAttemptWindow = TimeSpan.FromMinutes(5);
 
     public static RouteGroupBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
@@ -91,9 +93,11 @@ public static class AuthEndpoints
 
     private static async Task<IResult> RefreshAsync(
         RefreshRequest request,
+        HttpContext httpContext,
         SportschoolDbContext db,
         JwtTokenService jwtTokenService,
         RefreshTokenService refreshTokenService,
+        KeyedRequestLimiter requestLimiter,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
@@ -102,6 +106,15 @@ public static class AuthEndpoints
         }
 
         var tokenHash = refreshTokenService.HashToken(request.RefreshToken);
+        var rateLimitKey = $"refresh:{tokenHash}";
+        if (!requestLimiter.TryAcquire(rateLimitKey, RefreshAttemptLimit, RefreshAttemptWindow, out var retryAfterSeconds))
+        {
+            httpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+            return Results.Json(
+                new { message = "Too many refresh attempts. Please try again later." },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
+
         var storedToken = await db.RefreshTokens
             .Include(x => x.User)
             .ThenInclude(x => x.Roles)

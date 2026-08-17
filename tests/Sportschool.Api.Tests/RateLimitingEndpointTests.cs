@@ -73,4 +73,22 @@ public sealed class RateLimitingEndpointTests : IClassFixture<TestAppFactory>
         Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
         Assert.True(limitedResponse.Headers.RetryAfter?.Delta > TimeSpan.Zero);
     }
+
+    [Fact]
+    public async Task Refresh_ReturnsTooManyRequestsAfterRepeatedAttemptsWithSameToken()
+    {
+        using var client = factory.CreateClient();
+        var refreshToken = $"invalid-refresh-token-{Guid.NewGuid():N}";
+
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            using var response = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken });
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        using var limitedResponse = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
+        Assert.True(limitedResponse.Headers.RetryAfter?.Delta > TimeSpan.Zero);
+    }
 }
