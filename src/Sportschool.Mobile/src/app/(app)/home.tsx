@@ -18,6 +18,7 @@ import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCa
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import type { AttendanceStatus } from "@/shared/constants/domain";
 import { colors } from "@/shared/design/colors";
+import { useResponsiveLayout } from "@/shared/design/responsive";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
@@ -144,6 +145,7 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
   const todayTrainings = summary?.todayTrainings ?? [];
   const nextTraining = trainings.find(isNextTraining);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { isCompact } = useResponsiveLayout();
 
   const openAttendance = () => {
     if (todayTrainings.length === 0) {
@@ -169,16 +171,16 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
 
   return (
     <ScreenShell title={shellTitle} navItems={navItems}>
-      <View style={styles.coachWelcome}>
-        <InitialsAvatar label={getInitials(sessionName)} size={54} tone="dark" />
+      <View style={[styles.coachWelcome, isCompact && styles.coachWelcomeCompact]}>
+        <InitialsAvatar label={getInitials(sessionName)} size={isCompact ? 44 : 54} tone="dark" />
         <View style={styles.flexOne}>
-          <Text style={styles.coachWelcomeTitle}>Hoş Geldin, {isSchoolAdmin ? "Yönetici" : "Antrenör"}</Text>
-          <Text style={styles.coachWelcomeName}>{sessionName ?? "Akademi Ekibi"}</Text>
+          <Text style={[styles.coachWelcomeTitle, isCompact && styles.coachWelcomeTitleCompact]}>Hoş Geldin, {isSchoolAdmin ? "Yönetici" : "Antrenör"}</Text>
+          <Text style={[styles.coachWelcomeName, isCompact && styles.coachWelcomeNameCompact]}>{sessionName ?? "Akademi Ekibi"}</Text>
         </View>
       </View>
 
-      <View style={styles.coachSectionHeader}>
-        <Text style={styles.coachSectionTitle}>Sıradaki Antrenman</Text>
+      <View style={[styles.coachSectionHeader, isCompact && styles.coachSectionHeaderCompact]}>
+        <Text style={[styles.coachSectionTitle, isCompact && styles.coachSectionTitleCompact]}>Sıradaki Antrenman</Text>
         <Pressable onPress={() => router.push("/calendar")} style={styles.coachSectionLink}>
           <Text style={styles.coachSectionLinkText}>Antrenman Programı</Text>
           <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primaryContainer} />
@@ -196,7 +198,7 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
         </SurfaceCard>
       )}
 
-      <View style={styles.homeMenu}>
+      <View style={[styles.homeMenu, isCompact && styles.homeMenuCompact]}>
         <HomeMenuAction
           icon="clipboard-check-outline"
           label="YOKLAMA AL"
@@ -255,36 +257,37 @@ function CoachTrainingHero({ training }: { training: CoachTrainingItem }) {
   const weekday = new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(date);
   const groups = training.groups.map((group) => group.name).join(", ");
   const inProgress = isTrainingInProgress(training);
+  const { isCompact } = useResponsiveLayout();
 
   return (
-    <View style={styles.coachHero}>
+    <View style={[styles.coachHero, isCompact && styles.coachHeroCompact]}>
       <View style={styles.coachHeroGlow} />
-      <View style={styles.coachHeroDate}>
-        <Text style={styles.coachHeroDateText}>{day} {month}</Text>
-        <Text style={styles.coachHeroTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
+      <View style={[styles.coachHeroDate, isCompact && styles.coachHeroDateCompact]}>
+        <Text style={[styles.coachHeroDateText, isCompact && styles.coachHeroDateTextCompact]}>{day} {month}</Text>
+        <Text style={[styles.coachHeroTime, isCompact && styles.coachHeroTimeCompact]}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
       </View>
-      <Text style={styles.coachHeroWeekday}>{inProgress ? "DEVAM EDEN ANTRENMAN" : weekday.toLocaleUpperCase("tr-TR")}</Text>
-      <View style={styles.coachHeroDetails}>
+      <Text style={[styles.coachHeroWeekday, isCompact && styles.coachHeroWeekdayCompact]}>{inProgress ? "DEVAM EDEN ANTRENMAN" : weekday.toLocaleUpperCase("tr-TR")}</Text>
+      <View style={[styles.coachHeroDetails, isCompact && styles.coachHeroDetailsCompact]}>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Antrenman</Text>
-          <Text style={styles.coachHeroDetailValue}>: {training.title}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Antrenman</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {training.title}</Text>
         </View>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Sporcu Grubu</Text>
-          <Text style={styles.coachHeroDetailValue}>: {groups || "Grup atanmamış"}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Sporcu Grubu</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {groups || "Grup atanmamış"}</Text>
         </View>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Sporcu Sayısı</Text>
-          <Text style={styles.coachHeroDetailValue}>: {training.totalAthletes}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Sporcu Sayısı</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {training.totalAthletes}</Text>
         </View>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Konum</Text>
-          <Text style={styles.coachHeroDetailValue}>: {training.location ?? "Belirtilmedi"}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Konum</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {training.location ?? "Belirtilmedi"}</Text>
         </View>
       </View>
-      <Pressable onPress={() => router.push(`/trainings/${training.id}`)} style={styles.coachHeroButton}>
-        <Text style={styles.coachHeroButtonText}>Detayı Gör</Text>
-        <MaterialCommunityIcons name="arrow-right" size={24} color={colors.onPrimary} />
+      <Pressable onPress={() => router.push(`/trainings/${training.id}`)} style={[styles.coachHeroButton, isCompact && styles.coachHeroButtonCompact]}>
+        <Text style={[styles.coachHeroButtonText, isCompact && styles.coachHeroButtonTextCompact]}>Detayı Gör</Text>
+        <MaterialCommunityIcons name="arrow-right" size={isCompact ? 21 : 24} color={colors.onPrimary} />
       </Pressable>
     </View>
   );
@@ -301,26 +304,29 @@ function HomeMenuAction({
   label: string;
   onPress: () => void;
 }) {
+  const { isCompact } = useResponsiveLayout();
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.homeMenuAction,
+        isCompact && styles.homeMenuActionCompact,
         highlighted && styles.homeMenuActionHighlighted,
         pressed && styles.homeMenuActionPressed
       ]}
     >
-      <View style={[styles.homeMenuIcon, highlighted && styles.homeMenuIconHighlighted]}>
+      <View style={[styles.homeMenuIcon, isCompact && styles.homeMenuIconCompact, highlighted && styles.homeMenuIconHighlighted]}>
         <MaterialCommunityIcons
           name={icon}
-          size={25}
+          size={isCompact ? 22 : 25}
           color={highlighted ? colors.onPrimary : colors.onSurface}
         />
       </View>
-      <Text style={[styles.homeMenuLabel, highlighted && styles.homeMenuLabelHighlighted]}>{label}</Text>
+      <Text style={[styles.homeMenuLabel, isCompact && styles.homeMenuLabelCompact, highlighted && styles.homeMenuLabelHighlighted]}>{label}</Text>
       <MaterialCommunityIcons
         name="chevron-right"
-        size={24}
+        size={isCompact ? 22 : 24}
         color={highlighted ? colors.onPrimary : colors.onSurfaceVariant}
       />
     </Pressable>
@@ -660,35 +666,37 @@ function HeroTrainingCard({ training }: { training: TrainingResponse }) {
   const weekday = new Intl.DateTimeFormat("tr-TR", { weekday: "long" }).format(date);
   const groups = training.groups.map((group) => group.name).join(", ");
   const inProgress = isTrainingInProgress(training);
+  const { isCompact } = useResponsiveLayout();
+
   return (
-    <View style={styles.coachHero}>
+    <View style={[styles.coachHero, isCompact && styles.coachHeroCompact]}>
       <View style={styles.coachHeroGlow} />
-      <View style={styles.coachHeroDate}>
-        <Text style={styles.coachHeroDateText}>{day} {month}</Text>
-        <Text style={styles.coachHeroTime}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
+      <View style={[styles.coachHeroDate, isCompact && styles.coachHeroDateCompact]}>
+        <Text style={[styles.coachHeroDateText, isCompact && styles.coachHeroDateTextCompact]}>{day} {month}</Text>
+        <Text style={[styles.coachHeroTime, isCompact && styles.coachHeroTimeCompact]}>{formatTime(training.startsAt)} - {formatTime(training.endsAt)}</Text>
       </View>
-      <Text style={styles.coachHeroWeekday}>{inProgress ? "DEVAM EDEN ANTRENMAN" : weekday.toLocaleUpperCase("tr-TR")}</Text>
-      <View style={styles.coachHeroDetails}>
+      <Text style={[styles.coachHeroWeekday, isCompact && styles.coachHeroWeekdayCompact]}>{inProgress ? "DEVAM EDEN ANTRENMAN" : weekday.toLocaleUpperCase("tr-TR")}</Text>
+      <View style={[styles.coachHeroDetails, isCompact && styles.coachHeroDetailsCompact]}>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Antrenman</Text>
-          <Text style={styles.coachHeroDetailValue}>: {training.title}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Antrenman</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {training.title}</Text>
         </View>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Sporcu Grubu</Text>
-          <Text style={styles.coachHeroDetailValue}>: {groups || "Grup atanmamış"}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Sporcu Grubu</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {groups || "Grup atanmamış"}</Text>
         </View>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Durum</Text>
-          <Text style={styles.coachHeroDetailValue}>: {inProgress ? "Devam ediyor" : "Planlandı"}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Durum</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {inProgress ? "Devam ediyor" : "Planlandı"}</Text>
         </View>
         <View style={styles.coachHeroDetailRow}>
-          <Text style={styles.coachHeroDetailLabel}>Konum</Text>
-          <Text style={styles.coachHeroDetailValue}>: {training.location ?? "Belirtilmedi"}</Text>
+          <Text style={[styles.coachHeroDetailLabel, isCompact && styles.coachHeroDetailLabelCompact]}>Konum</Text>
+          <Text style={[styles.coachHeroDetailValue, isCompact && styles.coachHeroDetailValueCompact]}>: {training.location ?? "Belirtilmedi"}</Text>
         </View>
       </View>
-      <Pressable onPress={() => router.push("/calendar")} style={styles.coachHeroButton}>
-        <Text style={styles.coachHeroButtonText}>Programı Gör</Text>
-        <MaterialCommunityIcons name="arrow-right" size={24} color={colors.onPrimary} />
+      <Pressable onPress={() => router.push("/calendar")} style={[styles.coachHeroButton, isCompact && styles.coachHeroButtonCompact]}>
+        <Text style={[styles.coachHeroButtonText, isCompact && styles.coachHeroButtonTextCompact]}>Programı Gör</Text>
+        <MaterialCommunityIcons name="arrow-right" size={isCompact ? 21 : 24} color={colors.onPrimary} />
       </Pressable>
     </View>
   );
@@ -760,6 +768,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     padding: spacing.md
   },
+  coachHeroCompact: { gap: spacing.sm, padding: 10 },
   coachHeroButton: {
     alignItems: "center",
     backgroundColor: colors.primaryContainer,
@@ -771,7 +780,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     minHeight: 50
   },
+  coachHeroButtonCompact: { marginBottom: -10, marginHorizontal: -10, minHeight: 44 },
   coachHeroButtonText: { ...typography.title, color: colors.onPrimary },
+  coachHeroButtonTextCompact: { fontSize: 15, lineHeight: 20 },
   coachHeroDate: {
     alignItems: "center",
     alignSelf: "stretch",
@@ -782,16 +793,21 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md
   },
+  coachHeroDateCompact: { gap: 2, padding: spacing.sm },
   coachHeroDateText: {
     color: colors.primaryContainer,
     fontFamily: "HankenGrotesk_800ExtraBold",
     fontSize: 32,
     lineHeight: 38
   },
+  coachHeroDateTextCompact: { fontSize: 24, lineHeight: 29 },
   coachHeroDetailLabel: { ...typography.body, color: colors.onSurfaceVariant, width: 96 },
+  coachHeroDetailLabelCompact: { fontSize: 12, lineHeight: 16, width: 84 },
   coachHeroDetails: { gap: spacing.sm },
+  coachHeroDetailsCompact: { gap: spacing.xs },
   coachHeroDetailRow: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm },
   coachHeroDetailValue: { ...typography.body, color: colors.onSurface, flex: 1 },
+  coachHeroDetailValueCompact: { fontSize: 12, lineHeight: 16 },
   coachHeroGlow: {
     backgroundColor: "rgba(250,204,21,0.08)",
     borderRadius: radius.full,
@@ -802,8 +818,11 @@ const styles = StyleSheet.create({
     width: 180
   },
   coachHeroTime: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
+  coachHeroTimeCompact: { fontSize: 13, lineHeight: 18 },
   coachHeroWeekday: { ...typography.label, color: colors.primary, letterSpacing: 1.4 },
+  coachHeroWeekdayCompact: { fontSize: 11, letterSpacing: 1.1, lineHeight: 15 },
   homeMenu: { gap: spacing.md },
+  homeMenuCompact: { gap: 10 },
   homeMenuAction: {
     alignItems: "center",
     backgroundColor: colors.surfaceContainerHigh,
@@ -815,6 +834,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     padding: spacing.md
   },
+  homeMenuActionCompact: { gap: 10, minHeight: 64, padding: 10 },
   homeMenuActionHighlighted: {
     backgroundColor: colors.primaryContainer,
     borderColor: colors.primaryContainer
@@ -828,6 +848,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44
   },
+  homeMenuIconCompact: { height: 40, width: 40 },
   homeMenuIconHighlighted: { backgroundColor: "rgba(60,47,0,0.16)" },
   homeMenuLabel: {
     ...typography.title,
@@ -836,6 +857,7 @@ const styles = StyleSheet.create({
     fontFamily: "HankenGrotesk_700Bold",
     letterSpacing: 0.5
   },
+  homeMenuLabelCompact: { fontSize: 15, lineHeight: 20 },
   homeMenuLabelHighlighted: { color: colors.onPrimary },
   coachOutlineButton: {
     alignItems: "center",
@@ -848,9 +870,11 @@ const styles = StyleSheet.create({
   },
   coachOutlineButtonText: { ...typography.bodyLarge, color: colors.primary },
   coachSectionHeader: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between" },
+  coachSectionHeaderCompact: { alignItems: "center" },
   coachSectionLink: { alignItems: "center", flexDirection: "row" },
   coachSectionLinkText: { ...typography.body, color: colors.primaryContainer },
   coachSectionTitle: { ...typography.headline, color: colors.onSurface, flex: 1 },
+  coachSectionTitleCompact: { fontSize: 17, lineHeight: 22 },
   coachStat: { alignItems: "center", flex: 1, gap: spacing.xs },
   coachStatDivider: { backgroundColor: colors.outlineVariant, height: 38, width: 1 },
   coachStatLabel: { ...typography.label, color: colors.onSurfaceVariant, textAlign: "center" },
@@ -865,8 +889,11 @@ const styles = StyleSheet.create({
   },
   coachStatValue: { ...typography.display, color: colors.primaryContainer },
   coachWelcome: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  coachWelcomeCompact: { gap: 10 },
   coachWelcomeName: { ...typography.bodyLarge, color: colors.onSurfaceVariant },
+  coachWelcomeNameCompact: { fontSize: 13, lineHeight: 18 },
   coachWelcomeTitle: { ...typography.headline, color: colors.onSurface },
+  coachWelcomeTitleCompact: { fontSize: 17, lineHeight: 22 },
   dateSmall: { ...typography.label, color: colors.outline, marginTop: spacing.sm },
   dateText: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginBottom: 4 },
   developmentCard: { gap: spacing.sm },

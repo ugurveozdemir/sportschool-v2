@@ -15,6 +15,7 @@ import { LoadingState } from "@/shared/components/LoadingState";
 import { CircularScore, InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import { colors } from "@/shared/design/colors";
+import { useResponsiveLayout } from "@/shared/design/responsive";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
@@ -22,6 +23,7 @@ import { formatDate } from "@/shared/utils/date";
 
 export default function ProfileScreen() {
   const { session, clearSession } = useSession();
+  const { isCompact } = useResponsiveLayout();
   const isCoach = session?.loginRole === "Coach" || session?.loginRole === "SchoolAdmin";
   const isParent = session?.loginRole === "Parent";
   const { selectedAthleteProfileId } = useAthleteSelection();
@@ -66,7 +68,7 @@ export default function ProfileScreen() {
     >
       {!isCoach ? <Text style={styles.profileTitle}>{isParent ? "Hesabım" : "Profilim"}</Text> : null}
       {isParent ? (
-        <SurfaceCard style={styles.card}>
+        <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
           <SectionTitle title="Veli Hesabım" />
           <Info label="Ad soyad" value={session?.fullName ?? "-"} />
           <Info label="Telefon" value={profile?.parentPhone ?? "-"} />
@@ -75,15 +77,15 @@ export default function ProfileScreen() {
       ) : null}
       <ParentAthleteSelector />
       {isParent ? <Text style={styles.sectionHeading}>Sporcu Profili</Text> : null}
-      <View style={[styles.profileHero, !isCoach && styles.memberProfileHero]}>
+      <View style={[styles.profileHero, isCompact && styles.profileHeroCompact, !isCoach && styles.memberProfileHero, !isCoach && isCompact && styles.memberProfileHeroCompact]}>
         <View style={styles.avatarWrap}>
-          {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={96} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={96} tone="dark" />}
-          <View style={styles.verifiedBadge}>
-            <MaterialCommunityIcons name={isCoach ? "whistle-outline" : "check-decagram"} size={18} color={colors.onSecondaryContainer} />
+          {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={isCompact ? 72 : 96} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={isCompact ? 72 : 96} tone="dark" />}
+          <View style={[styles.verifiedBadge, isCompact && styles.verifiedBadgeCompact]}>
+            <MaterialCommunityIcons name={isCoach ? "whistle-outline" : "check-decagram"} size={isCompact ? 15 : 18} color={colors.onSecondaryContainer} />
           </View>
         </View>
-        <Text style={styles.name}>{displayName ?? "Profil"}</Text>
-        <Text style={styles.teamName}>{isCoach ? "Akademi Eğitmeni" : groups[0]?.name ?? "Akademi Oyuncusu"}</Text>
+        <Text style={[styles.name, isCompact && styles.nameCompact]}>{displayName ?? "Profil"}</Text>
+        <Text style={[styles.teamName, isCompact && styles.teamNameCompact]}>{isCoach ? "Akademi Eğitmeni" : groups[0]?.name ?? "Akademi Oyuncusu"}</Text>
         <View style={styles.pillRow}>
           <Pill label={isCoach ? "Aktif Eğitmen" : "Aktif Oyuncu"} tone="success" />
           {isCoach ? <Pill label={`${groups.length} Grup`} tone="neutral" /> : null}
@@ -92,7 +94,7 @@ export default function ProfileScreen() {
 
       {!isCoach ? (
         averages ? (
-          <SurfaceCard style={styles.developmentCard}>
+          <SurfaceCard style={[styles.developmentCard, isCompact && styles.cardCompact]}>
             <View style={styles.developmentHeader}>
               <Text style={styles.developmentTitle}>Gelişim Özeti</Text>
               <Pressable onPress={() => router.push("/development")}>
@@ -112,7 +114,7 @@ export default function ProfileScreen() {
         )
       ) : null}
 
-      <SurfaceCard style={styles.card}>
+      <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
         <SectionTitle title="Sporcu Bilgileri" />
         {!isCoach ? <Info label="Doğum tarihi" value={profile ? formatDate(profile.birthDate) : "-"} /> : null}
         {!isCoach ? <Info label="Yaş" value={profile ? `${formatAge(profile.birthDate)} yaş` : "-"} /> : null}
@@ -122,7 +124,7 @@ export default function ProfileScreen() {
       </SurfaceCard>
 
       {!isCoach && !isParent ? (
-        <SurfaceCard style={styles.card}>
+        <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
           <SectionTitle title="Veli Bilgileri" />
           <Info label="Ad soyad" value={profile?.parentFullName ?? "-"} />
           <Info label="Telefon" value={profile?.parentPhone ?? "-"} />
@@ -131,13 +133,13 @@ export default function ProfileScreen() {
       ) : null}
 
       {isCoach ? (
-        <SurfaceCard style={styles.card}>
+        <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
           <SectionTitle title="Kişisel Bilgiler" />
           <Info label="E-posta" value={session?.email ?? "-"} />
         </SurfaceCard>
       ) : null}
 
-      <SurfaceCard style={styles.card}>
+      <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
         <SectionTitle title="Gruplar" />
         {groups.length === 0 ? <Text style={styles.muted}>Henüz grup ataması yok.</Text> : null}
         {groups.map((group) => (
@@ -194,6 +196,7 @@ function formatAge(birthDate: string) {
 const styles = StyleSheet.create({
   avatarWrap: { position: "relative" },
   card: { gap: spacing.md },
+  cardCompact: { gap: spacing.sm },
   developmentCard: { gap: spacing.md },
   developmentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   developmentLink: { ...typography.label, color: colors.primaryContainer },
@@ -208,9 +211,12 @@ const styles = StyleSheet.create({
   logoutText: { ...typography.title, color: colors.error },
   muted: { ...typography.body, color: colors.onSurfaceVariant },
   memberProfileHero: { backgroundColor: colors.surfaceContainerHighest, borderColor: colors.outlineVariant, borderRadius: radius.lg, borderWidth: 1, padding: spacing.lg },
+  memberProfileHeroCompact: { padding: spacing.md },
   name: { ...typography.headline, color: colors.primary, textAlign: "center" },
+  nameCompact: { fontSize: 18, lineHeight: 23 },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
   profileHero: { alignItems: "center", gap: spacing.md },
+  profileHeroCompact: { gap: spacing.sm },
   profileTitle: { ...typography.display, color: colors.primary },
   scoreGrid: { flexDirection: "row", gap: spacing.sm, justifyContent: "space-around" },
   sectionHeading: { ...typography.headline, color: colors.onSurface },
@@ -219,5 +225,7 @@ const styles = StyleSheet.create({
   settingsCard: { gap: spacing.md },
   settingText: { ...typography.bodyLarge, color: colors.onSurface },
   teamName: { ...typography.title, color: colors.onSurfaceVariant, textAlign: "center" },
-  verifiedBadge: { alignItems: "center", backgroundColor: colors.secondaryContainer, borderColor: colors.surface, borderRadius: radius.full, borderWidth: 2, bottom: 4, height: 34, justifyContent: "center", position: "absolute", right: 4, width: 34 }
+  teamNameCompact: { fontSize: 15, lineHeight: 20 },
+  verifiedBadge: { alignItems: "center", backgroundColor: colors.secondaryContainer, borderColor: colors.surface, borderRadius: radius.full, borderWidth: 2, bottom: 4, height: 34, justifyContent: "center", position: "absolute", right: 4, width: 34 },
+  verifiedBadgeCompact: { bottom: 2, height: 28, right: 2, width: 28 }
 });

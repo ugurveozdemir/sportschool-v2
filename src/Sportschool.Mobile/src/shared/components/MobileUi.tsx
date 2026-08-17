@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { Href } from "expo-router";
 import { router, usePathname } from "expo-router";
 import type { PropsWithChildren, ReactElement, ReactNode } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, type RefreshControlProps, type ViewStyle } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, type RefreshControlProps, type StyleProp, type ViewStyle } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
@@ -12,6 +12,7 @@ import { useSession } from "@/core/sessionProvider";
 import { colors } from "@/shared/design/colors";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
+import { useResponsiveLayout } from "@/shared/design/responsive";
 
 export type NavItem = {
   label: string;
@@ -22,12 +23,19 @@ export type NavItem = {
 
 export function ScreenShell({ children, title, avatar, navItems, contentStyle, refreshControl }: PropsWithChildren<{ title: string; avatar?: ReactNode; navItems?: NavItem[]; contentStyle?: ViewStyle; refreshControl?: ReactElement<RefreshControlProps> }>) {
   const insets = useSafeAreaInsets();
+  const { isCompact, isTablet } = useResponsiveLayout();
 
   return (
     <SafeAreaView edges={["top"]} style={styles.shell}>
       <TopBar title={title} avatar={avatar} />
       <ScrollView
-        contentContainerStyle={[styles.content, navItems ? { paddingBottom: 94 + insets.bottom } : styles.contentBottom, contentStyle]}
+        contentContainerStyle={[
+          styles.content,
+          isCompact && styles.contentCompact,
+          isTablet && styles.contentTablet,
+          navItems ? { paddingBottom: (isCompact ? 76 : 94) + insets.bottom } : styles.contentBottom,
+          contentStyle
+        ]}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
       >
@@ -40,6 +48,7 @@ export function ScreenShell({ children, title, avatar, navItems, contentStyle, r
 
 export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode }) {
   const { session } = useSession();
+  const { isCompact } = useResponsiveLayout();
   const isManager = session?.loginRole === "SchoolAdmin" || session?.loginRole === "Coach";
   const isMember = !isManager;
   const isAthlete = session?.loginRole === "Athlete";
@@ -49,13 +58,13 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
 
   if (isManager) {
     return (
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, isCompact && styles.topBarCompact]}>
         <View style={styles.topBarButton}>
-          <AcademyLogoAvatar size={34} />
+          <AcademyLogoAvatar size={isCompact ? 30 : 34} />
         </View>
-        <Text numberOfLines={1} style={styles.topTitle}>{title}</Text>
+        <Text numberOfLines={1} style={[styles.topTitle, isCompact && styles.topTitleCompact]}>{title}</Text>
         <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.topBarButton}>
-          <MaterialCommunityIcons name="bell-outline" size={26} color={colors.onSurfaceVariant} />
+          <MaterialCommunityIcons name="bell-outline" size={isCompact ? 23 : 26} color={colors.onSurfaceVariant} />
           {hasManagerUnread ? <View style={styles.notificationDot} /> : null}
         </Pressable>
       </View>
@@ -63,17 +72,17 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
   }
 
   return (
-    <View style={styles.topBar}>
-      <View style={styles.topLead}>{avatar ?? <AcademyLogoAvatar size={30} />}</View>
-      <Text style={styles.topTitle}>{title}</Text>
+    <View style={[styles.topBar, isCompact && styles.topBarCompact]}>
+      <View style={styles.topLead}>{avatar ?? <AcademyLogoAvatar size={isCompact ? 28 : 30} />}</View>
+      <Text numberOfLines={1} style={[styles.topTitle, isCompact && styles.topTitleCompact]}>{title}</Text>
       <View style={styles.topActions}>
         {!isAthlete ? (
           <Pressable accessibilityLabel="Profil" onPress={() => router.push("/profile")} style={styles.iconButton}>
-            <MaterialCommunityIcons name="account-outline" size={24} color={colors.primary} />
+            <MaterialCommunityIcons name="account-outline" size={isCompact ? 22 : 24} color={colors.primary} />
           </Pressable>
         ) : null}
         <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.iconButton}>
-          <MaterialCommunityIcons name="bell-outline" size={24} color={colors.primary} />
+          <MaterialCommunityIcons name="bell-outline" size={isCompact ? 22 : 24} color={colors.primary} />
           {hasUnread ? <View style={styles.notificationDot} /> : null}
         </Pressable>
       </View>
@@ -84,15 +93,16 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
 export function BottomNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { isCompact } = useResponsiveLayout();
 
   return (
-    <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+    <View style={[styles.bottomNav, isCompact && styles.bottomNavCompact, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       {items.map((item) => {
         const active = pathname.includes(item.match);
         return (
-          <Pressable key={item.match} onPress={() => router.push(item.href)} style={[styles.navItem, active && styles.navItemActive]}>
-            <MaterialCommunityIcons name={item.icon} size={23} color={active ? colors.onPrimary : colors.onSurfaceVariant} />
-            <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
+          <Pressable key={item.match} onPress={() => router.push(item.href)} style={[styles.navItem, isCompact && styles.navItemCompact, active && styles.navItemActive]}>
+            <MaterialCommunityIcons name={item.icon} size={isCompact ? 21 : 23} color={active ? colors.onPrimary : colors.onSurfaceVariant} />
+            <Text style={[styles.navLabel, isCompact && styles.navLabelCompact, active && styles.navLabelActive]}>{item.label}</Text>
           </Pressable>
         );
       })}
@@ -100,9 +110,11 @@ export function BottomNav({ items }: { items: NavItem[] }) {
   );
 }
 
-export function SurfaceCard({ children, style, accent }: PropsWithChildren<{ style?: ViewStyle; accent?: "primary" | "secondary" | "error" | "warning" }>) {
+export function SurfaceCard({ children, style, accent }: PropsWithChildren<{ style?: StyleProp<ViewStyle>; accent?: "primary" | "secondary" | "error" | "warning" }>) {
+  const { isCompact } = useResponsiveLayout();
+
   return (
-    <View style={[styles.card, style]}>
+    <View style={[styles.card, isCompact && styles.cardCompact, style]}>
       {accent ? <View style={[styles.cardAccent, accent === "primary" && styles.accentPrimary, accent === "secondary" && styles.accentSecondary, accent === "error" && styles.accentError, accent === "warning" && styles.accentWarning]} /> : null}
       {children}
     </View>
@@ -110,19 +122,23 @@ export function SurfaceCard({ children, style, accent }: PropsWithChildren<{ sty
 }
 
 export function Pill({ label, tone = "neutral", icon }: { label: string; tone?: "primary" | "success" | "danger" | "warning" | "neutral"; icon?: keyof typeof MaterialCommunityIcons.glyphMap }) {
+  const { isCompact } = useResponsiveLayout();
+
   return (
-    <View style={[styles.pill, pillStyles[tone].wrap]}>
-      {icon ? <MaterialCommunityIcons name={icon} size={15} color={pillStyles[tone].text.color} /> : null}
-      <Text style={[styles.pillText, pillStyles[tone].text]}>{label}</Text>
+    <View style={[styles.pill, isCompact && styles.pillCompact, pillStyles[tone].wrap]}>
+      {icon ? <MaterialCommunityIcons name={icon} size={isCompact ? 13 : 15} color={pillStyles[tone].text.color} /> : null}
+      <Text style={[styles.pillText, isCompact && styles.pillTextCompact, pillStyles[tone].text]}>{label}</Text>
     </View>
   );
 }
 
 export function SectionTitle({ title, action }: { title: string; action?: string }) {
+  const { isCompact } = useResponsiveLayout();
+
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {action ? <Text style={styles.sectionAction}>{action}</Text> : null}
+      <Text style={[styles.sectionTitle, isCompact && styles.sectionTitleCompact]}>{title}</Text>
+      {action ? <Text style={[styles.sectionAction, isCompact && styles.sectionActionCompact]}>{action}</Text> : null}
     </View>
   );
 }
@@ -235,6 +251,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0
   },
+  bottomNavCompact: { minHeight: 60, paddingHorizontal: spacing.sm, paddingTop: spacing.xs },
   card: {
     backgroundColor: colors.surfaceContainer,
     borderColor: colors.outlineVariant,
@@ -243,6 +260,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     padding: spacing.md
   },
+  cardCompact: { padding: 10 },
   cardAccent: { bottom: 0, left: 0, position: "absolute", top: 0, width: 5 },
   chartBar: { borderTopLeftRadius: 4, borderTopRightRadius: 4, width: "100%" },
   chartBars: { alignItems: "flex-end", borderBottomColor: colors.surfaceContainerHigh, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, height: 160 },
@@ -252,7 +270,9 @@ const styles = StyleSheet.create({
   chartWrap: { gap: spacing.md },
   circularScore: { alignItems: "center", gap: spacing.sm },
   content: { gap: spacing.lg, padding: spacing.md },
+  contentCompact: { gap: spacing.md, padding: 10 },
   contentBottom: { paddingBottom: spacing.xl },
+  contentTablet: { alignSelf: "center", maxWidth: 680, width: "100%" },
   iconButton: { alignItems: "center", height: 44, justifyContent: "center", position: "relative", width: 44 },
   initialsAvatar: { alignItems: "center", justifyContent: "center" },
   initialsText: { ...typography.title },
@@ -261,22 +281,30 @@ const styles = StyleSheet.create({
   metricTile: { flex: 1, gap: spacing.sm, minHeight: 96 },
   metricValue: { ...typography.headline },
   navItem: { alignItems: "center", borderRadius: radius.lg, gap: 2, minWidth: 78, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  navItemCompact: { minHeight: 48, minWidth: 70, paddingHorizontal: 10, paddingVertical: spacing.xs },
   navItemActive: { backgroundColor: colors.primary },
   navLabel: { ...typography.label, color: colors.onSurfaceVariant, letterSpacing: 0.4, textAlign: "center" },
+  navLabelCompact: { fontSize: 11, lineHeight: 15 },
   navLabelActive: { color: colors.onPrimary },
   notificationDot: { backgroundColor: colors.error, borderRadius: 5, height: 10, position: "absolute", right: 8, top: 7, width: 10 },
   pill: { alignItems: "center", alignSelf: "flex-start", borderRadius: radius.full, flexDirection: "row", gap: 5, paddingHorizontal: spacing.md, paddingVertical: 6 },
+  pillCompact: { paddingHorizontal: 10, paddingVertical: spacing.xs },
   pillText: { ...typography.label },
+  pillTextCompact: { fontSize: 11, lineHeight: 15 },
   scoreCenter: { alignItems: "center", bottom: 0, justifyContent: "center", left: 0, position: "absolute", right: 0, top: 0 },
   scoreLabel: { ...typography.label, color: colors.onSurfaceVariant, textAlign: "center" },
   scoreNumber: { ...typography.title, color: colors.primary },
   sectionAction: { ...typography.label, color: colors.primaryContainer },
+  sectionActionCompact: { fontSize: 11, lineHeight: 15 },
   sectionHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   sectionTitle: { ...typography.title, color: colors.onSurface },
+  sectionTitleCompact: { fontSize: 15, lineHeight: 20 },
   shell: { backgroundColor: colors.background, flex: 1 },
   topBar: { alignItems: "center", backgroundColor: colors.background, borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, flexDirection: "row", height: 58, justifyContent: "space-between", paddingHorizontal: spacing.md },
+  topBarCompact: { height: 50, paddingHorizontal: 10 },
   topBarButton: { alignItems: "center", height: 44, justifyContent: "center", position: "relative", width: 44 },
   topActions: { alignItems: "center", flexDirection: "row", justifyContent: "flex-end", width: 80 },
   topLead: { alignItems: "flex-start", height: 44, justifyContent: "center", width: 80 },
-  topTitle: { ...typography.headline, color: colors.primary, flex: 1, textAlign: "center" }
+  topTitle: { ...typography.headline, color: colors.primary, flex: 1, textAlign: "center" },
+  topTitleCompact: { fontSize: 17, lineHeight: 22 }
 });

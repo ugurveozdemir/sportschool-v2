@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { LoginMode } from "@/shared/constants/roles";
 import { colors } from "@/shared/design/colors";
+import { useResponsiveLayout } from "@/shared/design/responsive";
 import { radius, spacing } from "@/shared/design/spacing";
 import { fontFamily } from "@/shared/design/typography";
 
@@ -41,41 +42,43 @@ const roles: {
 ];
 
 export default function RoleScreen() {
+  const { isCompact } = useResponsiveLayout();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <Image resizeMode="contain" source={academyLogo} style={styles.watermark} />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, isCompact && styles.scrollContentCompact]} showsVerticalScrollIndicator={false}>
+        <View style={[styles.content, isCompact && styles.contentCompact]}>
           <View style={styles.brand}>
-            <Image resizeMode="contain" source={academyLogo} style={styles.logo} />
-            <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={styles.academyLabel}>
+            <Image resizeMode="contain" source={academyLogo} style={[styles.logo, isCompact && styles.logoCompact]} />
+            <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={1} style={[styles.academyLabel, isCompact && styles.academyLabelCompact]}>
               TÜRK OCAĞI LİMASOL ELİT FUTBOL AKADEMİSİ
             </Text>
           </View>
 
-          <View style={styles.hero}>
-            <Text style={styles.title}>KIBRIS&apos;IN{"\n"}BİR NUMARALI AKADEMİSİ</Text>
-            <Text style={styles.subtitle}>
+          <View style={[styles.hero, isCompact && styles.heroCompact]}>
+            <Text style={[styles.title, isCompact && styles.titleCompact]}>KIBRIS&apos;IN{"\n"}BİR NUMARALI AKADEMİSİ</Text>
+            <Text style={[styles.subtitle, isCompact && styles.subtitleCompact]}>
               Futbol eğitimi ile kişisel gelişim eğitimleri{"\n"}
               Kıbrıs&apos;ta ilk kez{"\n"}
               <Text style={styles.subtitleStrong}>Türk Ocağı Elit Futbol Akademisi&apos;nde.</Text>
             </Text>
           </View>
 
-          <View style={styles.cards}>
+          <View style={[styles.cards, isCompact && styles.cardsCompact]}>
             {roles.map((role) => (
               <Pressable
                 accessibilityHint={`${role.title.toLocaleLowerCase("tr-TR")} giriş ekranını açar`}
                 key={role.mode}
                 onPress={() => router.push({ pathname: "/login", params: { mode: role.mode } })}
-                style={({ pressed }) => [styles.roleCard, pressed && styles.roleCardPressed]}
+                style={({ pressed }) => [styles.roleCard, isCompact && styles.roleCardCompact, pressed && styles.roleCardPressed]}
               >
                 <Image resizeMode="cover" source={role.image} style={styles.rolePhoto} />
                 <View style={styles.leftShade} />
-                <View style={styles.roleCopy}>
-                  <Text style={styles.roleTitle}>{role.title}</Text>
+                <View style={[styles.roleCopy, isCompact && styles.roleCopyCompact]}>
+                  <Text style={[styles.roleTitle, isCompact && styles.roleTitleCompact]}>{role.title}</Text>
                 </View>
               </Pressable>
             ))}
@@ -85,9 +88,9 @@ export default function RoleScreen() {
             accessibilityLabel="Intro ekranını tekrar göster"
             accessibilityRole="button"
             onPress={() => router.replace("/")}
-            style={({ pressed }) => [styles.previewButton, pressed && styles.previewButtonPressed]}
+            style={({ pressed }) => [styles.previewButton, isCompact && styles.previewButtonCompact, pressed && styles.previewButtonPressed]}
           >
-            <Text style={styles.previewButtonText}>INTRO&apos;YU TEKRAR GÖSTER</Text>
+            <Text style={[styles.previewButtonText, isCompact && styles.previewButtonTextCompact]}>INTRO&apos;YU TEKRAR GÖSTER</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -102,6 +105,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1.5
   },
+  academyLabelCompact: { fontSize: 10, letterSpacing: 1.1 },
   brand: {
     alignItems: "center",
     gap: 2
@@ -109,22 +113,26 @@ const styles = StyleSheet.create({
   cards: {
     gap: spacing.sm
   },
+  cardsCompact: { gap: 6 },
   content: {
     alignSelf: "center",
     gap: spacing.lg,
     maxWidth: 520,
     width: "100%"
   },
+  contentCompact: { gap: spacing.md },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg
   },
+  scrollContentCompact: { paddingHorizontal: spacing.md, paddingVertical: spacing.md },
   hero: {
     alignItems: "center",
     gap: spacing.md
   },
+  heroCompact: { gap: spacing.sm },
   leftShade: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.primaryContainer,
@@ -135,12 +143,14 @@ const styles = StyleSheet.create({
     marginBottom: -6,
     width: 180
   },
+  logoCompact: { height: 112, marginBottom: -4, width: 79 },
   roleCard: {
     backgroundColor: colors.primaryContainer,
     borderRadius: radius.lg,
     height: 112,
     overflow: "hidden"
   },
+  roleCardCompact: { height: 82 },
   roleCardPressed: {
     opacity: 0.9,
     transform: [{ scale: 0.985 }]
@@ -154,6 +164,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: "55%"
   },
+  roleCopyCompact: { paddingHorizontal: spacing.md },
   rolePhoto: {
     bottom: 0,
     height: "100%",
@@ -167,6 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     letterSpacing: -0.5
   },
+  roleTitleCompact: { fontSize: 19, letterSpacing: -0.3, lineHeight: 23 },
   previewButton: {
     alignSelf: "center",
     borderColor: colors.primaryContainer,
@@ -175,6 +187,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm
   },
+  previewButtonCompact: { minHeight: 44, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   previewButtonPressed: {
     opacity: 0.7
   },
@@ -184,6 +197,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.7
   },
+  previewButtonTextCompact: { fontSize: 11, letterSpacing: 0.5 },
   safeArea: {
     backgroundColor: colors.background,
     flex: 1
@@ -195,6 +209,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "center"
   },
+  subtitleCompact: { fontSize: 13, lineHeight: 18 },
   subtitleStrong: {
     color: colors.primaryContainer,
     fontFamily: fontFamily.bold
@@ -207,6 +222,7 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     textAlign: "center"
   },
+  titleCompact: { fontSize: 24, letterSpacing: -0.7, lineHeight: 27 },
   watermark: {
     height: 630,
     opacity: 0.06,

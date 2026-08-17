@@ -17,6 +17,7 @@ import { LoadingState } from "@/shared/components/LoadingState";
 import { ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
 import { TextField } from "@/shared/components/TextField";
 import { colors } from "@/shared/design/colors";
+import { useResponsiveLayout } from "@/shared/design/responsive";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
@@ -75,6 +76,7 @@ function CoachTeams({
   const [form, setForm] = useState(emptyGroupForm);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const isSaving = createGroup.isPending;
+  const { isCompact } = useResponsiveLayout();
 
   function openCreateForm() {
     setForm(emptyGroupForm);
@@ -104,15 +106,15 @@ function CoachTeams({
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
-      <View style={styles.headerBlock}>
-        <Text style={styles.title}>Sporcu Gruplarım</Text>
+      <View style={[styles.headerBlock, isCompact && styles.headerBlockCompact]}>
+        <Text style={[styles.title, isCompact && styles.titleCompact]}>Sporcu Gruplarım</Text>
         <Pressable onPress={openCreateForm} style={styles.primaryButton}>
           <MaterialCommunityIcons name="plus" size={20} color={colors.onPrimary} />
           <Text style={styles.primaryButtonText}>Yeni Grup Ekle</Text>
         </Pressable>
       </View>
 
-      <View style={styles.list}>
+      <View style={[styles.list, isCompact && styles.listCompact]}>
         {groups.length === 0 ? (
           <SurfaceCard>
             <EmptyState title="Grup yok" description="Henüz aktif grup bulunmuyor." />
@@ -265,21 +267,23 @@ function reportAverage(report: TrainingReportResponse) {
 }
 
 function GroupCard({ group }: { group: SchoolGroupResponse }) {
+  const { isCompact } = useResponsiveLayout();
+
   return (
     <Pressable onPress={() => router.push(`/groups/${group.id}`)}>
-      <SurfaceCard style={styles.groupCard}>
-        <View style={styles.groupCardMain}>
-          <View style={styles.groupIconWrap}>
-            <AcademyLogoAvatar size={42} />
+      <SurfaceCard style={[styles.groupCard, isCompact && styles.groupCardCompact]}>
+        <View style={[styles.groupCardMain, isCompact && styles.groupCardMainCompact]}>
+          <View style={[styles.groupIconWrap, isCompact && styles.groupIconWrapCompact]}>
+            <AcademyLogoAvatar size={isCompact ? 34 : 42} />
           </View>
           <View style={styles.groupCopy}>
-            <Text style={styles.groupTitle}>{group.name}</Text>
+            <Text style={[styles.groupTitle, isCompact && styles.groupTitleCompact]}>{group.name}</Text>
             {group.description?.trim() ? (
               <Text style={styles.groupDesc} numberOfLines={2}>{group.description}</Text>
             ) : null}
           </View>
-          <View style={styles.groupAction}>
-            <MaterialCommunityIcons name="chevron-right" size={26} color={colors.outline} />
+          <View style={[styles.groupAction, isCompact && styles.groupActionCompact]}>
+            <MaterialCommunityIcons name="chevron-right" size={isCompact ? 22 : 26} color={colors.outline} />
           </View>
         </View>
       </SurfaceCard>
@@ -349,8 +353,11 @@ const styles = StyleSheet.create({
   date: { ...typography.label, color: colors.outline, textTransform: "uppercase" },
   flexOne: { flex: 1 },
   groupCard: { justifyContent: "center", minHeight: 82 },
+  groupCardCompact: { minHeight: 64 },
   groupAction: { alignItems: "center", height: 50, justifyContent: "center", width: 50 },
+  groupActionCompact: { height: 44, width: 44 },
   groupCardMain: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  groupCardMainCompact: { gap: spacing.xs },
   groupCopy: { alignItems: "center", flex: 1 },
   groupDesc: { ...typography.body, color: colors.primaryContainer, marginTop: spacing.xs, textAlign: "center" },
   groupIconWrap: {
@@ -363,11 +370,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 50
   },
+  groupIconWrapCompact: { height: 44, width: 44 },
   groupTitle: { ...typography.headline, color: colors.onSurface, fontSize: 27, lineHeight: 32, textAlign: "center" },
+  groupTitleCompact: { fontSize: 21, lineHeight: 26 },
   headerBlock: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
+  headerBlockCompact: { gap: spacing.sm },
   iconAction: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   improvement: { ...typography.body, color: colors.onSurfaceVariant },
   list: { gap: spacing.md },
+  listCompact: { gap: spacing.sm },
   memberHeader: { gap: spacing.xs },
   performanceCaption: { ...typography.body, color: colors.onSurfaceVariant },
   performanceDivider: { backgroundColor: colors.outlineVariant, height: 44, width: 1 },
@@ -408,5 +419,6 @@ const styles = StyleSheet.create({
   sectionHeading: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.bodyLarge, color: colors.onSurfaceVariant, marginTop: spacing.xs },
   summary: { ...typography.bodyLarge, color: colors.onSurface },
-  title: { ...typography.headline, color: colors.onSurface, flex: 1 }
+  title: { ...typography.headline, color: colors.onSurface, flex: 1 },
+  titleCompact: { fontSize: 17, lineHeight: 22 }
 });
