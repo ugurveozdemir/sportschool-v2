@@ -9,6 +9,9 @@ namespace Sportschool.Api.Features.Auth;
 
 public static class AuthEndpoints
 {
+    private const int LoginAttemptLimit = 10;
+    private static readonly TimeSpan LoginAttemptWindow = TimeSpan.FromMinutes(5);
+
     public static RouteGroupBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/auth");
@@ -38,10 +41,12 @@ public static class AuthEndpoints
 
     private static async Task<IResult> LoginAsync(
         LoginRequest request,
+        HttpContext httpContext,
         SportschoolDbContext db,
         PasswordHasher passwordHasher,
         JwtTokenService jwtTokenService,
         RefreshTokenService refreshTokenService,
+        KeyedRequestLimiter requestLimiter,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
@@ -51,6 +56,15 @@ public static class AuthEndpoints
 
         var requestedRole = request.Mode.ToUserRole();
         var normalizedEmail = TextNormalizer.NormalizeEmail(request.Email);
+        var rateLimitKey = $"login:{request.Mode}:{normalizedEmail}";
+        if (!requestLimiter.TryAcquire(rateLimitKey, LoginAttemptLimit, LoginAttemptWindow, out var retryAfterSeconds))
+        {
+            httpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+            return Results.Json(
+                new { message = "Too many login attempts. Please try again later." },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
+
         var candidates = await FindLoginCandidatesAsync(db, requestedRole, normalizedEmail, cancellationToken);
 
         // The same email can exist across several schools (email is unique per school),

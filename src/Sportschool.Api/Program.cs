@@ -50,6 +50,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
 var applicationTimeZoneId = builder.Configuration["Application:TimeZone"] ?? "Europe/Istanbul";
 builder.Services.AddSingleton(TimeZoneInfo.FindSystemTimeZoneById(applicationTimeZoneId));
 builder.Services.AddSingleton<PasswordHasher>();
+builder.Services.AddSingleton<KeyedRequestLimiter>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
 builder.Services.AddSingleton<TemporaryPasswordGenerator>();

@@ -9,6 +9,9 @@ namespace Sportschool.Api.Features.Applications;
 
 public static class AthleteApplicationEndpoints
 {
+    private const int ApplicationAttemptLimit = 5;
+    private static readonly TimeSpan ApplicationAttemptWindow = TimeSpan.FromMinutes(10);
+
     public static RouteGroupBuilder MapAthleteApplicationEndpoints(this IEndpointRouteBuilder app)
     {
         var publicGroup = app.MapGroup("/api/applications");
@@ -26,8 +29,10 @@ public static class AthleteApplicationEndpoints
 
     private static async Task<IResult> CreateApplicationAsync(
         CreateAthleteApplicationRequest request,
+        HttpContext httpContext,
         SportschoolDbContext db,
         PasswordHasher passwordHasher,
+        KeyedRequestLimiter requestLimiter,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.SchoolCode)
@@ -43,6 +48,16 @@ public static class AthleteApplicationEndpoints
         }
 
         var normalizedSchoolCode = TextNormalizer.NormalizeSchoolCode(request.SchoolCode);
+        var normalizedEmail = TextNormalizer.NormalizeEmail(request.AthleteEmail);
+        var rateLimitKey = $"athlete-application:{normalizedSchoolCode}:{normalizedEmail}";
+        if (!requestLimiter.TryAcquire(rateLimitKey, ApplicationAttemptLimit, ApplicationAttemptWindow, out var retryAfterSeconds))
+        {
+            httpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+            return Results.Json(
+                new { message = "Too many application attempts. Please try again later." },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
+
         var school = await db.Schools.FirstOrDefaultAsync(
             x => x.NormalizedCode == normalizedSchoolCode && x.IsActive,
             cancellationToken);
@@ -52,7 +67,6 @@ public static class AthleteApplicationEndpoints
             return Results.NotFound();
         }
 
-        var normalizedEmail = TextNormalizer.NormalizeEmail(request.AthleteEmail);
         var userExists = await db.Users.AnyAsync(
             x => x.SchoolId == school.Id && x.NormalizedEmail == normalizedEmail,
             cancellationToken);
