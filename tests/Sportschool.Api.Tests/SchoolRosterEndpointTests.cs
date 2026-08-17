@@ -356,9 +356,12 @@ public sealed class SchoolRosterEndpointTests
         });
 
         using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        using var coachClient = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
 
         using var response = await client.DeleteAsync($"/api/school/coaches/{coach.Id}");
+        using var accessTokenResponse = await coachClient.GetAsync("/api/school/athletes");
         Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, accessTokenResponse.StatusCode);
 
         // Verify deactivated in DB
         var updatedCoach = await factory.QueryAsync(db => db.Users.Include(x => x.RefreshTokens).SingleAsync(x => x.Id == coach.Id));

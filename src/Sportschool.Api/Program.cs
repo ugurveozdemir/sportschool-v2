@@ -76,19 +76,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnTokenValidated = async context =>
             {
                 var schoolId = CurrentUser.GetSchoolId(context.Principal!);
-                if (schoolId is null)
+                var userId = CurrentUser.GetUserId(context.Principal!);
+                if (userId is null)
                 {
+                    context.Fail("User identifier is missing.");
                     return;
                 }
 
                 var db = context.HttpContext.RequestServices.GetRequiredService<SportschoolDbContext>();
-                var schoolIsActive = await db.Schools.AnyAsync(
-                    school => school.Id == schoolId.Value && school.IsActive,
+                var sessionIsActive = await db.Users.AnyAsync(
+                    user => user.Id == userId.Value
+                        && user.IsActive
+                        && (schoolId == null
+                            ? user.SchoolId == null
+                            : user.SchoolId == schoolId.Value && user.School != null && user.School.IsActive),
                     context.HttpContext.RequestAborted);
 
-                if (!schoolIsActive)
+                if (!sessionIsActive)
                 {
-                    context.Fail("School is inactive.");
+                    context.Fail("User or school is inactive.");
                 }
             }
         };
