@@ -289,7 +289,7 @@ public sealed class SchoolRosterEndpointTests
             FirstName = "Ece",
             AthleteEmail = "ece@example.com",
             AthletePassword = "athlete-pass-2",
-            ParentPassword = "ignored-parent-pass"
+            ParentPassword = null
         };
 
         using var firstResponse = await client.PostAsJsonAsync("/api/school/athletes", firstRequest);
@@ -327,6 +327,39 @@ public sealed class SchoolRosterEndpointTests
         Assert.True(hasher.Verify("parent-pass-1", result.Profiles[0].Parent!.PasswordHash));
         Assert.Contains(result.Profiles, x => x.User.Email == "ali@example.com" && hasher.Verify("athlete-pass-1", x.User.PasswordHash));
         Assert.Contains(result.Profiles, x => x.User.Email == "ece@example.com" && hasher.Verify("athlete-pass-2", x.User.PasswordHash));
+    }
+
+    [Fact]
+    public async Task CreatingNewParentRequiresPassword()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-parent-password@example.com", "Admin", "password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Parent Password School", "parent-password"));
+            db.Users.Add(admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+        var request = new CreateAthleteRequest(
+            "Ali",
+            "Yılmaz",
+            new DateOnly(2013, 4, 5),
+            "athlete-parent-password@example.com",
+            "athlete-pass",
+            "Ayşe Yılmaz",
+            "5551112233",
+            "new-parent@example.com",
+            null,
+            null,
+            PreferredFoot.Left);
+
+        using var response = await client.PostAsJsonAsync("/api/school/athletes", request);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

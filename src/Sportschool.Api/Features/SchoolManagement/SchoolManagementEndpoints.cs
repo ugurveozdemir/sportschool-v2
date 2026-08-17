@@ -536,8 +536,6 @@ public static class SchoolManagementEndpoints
             || string.IsNullOrWhiteSpace(request.ParentFullName)
             || string.IsNullOrWhiteSpace(request.ParentPhone)
             || string.IsNullOrWhiteSpace(request.ParentEmail)
-            || string.IsNullOrWhiteSpace(request.ParentPassword)
-            || request.ParentPassword.Length < MinimumPasswordLength
             || request.BirthDate > DateOnly.FromDateTime(DateTime.UtcNow))
         {
             return Results.BadRequest();
@@ -591,6 +589,12 @@ public static class SchoolManagementEndpoints
 
         if (parent is null)
         {
+            if (string.IsNullOrWhiteSpace(request.ParentPassword)
+                || request.ParentPassword.Length < MinimumPasswordLength)
+            {
+                return Results.BadRequest();
+            }
+
             parent = new AppUser
             {
                 SchoolId = schoolId.Value,
@@ -741,7 +745,7 @@ public sealed record CreateAthleteRequest(
     string ParentFullName,
     string ParentPhone,
     string ParentEmail,
-    string ParentPassword,
+    string? ParentPassword,
     Guid? GroupId,
     PreferredFoot PreferredFoot = PreferredFoot.Unknown);
 

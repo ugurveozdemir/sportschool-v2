@@ -51,7 +51,7 @@ export type CreateAthleteInput = {
   parentFullName: string;
   parentPhone: string;
   parentEmail: string;
-  parentPassword: string;
+  parentPassword?: string;
   preferredFoot: PreferredFoot;
   groupId?: string;
 };

@@ -261,12 +261,12 @@ export function AthletesPage() {
           </div>
 
           <Typography.Title level={5}>Veli bilgileri</Typography.Title>
-          <Typography.Paragraph type="secondary">Veli e-postası kayıtlıysa mevcut veli hesabı kullanılır ve şifresi değiştirilmez.</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">Veli e-postası yeniyse ilk şifre zorunludur. Kayıtlı bir veli hesabı kullanıyorsanız şifreyi boş bırakın.</Typography.Paragraph>
           <div className="form-grid">
             <Form.Item name="parentFullName" label="Veli ad soyad" rules={[{ required: true, message: "Veli adı zorunludur." }]}><Input /></Form.Item>
             <Form.Item name="parentPhone" label="Veli telefonu" rules={[{ required: true, message: "Telefon zorunludur." }]}><Input /></Form.Item>
             <Form.Item name="parentEmail" label="Veli e-postası" rules={[{ required: true, type: "email", message: "Geçerli bir e-posta girin." }]}><Input /></Form.Item>
-            <Form.Item name="parentPassword" label="Veli ilk şifresi" rules={[{ required: true, min: 8, message: "Şifre en az 8 karakter olmalıdır." }]}><Input.Password /></Form.Item>
+            <Form.Item name="parentPassword" label="Veli ilk şifresi (yeni hesap için)" rules={[{ min: 8, message: "Şifre en az 8 karakter olmalıdır." }]}><Input.Password /></Form.Item>
           </div>
         </Form>
       </Modal>
