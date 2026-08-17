@@ -30,7 +30,11 @@ export function AnnouncementsPage() {
   function openCreate() { setEditingAnnouncement(null); form.resetFields(); setIsModalOpen(true); }
   function openEdit(announcement: Announcement) {
     setEditingAnnouncement(announcement);
-    form.setFieldsValue({ title: announcement.title, content: announcement.content, expiresOn: announcement.expiresAt ? toDateInput(announcement.expiresAt) : undefined });
+    form.setFieldsValue({
+      title: announcement.title,
+      content: announcement.content,
+      expiresOn: announcement.expiresAt && !announcement.isExpired ? toDateInput(announcement.expiresAt) : undefined
+    });
     setIsModalOpen(true);
   }
   function closeModal() { setIsModalOpen(false); setEditingAnnouncement(null); form.resetFields(); }
@@ -49,7 +53,13 @@ export function AnnouncementsPage() {
       <Form form={form} layout="vertical" onFinish={(values) => saveAnnouncement.mutate(values)}>
         <Form.Item name="title" label="Başlık" rules={[{ required: true, message: "Başlık zorunludur." }, { max: 160, message: "Başlık en fazla 160 karakter olabilir." }]}><Input autoFocus maxLength={160} showCount /></Form.Item>
         <Form.Item name="content" label="Duyuru metni" rules={[{ required: true, message: "Duyuru metni zorunludur." }, { max: 2000, message: "Metin en fazla 2000 karakter olabilir." }]}><Input.TextArea rows={7} maxLength={2000} showCount /></Form.Item>
-        <Form.Item name="expiresOn" label="Yayından kalkış tarihi"><Input type="date" /></Form.Item>
+        <Form.Item
+          name="expiresOn"
+          label="Yayından kalkış tarihi"
+          extra={editingAnnouncement?.isExpired ? "Duyuruyu yeniden yayınlamak için yeni bir tarih seçebilir veya süresiz bırakabilirsiniz." : undefined}
+        >
+          <Input type="date" />
+        </Form.Item>
       </Form>
     </Modal>
   </div>;
