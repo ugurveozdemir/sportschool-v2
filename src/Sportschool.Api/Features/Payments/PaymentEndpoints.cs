@@ -220,11 +220,12 @@ public static class PaymentEndpoints
             return Results.BadRequest();
         }
 
-        var athleteExists = await db.AthleteProfiles.AnyAsync(
-            x => x.Id == athleteProfileId && x.SchoolId == schoolId.Value && x.IsActive,
-            cancellationToken);
+        var fee = await db.AthleteProfiles
+            .Where(x => x.Id == athleteProfileId && x.SchoolId == schoolId.Value && x.IsActive)
+            .Select(x => new { x.MonthlyFeeOverride, x.School.DefaultMonthlyFee })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (!athleteExists)
+        if (fee is null)
         {
             return Results.NotFound();
         }
@@ -238,6 +239,12 @@ public static class PaymentEndpoints
 
         if (payment is null)
         {
+            var configuredAmount = PaymentSchedule.EffectiveFee(fee.DefaultMonthlyFee, fee.MonthlyFeeOverride);
+            if (configuredAmount is not null && request.Amount != configuredAmount.Value)
+            {
+                return Results.BadRequest();
+            }
+
             payment = new StudentPayment
             {
                 SchoolId = schoolId.Value,
@@ -246,6 +253,10 @@ public static class PaymentEndpoints
                 Month = month
             };
             db.StudentPayments.Add(payment);
+        }
+        else if (payment.Amount != request.Amount)
+        {
+            return Results.BadRequest();
         }
 
         payment.Amount = request.Amount;

@@ -62,6 +62,23 @@ public sealed class PaymentEndpointTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ConfiguredFeeCannotBeReplacedByLowerPaidAmount()
+    {
+        await SeedSchoolWithAthletesAsync();
+        var athleteId = await FirstAthleteIdAsync(_schoolId);
+        using var client = _factory.CreateAuthenticatedClient(_coach, UserRole.Coach);
+        await client.PutAsJsonAsync("/api/school/payment-settings", new SavePaymentSettingsRequest(1200m, 5));
+
+        using var response = await client.PutAsJsonAsync(
+            $"/api/school/athletes/{athleteId}/payments/2026/6",
+            new SavePaymentRequest(100m, PaymentStatus.Paid, null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var paymentExists = await _factory.QueryAsync(db => db.StudentPayments.AnyAsync(x => x.AthleteProfileId == athleteId));
+        Assert.False(paymentExists);
+    }
+
+    [Fact]
     public async Task Coach_CannotMarkOtherTenantPayment()
     {
         await SeedSchoolWithAthletesAsync();
