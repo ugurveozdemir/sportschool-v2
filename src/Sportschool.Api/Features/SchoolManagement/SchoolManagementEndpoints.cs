@@ -809,6 +809,7 @@ public sealed record AthleteDetailResponse(
     string ParentFullName,
     string ParentPhone,
     string? ParentEmail,
+    decimal? MonthlyFeeOverride,
     string? ProfileImageUrl,
     DateTimeOffset CreatedAt,
     IReadOnlyCollection<AthleteGroupResponse> Groups)
@@ -830,6 +831,7 @@ public sealed record AthleteDetailResponse(
             athlete.ParentFullName,
             athlete.ParentPhone,
             athlete.Parent?.Email,
+            athlete.MonthlyFeeOverride,
             athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion),
             athlete.CreatedAt,
             groups);

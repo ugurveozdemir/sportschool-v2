@@ -3,6 +3,7 @@ import {
   CalendarOutlined,
   CameraOutlined,
   DeleteOutlined,
+  DollarOutlined,
   MailOutlined,
   PhoneOutlined,
   TeamOutlined,
@@ -10,24 +11,28 @@ import {
   VideoCameraOutlined
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Avatar, Button, Card, Descriptions, Empty, Form, Input, Modal, Popconfirm, Result, Skeleton, Space, Switch, Tag, Typography, message } from "antd";
+import { Alert, Avatar, Button, Card, Descriptions, Empty, Form, Input, InputNumber, Modal, Popconfirm, Result, Skeleton, Space, Switch, Tag, Typography, message } from "antd";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
 import { deleteAthleteVideo, deleteProfileImage, listAthleteVideos, setVideoPublication, uploadAthleteVideo, uploadProfileImage, type AthleteVideo } from "./athleteMediaApi";
 import { getAthlete, type PreferredFoot } from "./athletesApi";
+import { updateAthleteFee } from "./paymentsApi";
 
 type VideoFormValues = { caption?: string };
+type FeeFormValues = { monthlyFee?: number };
 
 export function AthleteDetailPage() {
   const navigate = useNavigate();
   const { athleteId } = useParams();
   const queryClient = useQueryClient();
   const [videoForm] = Form.useForm<VideoFormValues>();
+  const [feeForm] = Form.useForm<FeeFormValues>();
   const profileImageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
   const athleteQuery = useQuery({
     enabled: Boolean(athleteId),
     queryKey: ["school", "athletes", athleteId],
@@ -86,6 +91,16 @@ export function AthleteDetailPage() {
     },
     onError: (error) => message.error(mediaErrorMessage(error))
   });
+  const feeMutation = useMutation({
+    mutationFn: (values: FeeFormValues) => updateAthleteFee(athleteId!, values.monthlyFee ?? null),
+    onSuccess: () => {
+      message.success("Sporcu aidatı güncellendi.");
+      setIsFeeModalOpen(false);
+      refreshAthlete();
+      void queryClient.invalidateQueries({ queryKey: ["school", "payments"] });
+    },
+    onError: () => message.error("Aidat güncellenemedi. Tutarı kontrol edip tekrar deneyin.")
+  });
 
   function selectProfileImage(event: React.ChangeEvent<HTMLInputElement>) {
     const image = event.target.files?.[0];
@@ -115,6 +130,11 @@ export function AthleteDetailPage() {
     setSelectedVideo(null);
     videoForm.resetFields();
     setIsVideoModalOpen(false);
+  }
+
+  function openFeeModal() {
+    feeForm.setFieldsValue({ monthlyFee: athleteQuery.data?.monthlyFeeOverride ?? undefined });
+    setIsFeeModalOpen(true);
   }
 
   if (athleteQuery.isLoading) {
@@ -204,6 +224,19 @@ export function AthleteDetailPage() {
       </Card>
 
       <Card
+        className="athlete-fee-card"
+        title={<Space><DollarOutlined /> Aidat</Space>}
+        extra={<Button onClick={openFeeModal}>Düzenle</Button>}
+      >
+        <Descriptions column={1}>
+          <Descriptions.Item label="Sporcuya özel aylık aidat">
+            {athlete.monthlyFeeOverride === null ? "Okul varsayılanı" : formatCurrency(athlete.monthlyFeeOverride)}
+          </Descriptions.Item>
+        </Descriptions>
+        <Typography.Text type="secondary">Özel tutar kaldırıldığında okulun varsayılan aidatı kullanılır.</Typography.Text>
+      </Card>
+
+      <Card
         className="athlete-videos-card"
         title={<Space><VideoCameraOutlined /> Videolar</Space>}
         extra={<Button type="primary" icon={<VideoCameraOutlined />} onClick={() => videoInput.current?.click()}>Video ekle</Button>}
@@ -216,6 +249,23 @@ export function AthleteDetailPage() {
             ? <div className="athlete-video-grid">{(videosQuery.data ?? []).map((video) => <VideoCard key={video.id} video={video} publicationPending={publicationMutation.isPending} deletePending={deleteVideoMutation.isPending} onPublicationChange={(isPublished) => publicationMutation.mutate({ videoId: video.id, isPublished })} onDelete={() => deleteVideoMutation.mutate(video.id)} />)}</div>
             : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Henüz video eklenmemiş." />}
       </Card>
+
+      <Modal
+        title="Sporcu aidatını düzenle"
+        open={isFeeModalOpen}
+        okText="Kaydet"
+        cancelText="Vazgeç"
+        confirmLoading={feeMutation.isPending}
+        onCancel={() => setIsFeeModalOpen(false)}
+        onOk={() => feeForm.submit()}
+      >
+        <Form form={feeForm} layout="vertical" onFinish={(values) => feeMutation.mutate(values)}>
+          <Form.Item name="monthlyFee" label="Aylık aidat" rules={[{ type: "number", min: 0, message: "Aidat negatif olamaz." }]}>
+            <InputNumber min={0} precision={2} className="full-width" addonAfter="₺" />
+          </Form.Item>
+          <Typography.Paragraph type="secondary">Okulun varsayılan aidatına dönmek için alanı boş bırakın.</Typography.Paragraph>
+        </Form>
+      </Modal>
 
       <Modal
         title="Video ekle"
@@ -299,6 +349,10 @@ function isAllowedVideo(file: File): boolean {
 
 function formatFileSize(bytes: number): string {
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024) + " MB";
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value);
 }
 
 function mediaErrorMessage(error: Error): string {

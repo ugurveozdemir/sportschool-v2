@@ -19,6 +19,7 @@ export type Athlete = {
 export type AthleteDetail = Athlete & {
   email: string;
   parentEmail: string | null;
+  monthlyFeeOverride: number | null;
   createdAt: string;
   groups: AthleteGroup[];
 };

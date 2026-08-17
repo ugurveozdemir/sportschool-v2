@@ -691,6 +691,7 @@ public sealed class SchoolRosterEndpointTests
         var parentA = TestUsers.Create(schoolAId, "parent-detail-a@example.com", "Ayşe Yılmaz", "password", UserRole.Parent);
         var athleteBUser = TestUsers.Create(schoolBId, "athlete-detail-b@example.com", "Other Athlete", "password", UserRole.Athlete);
         var athleteA = CreateAthleteProfile(schoolAId, athleteAUser, "Ali", "Yılmaz");
+        athleteA.MonthlyFeeOverride = 850m;
         athleteA.Parent = parentA;
         athleteA.ParentFullName = parentA.FullName;
         athleteA.ParentPhone = "555 111 22 33";
@@ -716,6 +717,7 @@ public sealed class SchoolRosterEndpointTests
         Assert.Equal(athleteAUser.Email, detail.Email);
         Assert.Equal(parentA.Email, detail.ParentEmail);
         Assert.Equal("555 111 22 33", detail.ParentPhone);
+        Assert.Equal(850m, detail.MonthlyFeeOverride);
         var athleteGroup = Assert.Single(detail.Groups);
         Assert.Equal(group.Id, athleteGroup.Id);
         Assert.Equal(group.Name, athleteGroup.Name);

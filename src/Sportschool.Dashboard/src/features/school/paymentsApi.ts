@@ -6,5 +6,6 @@ export type MonthlyPayment = { athleteProfileId: string; athleteName: string; pa
 
 export function getPaymentSettings(): Promise<PaymentSettings> { return apiRequest<PaymentSettings>("/api/school/payment-settings"); }
 export function updatePaymentSettings(input: PaymentSettings): Promise<PaymentSettings> { return apiRequest<PaymentSettings>("/api/school/payment-settings", { method: "PUT", body: input }); }
+export function updateAthleteFee(athleteId: string, monthlyFee: number | null): Promise<void> { return apiRequest<void>(`/api/school/athletes/${athleteId}/fee`, { method: "PUT", body: { monthlyFee } }); }
 export function listMonthlyPayments(year: number, month: number): Promise<MonthlyPayment[]> { return apiRequest<MonthlyPayment[]>(`/api/school/payments?year=${year}&month=${month}`); }
 export function savePayment(athleteId: string, year: number, month: number, input: { amount: number; status: PaymentStatus; paidOn: string | null }): Promise<void> { return apiRequest<void>(`/api/school/athletes/${athleteId}/payments/${year}/${month}`, { method: "PUT", body: input }); }
