@@ -3,6 +3,7 @@ namespace Sportschool.Api.Security;
 public sealed class JwtOptions
 {
     public const string SectionName = "Jwt";
+    public const string DevelopmentSigningKey = "local-development-signing-key-change-before-production";
 
     public required string Issuer { get; set; }
 

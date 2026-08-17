@@ -27,11 +27,16 @@ builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
+var developmentSigningKeyIsAllowed = builder.Environment.IsDevelopment()
+    || builder.Environment.IsEnvironment("Testing");
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
     .Validate(x => !string.IsNullOrWhiteSpace(x.Issuer), "JWT issuer is required.")
     .Validate(x => !string.IsNullOrWhiteSpace(x.Audience), "JWT audience is required.")
-    .Validate(x => x.SigningKey.Length >= 32, "JWT signing key must be at least 32 characters.")
+    .Validate(x => !string.IsNullOrWhiteSpace(x.SigningKey) && x.SigningKey.Length >= 32, "JWT signing key must be at least 32 characters.")
+    .Validate(
+        x => developmentSigningKeyIsAllowed || !string.Equals(x.SigningKey, JwtOptions.DevelopmentSigningKey, StringComparison.Ordinal),
+        "The development JWT signing key cannot be used outside Development or Testing.")
     .ValidateOnStart();
 
 if (!builder.Environment.IsEnvironment("Testing"))
