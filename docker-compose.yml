@@ -28,6 +28,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=sportschool;Username=sportschool;Password=sportschool"
+      DevSeed__Enabled: "${DEV_SEED_ENABLED:-false}"
+      DevSeed__PlatformOwnerPassword: "${DEV_SEED_PLATFORM_OWNER_PASSWORD:-}"
+      DevSeed__CoachPassword: "${DEV_SEED_COACH_PASSWORD:-}"
+      DevSeed__AthletePassword: "${DEV_SEED_ATHLETE_PASSWORD:-}"
     ports:
       - "5062:8080"
     volumes:

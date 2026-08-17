@@ -63,6 +63,10 @@ builder.Services.AddHostedService<DevSeedHostedService>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? throw new InvalidOperationException("JWT options are not configured.");
+if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey))
+{
+    throw new InvalidOperationException("JWT signing key is not configured.");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

@@ -18,5 +18,7 @@ public sealed class DevSeedOptions
 
     public string CoachFullName { get; set; } = "İstanbul Eğitmeni";
 
-    public string CoachPassword { get; set; } = "egitmen123";
+    public string CoachPassword { get; set; } = "";
+
+    public string AthletePassword { get; set; } = "";
 }

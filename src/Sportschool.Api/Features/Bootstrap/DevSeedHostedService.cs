@@ -36,14 +36,6 @@ public sealed class DevSeedHostedService(
         }
 
         var seed = options.Value;
-        if (string.IsNullOrWhiteSpace(seed.PlatformOwnerEmail)
-            || string.IsNullOrWhiteSpace(seed.PlatformOwnerFullName)
-            || string.IsNullOrWhiteSpace(seed.PlatformOwnerPassword))
-        {
-            logger.LogWarning("Development seed is enabled but PlatformOwner seed credentials are incomplete.");
-            return;
-        }
-
         await using var scope = serviceProvider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<SportschoolDbContext>();
         var passwordHasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
@@ -52,7 +44,7 @@ public sealed class DevSeedHostedService(
         {
             await SeedPlatformOwnerAsync(db, passwordHasher, seed, cancellationToken);
             await SeedCoachAsync(db, passwordHasher, seed, cancellationToken);
-            await SeedIstanbulAthletesAsync(db, passwordHasher, cancellationToken);
+            await SeedIstanbulAthletesAsync(db, passwordHasher, seed, cancellationToken);
         }
         catch (Exception exception) when (exception is InvalidOperationException or DbUpdateException)
         {
@@ -66,6 +58,14 @@ public sealed class DevSeedHostedService(
         DevSeedOptions seed,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(seed.PlatformOwnerEmail)
+            || string.IsNullOrWhiteSpace(seed.PlatformOwnerFullName)
+            || string.IsNullOrWhiteSpace(seed.PlatformOwnerPassword))
+        {
+            logger.LogWarning("Development PlatformOwner seed was skipped because its credentials are incomplete.");
+            return;
+        }
+
         var normalizedEmail = TextNormalizer.NormalizeEmail(seed.PlatformOwnerEmail);
         var exists = await db.Users
             .AnyAsync(x => x.SchoolId == null
@@ -163,8 +163,15 @@ public sealed class DevSeedHostedService(
     private async Task SeedIstanbulAthletesAsync(
         SportschoolDbContext db,
         PasswordHasher passwordHasher,
+        DevSeedOptions seed,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(seed.AthletePassword))
+        {
+            logger.LogWarning("Development athlete seed was skipped because its password is not configured.");
+            return;
+        }
+
         var normalizedCode = TextNormalizer.NormalizeSchoolCode("istanbul");
         var school = await db.Schools
             .FirstOrDefaultAsync(x => x.NormalizedCode == normalizedCode && x.IsActive, cancellationToken);
@@ -182,7 +189,7 @@ public sealed class DevSeedHostedService(
             return;
         }
 
-        var defaultPassword = passwordHasher.Hash("sporcu123");
+        var defaultPassword = passwordHasher.Hash(seed.AthletePassword);
         var random = new Random(42);
         var today = DateOnly.FromDateTime(DateTime.Today);
 
