@@ -13,6 +13,7 @@ using Sportschool.Api.Features.Auth;
 using Sportschool.Api.Features.Bootstrap;
 using Sportschool.Api.Features.Dashboard;
 using Sportschool.Api.Features.Groups;
+using Sportschool.Api.Features.Health;
 using Sportschool.Api.Features.Mobile;
 using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Payments;
@@ -140,8 +141,7 @@ if (Directory.Exists(dashboardRoot))
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }))
-    .WithName("GetHealth");
+app.MapHealthEndpoints();
 app.MapMethods("/favicon.ico", [HttpMethods.Get, HttpMethods.Head], () => Results.Redirect("/favicon.svg"));
 app.MapAuthEndpoints();
 app.MapAnnouncementEndpoints();
