@@ -167,9 +167,14 @@ public static class AuthEndpoints
             .Include(x => x.RefreshTokens)
             .FirstOrDefaultAsync(x => x.Id == userId.Value && x.IsActive, cancellationToken);
 
-        if (user is null || !passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+        if (user is null)
         {
             return Results.Unauthorized();
+        }
+
+        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+        {
+            return Results.BadRequest(new { message = "Current password is incorrect." });
         }
 
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);

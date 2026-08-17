@@ -26,6 +26,7 @@ const GroupDetailPage = lazy(() => import("./features/school/GroupDetailPage").t
 const GroupsPage = lazy(() => import("./features/school/GroupsPage").then(({ GroupsPage }) => ({ default: GroupsPage })));
 const PaymentsPage = lazy(() => import("./features/school/PaymentsPage").then(({ PaymentsPage }) => ({ default: PaymentsPage })));
 const SchoolDashboardPage = lazy(() => import("./features/school/SchoolDashboardPage").then(({ SchoolDashboardPage }) => ({ default: SchoolDashboardPage })));
+const SettingsPage = lazy(() => import("./features/school/SettingsPage").then(({ SettingsPage }) => ({ default: SettingsPage })));
 const TrainingDetailPage = lazy(() => import("./features/school/TrainingDetailPage").then(({ TrainingDetailPage }) => ({ default: TrainingDetailPage })));
 const TrainingsPage = lazy(() => import("./features/school/TrainingsPage").then(({ TrainingsPage }) => ({ default: TrainingsPage })));
 
@@ -73,7 +74,7 @@ export function App() {
                 path={module.path}
                 element={
                   <RoleGuard roles={module.roles}>
-                    {module.path === "/sporcular" ? <AthletesPage /> : module.path === "/antrenorler" ? <CoachesPage /> : module.path === "/gruplar" ? <GroupsPage /> : module.path === "/antrenmanlar" ? <TrainingsPage /> : module.path === "/odemeler" ? <PaymentsPage /> : module.path === "/duyurular" ? <AnnouncementsPage /> : <ModulePage module={module} />}
+                    <SchoolModulePage module={module} />
                   </RoleGuard>
                 }
               />
@@ -209,6 +210,19 @@ function ModulePage({ module }: { module: AppModule }) {
       <Typography.Paragraph type="secondary">Bu modülün API bağlantısını ve yönetim ekranlarını sıradaki küçük adımda ekleyeceğiz.</Typography.Paragraph>
     </Card>
   );
+}
+
+function SchoolModulePage({ module }: { module: AppModule }) {
+  switch (module.path) {
+    case "/sporcular": return <AthletesPage />;
+    case "/antrenorler": return <CoachesPage />;
+    case "/gruplar": return <GroupsPage />;
+    case "/antrenmanlar": return <TrainingsPage />;
+    case "/odemeler": return <PaymentsPage />;
+    case "/duyurular": return <AnnouncementsPage />;
+    case "/ayarlar": return <SettingsPage />;
+    default: return <ModulePage module={module} />;
+  }
 }
 
 function RoleGuard({ children, roles }: { children: React.ReactNode; roles: UserRole[] }) {

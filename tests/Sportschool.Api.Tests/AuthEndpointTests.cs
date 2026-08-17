@@ -261,6 +261,36 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task ChangePassword_RejectsWrongCurrentPasswordWithoutChangingPassword()
+    {
+        var user = TestUsers.Create(null, $"owner-wrong-password-{Guid.NewGuid():N}@example.com", "Owner Wrong Password", "old-password", UserRole.PlatformOwner);
+
+        await _factory.SeedAsync(db =>
+        {
+            db.Users.Add(user);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateAuthenticatedClient(user, UserRole.PlatformOwner);
+        using var response = await client.PostAsJsonAsync("/api/auth/change-password", new
+        {
+            currentPassword = "wrong-password",
+            newPassword = "new-password"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var passwordHash = await _factory.QueryAsync(db => db.Users
+            .Where(x => x.Id == user.Id)
+            .Select(x => x.PasswordHash)
+            .SingleAsync());
+
+        var passwordHasher = new PasswordHasher();
+        Assert.True(passwordHasher.Verify("old-password", passwordHash));
+        Assert.False(passwordHasher.Verify("new-password", passwordHash));
+    }
+
+    [Fact]
     public async Task RefreshRejectsActiveTokenForInactiveSchool()
     {
         var schoolId = Guid.NewGuid();

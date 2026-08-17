@@ -69,6 +69,15 @@ body {
   margin-top: 0;
 }
 
+.settings-card {
+  max-width: 640px;
+}
+
+.settings-form {
+  margin-top: 24px;
+  max-width: 420px;
+}
+
 .admin-table {
   margin-top: 32px;
 }
