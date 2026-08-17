@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, LockOutlined, PlusOutlined, TeamOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Drawer, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
+import { Alert, Button, Drawer, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
 import { useState } from "react";
 import {
   createSchool,
@@ -35,6 +35,7 @@ export function SchoolsPage() {
     queryKey: ["platform", "schools", selectedSchool?.id, "admins"],
     queryFn: () => listSchoolAdmins(selectedSchool!.id)
   });
+  const showRequestError = () => message.error("İşlem tamamlanamadı. Lütfen tekrar deneyin.");
 
   const invalidateSchools = () => queryClient.invalidateQueries({ queryKey: ["platform", "schools"] });
   const invalidateAdmins = () => queryClient.invalidateQueries({ queryKey: ["platform", "schools", selectedSchool?.id, "admins"] });
@@ -49,7 +50,8 @@ export function SchoolsPage() {
       setEditingSchool(null);
       schoolForm.resetFields();
       void invalidateSchools();
-    }
+    },
+    onError: showRequestError
   });
 
   const deactivate = useMutation({
@@ -57,7 +59,8 @@ export function SchoolsPage() {
     onSuccess: () => {
       message.success("Okul pasife alındı.");
       void invalidateSchools();
-    }
+    },
+    onError: showRequestError
   });
 
   const addAdmin = useMutation({
@@ -66,7 +69,8 @@ export function SchoolsPage() {
       message.success("Okul yöneticisi eklendi.");
       adminForm.resetFields();
       void invalidateAdmins();
-    }
+    },
+    onError: showRequestError
   });
 
   const changePassword = useMutation({
@@ -75,7 +79,8 @@ export function SchoolsPage() {
       message.success("Şifre güncellendi.");
       setPasswordTarget(null);
       passwordForm.resetFields();
-    }
+    },
+    onError: showRequestError
   });
 
   const removeAdmin = useMutation({
@@ -83,7 +88,8 @@ export function SchoolsPage() {
     onSuccess: () => {
       message.success("Okul yöneticisi kaldırıldı.");
       void invalidateAdmins();
-    }
+    },
+    onError: showRequestError
   });
 
   const schoolColumns = [
@@ -140,6 +146,8 @@ export function SchoolsPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateSchool}>Okul ekle</Button>
       </div>
 
+      {schoolsQuery.isError && <Alert showIcon type="error" message="Okullar yüklenemedi." action={<Button size="small" onClick={() => void schoolsQuery.refetch()}>Tekrar dene</Button>} />}
+
       <Table
         rowKey="id"
         loading={schoolsQuery.isLoading}
@@ -184,6 +192,8 @@ export function SchoolsPage() {
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={addAdmin.isPending}>Yönetici ekle</Button>
         </Form>
+
+        {adminsQuery.isError && <Alert showIcon type="error" message="Okul yöneticileri yüklenemedi." action={<Button size="small" onClick={() => void adminsQuery.refetch()}>Tekrar dene</Button>} />}
 
         <Table
           className="admin-table"

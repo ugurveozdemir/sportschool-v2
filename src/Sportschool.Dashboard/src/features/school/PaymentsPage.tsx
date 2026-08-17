@@ -1,6 +1,6 @@
 import { CheckOutlined, SettingOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography, message } from "antd";
+import { Alert, Button, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography, message } from "antd";
 import { useState } from "react";
 import { ApiError } from "../../app/api/apiClient";
 import { getPaymentSettings, listMonthlyPayments, savePayment, updatePaymentSettings, type MonthlyPayment, type PaymentStatus } from "./paymentsApi";
@@ -21,6 +21,8 @@ export function PaymentsPage() {
   function openSettings() { settingsForm.setFieldsValue({ defaultMonthlyFee: settingsQuery.data?.defaultMonthlyFee ?? undefined, paymentDayOfMonth: settingsQuery.data?.paymentDayOfMonth ?? undefined }); setIsSettingsOpen(true); }
   return <div>
     <div className="page-heading"><div><Typography.Title level={2}>Ödemeler</Typography.Title><Typography.Paragraph type="secondary">Aylık aidatları takip edin ve ödeme kayıtlarını yönetin.</Typography.Paragraph></div><Space><Input type="month" value={month} onChange={(event) => setMonth(event.target.value || currentMonth)} /><Button icon={<SettingOutlined />} onClick={openSettings}>Ayarlar</Button></Space></div>
+    {paymentsQuery.isError && <Alert showIcon type="error" message="Ödemeler yüklenemedi." action={<Button size="small" onClick={() => void paymentsQuery.refetch()}>Tekrar dene</Button>} />}
+    {settingsQuery.isError && <Alert showIcon type="warning" message="Ödeme ayarları yüklenemedi." action={<Button size="small" onClick={() => void settingsQuery.refetch()}>Tekrar dene</Button>} />}
     <Table<MonthlyPayment> rowKey="athleteProfileId" loading={paymentsQuery.isLoading} dataSource={paymentsQuery.data ?? []} pagination={{ pageSize: 12, showSizeChanger: false }} locale={{ emptyText: <Empty description="Bu ay için sporcu bulunmuyor." /> }} columns={[
       { title: "Sporcu", dataIndex: "athleteName", key: "athleteName", render: (name, row) => <><Typography.Text strong>{name}</Typography.Text><br /><Typography.Text type="secondary">{row.parentFullName}</Typography.Text></> },
       { title: "Tutar", dataIndex: "amount", key: "amount", render: formatCurrency }, { title: "Kalan", dataIndex: "balance", key: "balance", render: formatCurrency },

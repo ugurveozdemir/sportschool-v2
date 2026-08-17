@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Empty, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
+import { Alert, Button, Empty, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from "antd";
 import { useState } from "react";
 import { ApiError } from "../../app/api/apiClient";
 import { createAnnouncement, deactivateAnnouncement, listAnnouncements, updateAnnouncement, type Announcement, type AnnouncementInput } from "./announcementsApi";
@@ -41,6 +41,7 @@ export function AnnouncementsPage() {
 
   return <div>
     <div className="page-heading"><div><Typography.Title level={2}>Duyurular</Typography.Title><Typography.Paragraph type="secondary">Veli ve sporculara ulaşacak okul duyurularını yönetin.</Typography.Paragraph></div><Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Duyuru yayınla</Button></div>
+    {announcementsQuery.isError && <Alert showIcon type="error" message="Duyurular yüklenemedi." action={<Button size="small" onClick={() => void announcementsQuery.refetch()}>Tekrar dene</Button>} />}
     <Table<Announcement> rowKey="id" loading={announcementsQuery.isLoading} dataSource={announcementsQuery.data ?? []} pagination={{ pageSize: 10, showSizeChanger: false }} locale={{ emptyText: <Empty description="Henüz duyuru yayınlanmadı." /> }} columns={[
       { title: "Duyuru", key: "announcement", render: (_, announcement) => <><Typography.Text strong>{announcement.title}</Typography.Text><br /><Typography.Text type="secondary" ellipsis={{ tooltip: announcement.content }}>{announcement.content}</Typography.Text></> },
       { title: "Yayınlayan", dataIndex: "createdByName", key: "createdByName", render: (name: string | null) => name ?? "—" },
