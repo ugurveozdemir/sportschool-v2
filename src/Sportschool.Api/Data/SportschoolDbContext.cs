@@ -12,6 +12,7 @@ using Sportschool.Api.Features.Users;
 using Sportschool.Api.Features.Announcements;
 using Sportschool.Api.Features.Matches;
 using Sportschool.Api.Features.Media;
+using Sportschool.Api.Features.Audit;
 
 namespace Sportschool.Api.Data;
 
@@ -58,6 +59,8 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
 
     public DbSet<AthleteVideo> AthleteVideos => Set<AthleteVideo>();
 
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<School>(school =>
@@ -68,6 +71,16 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             school.Property(x => x.NormalizedCode).HasMaxLength(40).IsRequired();
             school.Property(x => x.DefaultMonthlyFee).HasPrecision(12, 2);
             school.HasIndex(x => x.NormalizedCode).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditLog>(auditLog =>
+        {
+            auditLog.HasKey(x => x.Id);
+            auditLog.Property(x => x.Method).HasMaxLength(10).IsRequired();
+            auditLog.Property(x => x.Path).HasMaxLength(500).IsRequired();
+            auditLog.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();
+            auditLog.HasIndex(x => new { x.SchoolId, x.CreatedAt });
+            auditLog.HasIndex(x => new { x.UserId, x.CreatedAt });
         });
 
         modelBuilder.Entity<AppUser>(user =>

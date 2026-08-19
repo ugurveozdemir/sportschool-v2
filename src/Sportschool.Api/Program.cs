@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.FileProviders;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Announcements;
+using Sportschool.Api.Features.Audit;
 using Sportschool.Api.Features.Applications;
 using Sportschool.Api.Features.Attendance;
 using Sportschool.Api.Features.Auth;
@@ -174,6 +175,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 }
 
 app.UseRequestCorrelation();
+app.UseAuditLogging();
 app.UseSafeExceptionResponses();
 app.UseSecurityHeaders();
 
@@ -190,6 +192,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
+app.MapAuditEndpoints();
 app.MapMethods("/favicon.ico", [HttpMethods.Get, HttpMethods.Head], () => Results.Redirect("/favicon.svg"));
 app.MapAuthEndpoints();
 app.MapAnnouncementEndpoints();
