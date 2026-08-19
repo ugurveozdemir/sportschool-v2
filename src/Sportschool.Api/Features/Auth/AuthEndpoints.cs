@@ -10,6 +10,7 @@ namespace Sportschool.Api.Features.Auth;
 
 public static class AuthEndpoints
 {
+    private const string DashboardRefreshCookieName = "sportschool.dashboard.refresh";
     private const int LoginAttemptLimit = 10;
     private const int RefreshAttemptLimit = 10;
     private static readonly TimeSpan LoginAttemptWindow = TimeSpan.FromMinutes(5);
@@ -23,6 +24,9 @@ public static class AuthEndpoints
         group.MapPost("/login", LoginAsync);
         group.MapPost("/refresh", RefreshAsync);
         group.MapPost("/logout", LogoutAsync);
+        group.MapPost("/dashboard/login", DashboardLoginAsync);
+        group.MapPost("/dashboard/refresh", DashboardRefreshAsync);
+        group.MapPost("/dashboard/logout", DashboardLogoutAsync);
         group.MapPost("/change-password", ChangePasswordAsync).RequireAuthorization();
 
         return group;
@@ -51,6 +55,62 @@ public static class AuthEndpoints
         JwtTokenService jwtTokenService,
         RefreshTokenService refreshTokenService,
         KeyedRequestLimiter requestLimiter,
+        CancellationToken cancellationToken)
+    {
+        return await IssueLoginAsync(
+            request,
+            httpContext,
+            db,
+            passwordHasher,
+            jwtTokenService,
+            refreshTokenService,
+            requestLimiter,
+            (user, accessToken, refreshToken, loginRole) =>
+                Results.Ok(AuthResponse.From(user, accessToken, refreshToken.PlainTextToken, loginRole)),
+            cancellationToken);
+    }
+
+    private static async Task<IResult> DashboardLoginAsync(
+        LoginRequest request,
+        HttpContext httpContext,
+        IHostEnvironment environment,
+        SportschoolDbContext db,
+        PasswordHasher passwordHasher,
+        JwtTokenService jwtTokenService,
+        RefreshTokenService refreshTokenService,
+        KeyedRequestLimiter requestLimiter,
+        CancellationToken cancellationToken)
+    {
+        if (request.Mode is not LoginMode.PlatformOwner and not LoginMode.SchoolAdmin)
+        {
+            return Results.BadRequest();
+        }
+
+        return await IssueLoginAsync(
+            request with { DeviceName = "dashboard" },
+            httpContext,
+            db,
+            passwordHasher,
+            jwtTokenService,
+            refreshTokenService,
+            requestLimiter,
+            (user, accessToken, refreshToken, loginRole) =>
+            {
+                SetDashboardRefreshCookie(httpContext, refreshToken, environment);
+                return Results.Ok(DashboardAuthResponse.From(user, accessToken, loginRole));
+            },
+            cancellationToken);
+    }
+
+    private static async Task<IResult> IssueLoginAsync(
+        LoginRequest request,
+        HttpContext httpContext,
+        SportschoolDbContext db,
+        PasswordHasher passwordHasher,
+        JwtTokenService jwtTokenService,
+        RefreshTokenService refreshTokenService,
+        KeyedRequestLimiter requestLimiter,
+        Func<AppUser, IssuedAccessToken, IssuedRefreshToken, UserRole, IResult> createResponse,
         CancellationToken cancellationToken)
     {
         if (!RequestValidation.HasValidEmail(request.Email)
@@ -93,7 +153,7 @@ public static class AuthEndpoints
         db.RefreshTokens.Add(refreshToken.Entity);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(AuthResponse.From(user, accessToken, refreshToken.PlainTextToken, loginRole));
+        return createResponse(user, accessToken, refreshToken, loginRole);
     }
 
     private static async Task<IResult> RefreshAsync(
@@ -105,12 +165,68 @@ public static class AuthEndpoints
         KeyedRequestLimiter requestLimiter,
         CancellationToken cancellationToken)
     {
-        if (!RequestValidation.HasRequiredText(request.RefreshToken, maximumLength: 500))
+        return await RotateRefreshTokenAsync(
+            request.RefreshToken,
+            httpContext,
+            db,
+            jwtTokenService,
+            refreshTokenService,
+            requestLimiter,
+            (user, accessToken, refreshToken, loginRole) =>
+                Results.Ok(AuthResponse.From(user, accessToken, refreshToken.PlainTextToken, loginRole)),
+            onRejected: null,
+            cancellationToken);
+    }
+
+    private static async Task<IResult> DashboardRefreshAsync(
+        HttpContext httpContext,
+        IHostEnvironment environment,
+        SportschoolDbContext db,
+        JwtTokenService jwtTokenService,
+        RefreshTokenService refreshTokenService,
+        KeyedRequestLimiter requestLimiter,
+        CancellationToken cancellationToken)
+    {
+        var refreshToken = httpContext.Request.Cookies[DashboardRefreshCookieName];
+        if (!RequestValidation.HasRequiredText(refreshToken, maximumLength: 500))
+        {
+            DeleteDashboardRefreshCookie(httpContext, environment);
+            return Results.Unauthorized();
+        }
+
+        return await RotateRefreshTokenAsync(
+            refreshToken!,
+            httpContext,
+            db,
+            jwtTokenService,
+            refreshTokenService,
+            requestLimiter,
+            (user, accessToken, issuedRefreshToken, loginRole) =>
+            {
+                SetDashboardRefreshCookie(httpContext, issuedRefreshToken, environment);
+                return Results.Ok(DashboardAuthResponse.From(user, accessToken, loginRole));
+            },
+            () => DeleteDashboardRefreshCookie(httpContext, environment),
+            cancellationToken);
+    }
+
+    private static async Task<IResult> RotateRefreshTokenAsync(
+        string refreshTokenValue,
+        HttpContext httpContext,
+        SportschoolDbContext db,
+        JwtTokenService jwtTokenService,
+        RefreshTokenService refreshTokenService,
+        KeyedRequestLimiter requestLimiter,
+        Func<AppUser, IssuedAccessToken, IssuedRefreshToken, UserRole, IResult> createResponse,
+        Action? onRejected,
+        CancellationToken cancellationToken)
+    {
+        if (!RequestValidation.HasRequiredText(refreshTokenValue, maximumLength: 500))
         {
             return Results.BadRequest();
         }
 
-        var tokenHash = refreshTokenService.HashToken(request.RefreshToken);
+        var tokenHash = refreshTokenService.HashToken(refreshTokenValue);
         var rateLimitKey = $"refresh:{tokenHash}";
         if (!requestLimiter.TryAcquire(rateLimitKey, RefreshAttemptLimit, RefreshAttemptWindow, out var retryAfterSeconds))
         {
@@ -132,11 +248,13 @@ public static class AuthEndpoints
             || !storedToken.User.IsActive
             || (storedToken.User.SchoolId is not null && storedToken.User.School is not { IsActive: true }))
         {
+            onRejected?.Invoke();
             return Results.Unauthorized();
         }
 
         if (!storedToken.User.Roles.Any(x => x.Role == storedToken.Role))
         {
+            onRejected?.Invoke();
             return Results.Unauthorized();
         }
 
@@ -148,7 +266,7 @@ public static class AuthEndpoints
         db.RefreshTokens.Add(refreshToken.Entity);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(AuthResponse.From(storedToken.User, accessToken, refreshToken.PlainTextToken, storedToken.Role));
+        return createResponse(storedToken.User, accessToken, refreshToken, storedToken.Role);
     }
 
     private static async Task<IResult> LogoutAsync(
@@ -157,12 +275,38 @@ public static class AuthEndpoints
         RefreshTokenService refreshTokenService,
         CancellationToken cancellationToken)
     {
-        if (!RequestValidation.HasRequiredText(request.RefreshToken, maximumLength: 500))
+        return await RevokeRefreshTokenAsync(request.RefreshToken, db, refreshTokenService, cancellationToken);
+    }
+
+    private static async Task<IResult> DashboardLogoutAsync(
+        HttpContext httpContext,
+        IHostEnvironment environment,
+        SportschoolDbContext db,
+        RefreshTokenService refreshTokenService,
+        CancellationToken cancellationToken)
+    {
+        var refreshToken = httpContext.Request.Cookies[DashboardRefreshCookieName];
+        DeleteDashboardRefreshCookie(httpContext, environment);
+        if (!RequestValidation.HasRequiredText(refreshToken, maximumLength: 500))
+        {
+            return Results.NoContent();
+        }
+
+        return await RevokeRefreshTokenAsync(refreshToken!, db, refreshTokenService, cancellationToken);
+    }
+
+    private static async Task<IResult> RevokeRefreshTokenAsync(
+        string refreshTokenValue,
+        SportschoolDbContext db,
+        RefreshTokenService refreshTokenService,
+        CancellationToken cancellationToken)
+    {
+        if (!RequestValidation.HasRequiredText(refreshTokenValue, maximumLength: 500))
         {
             return Results.BadRequest();
         }
 
-        var tokenHash = refreshTokenService.HashToken(request.RefreshToken);
+        var tokenHash = refreshTokenService.HashToken(refreshTokenValue);
         var storedToken = await db.RefreshTokens
             .FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
 
@@ -173,6 +317,37 @@ public static class AuthEndpoints
         }
 
         return Results.NoContent();
+    }
+
+    private static void SetDashboardRefreshCookie(
+        HttpContext httpContext,
+        IssuedRefreshToken refreshToken,
+        IHostEnvironment environment)
+    {
+        httpContext.Response.Cookies.Append(
+            DashboardRefreshCookieName,
+            refreshToken.PlainTextToken,
+            DashboardCookieOptions(environment, refreshToken.Entity.ExpiresAt));
+    }
+
+    private static void DeleteDashboardRefreshCookie(HttpContext httpContext, IHostEnvironment environment)
+    {
+        httpContext.Response.Cookies.Delete(
+            DashboardRefreshCookieName,
+            DashboardCookieOptions(environment, expiresAt: null));
+    }
+
+    private static CookieOptions DashboardCookieOptions(IHostEnvironment environment, DateTimeOffset? expiresAt)
+    {
+        return new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !environment.IsDevelopment() && !environment.IsEnvironment("Testing"),
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/auth/dashboard",
+            IsEssential = true,
+            Expires = expiresAt
+        };
     }
 
     private static async Task<IResult> ChangePasswordAsync(

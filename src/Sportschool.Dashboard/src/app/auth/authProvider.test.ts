@@ -7,7 +7,6 @@ import { getStoredSession, storeSession, type AuthSession } from "./sessionStore
 const schoolAdminSession: AuthSession = {
   accessToken: "access-token",
   accessTokenExpiresAt: "2030-01-01T00:00:00Z",
-  refreshToken: "refresh-token",
   userId: "user-id",
   schoolId: "school-id",
   email: "admin@example.com",
@@ -57,6 +56,21 @@ describe("authProvider", () => {
 
     expect(result).toMatchObject({ success: true, redirectTo: "/login" });
     expect(getStoredSession()).toBeNull();
+  });
+
+  it("clears the local session before the server logout completes", async () => {
+    storeSession(schoolAdminSession);
+    let completeLogout!: (response: Response) => void;
+    const serverLogout = new Promise<Response>((resolve) => {
+      completeLogout = resolve;
+    });
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(serverLogout));
+
+    const logout = authProvider.logout({});
+
+    expect(getStoredSession()).toBeNull();
+    completeLogout(new Response(null, { status: 204 }));
+    await expect(logout).resolves.toMatchObject({ success: true, redirectTo: "/login" });
   });
 });
 

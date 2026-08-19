@@ -213,6 +213,51 @@ public sealed class AuthEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task DashboardAuth_StoresRefreshTokenOnlyInHttpOnlyCookie_AndRevokesItOnLogout()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var owner = TestUsers.Create(
+            null,
+            $"dashboard-cookie-{suffix}@example.com",
+            "Dashboard Owner",
+            "dashboard-password",
+            UserRole.PlatformOwner);
+        await _factory.SeedAsync(db =>
+        {
+            db.Users.Add(owner);
+            return Task.CompletedTask;
+        });
+
+        using var client = _factory.CreateClient();
+        using var loginResponse = await client.PostAsJsonAsync("/api/auth/dashboard/login", new
+        {
+            email = owner.Email,
+            password = "dashboard-password",
+            mode = LoginMode.PlatformOwner
+        });
+
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        var loginJson = await loginResponse.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("refreshToken", loginJson, StringComparison.OrdinalIgnoreCase);
+        var loginCookie = Assert.Single(loginResponse.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("sportschool.dashboard.refresh=", loginCookie);
+        Assert.Contains("httponly", loginCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=strict", loginCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("path=/api/auth/dashboard", loginCookie, StringComparison.OrdinalIgnoreCase);
+
+        using var refreshResponse = await client.PostAsync("/api/auth/dashboard/refresh", null);
+        Assert.Equal(HttpStatusCode.OK, refreshResponse.StatusCode);
+        var refreshJson = await refreshResponse.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("refreshToken", refreshJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("sportschool.dashboard.refresh=", Assert.Single(refreshResponse.Headers.GetValues("Set-Cookie")));
+
+        using var logoutResponse = await client.PostAsync("/api/auth/dashboard/logout", null);
+        Assert.Equal(HttpStatusCode.NoContent, logoutResponse.StatusCode);
+        var activeTokenCount = await _factory.QueryAsync(db => db.RefreshTokens.CountAsync(x => x.UserId == owner.Id && x.RevokedAt == null));
+        Assert.Equal(0, activeTokenCount);
+    }
+
+    [Fact]
     public async Task ChangePassword_UpdatesPasswordAndRevokesActiveRefreshTokens()
     {
         var user = TestUsers.Create(null, "owner-auth@example.com", "Owner Auth", "old-password", UserRole.PlatformOwner);

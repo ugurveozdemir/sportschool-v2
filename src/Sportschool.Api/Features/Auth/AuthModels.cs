@@ -56,6 +56,33 @@ public sealed record AuthResponse(
     }
 }
 
+public sealed record DashboardAuthResponse(
+    string AccessToken,
+    DateTimeOffset AccessTokenExpiresAt,
+    Guid UserId,
+    Guid? SchoolId,
+    string Email,
+    string FullName,
+    UserRole LoginRole,
+    UserRole[] Roles)
+{
+    public static DashboardAuthResponse From(
+        AppUser user,
+        IssuedAccessToken accessToken,
+        UserRole loginRole)
+    {
+        return new DashboardAuthResponse(
+            accessToken.Token,
+            accessToken.ExpiresAt,
+            user.Id,
+            user.SchoolId,
+            user.Email,
+            user.FullName,
+            loginRole,
+            user.Roles.Select(x => x.Role).Order().ToArray());
+    }
+}
+
 public static class LoginModeExtensions
 {
     public static UserRole ToUserRole(this LoginMode mode)

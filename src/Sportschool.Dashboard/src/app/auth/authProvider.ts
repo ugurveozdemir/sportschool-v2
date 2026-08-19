@@ -1,5 +1,5 @@
 import type { AuthProvider } from "@refinedev/core";
-import { ApiError, apiRequest } from "../api/apiClient";
+import { ApiError, apiRequest, revokeDashboardSession } from "../api/apiClient";
 import { clearStoredSession, getStoredSession, storeSession, type AuthSession } from "./sessionStore";
 
 type LoginInput = {
@@ -23,19 +23,12 @@ export const authProvider: AuthProvider = {
   },
 
   async logout() {
-    const session = getStoredSession();
-    if (session?.refreshToken) {
-      try {
-        await apiRequest<void>("/api/auth/logout", {
-          method: "POST",
-          auth: false,
-          body: { refreshToken: session.refreshToken }
-        });
-      } catch {
-        // Local session is cleared even if the server is unavailable.
-      }
-    }
     clearStoredSession();
+    try {
+      await revokeDashboardSession();
+    } catch {
+      // Local session is cleared even if the server is unavailable.
+    }
     return { success: true, redirectTo: "/login" };
   },
 
@@ -75,9 +68,9 @@ async function loginDashboard(email: string, password: string): Promise<AuthSess
 }
 
 function loginWithMode(email: string, password: string, mode: "PlatformOwner" | "SchoolAdmin"): Promise<AuthSession> {
-  return apiRequest<AuthSession>("/api/auth/login", {
+  return apiRequest<AuthSession>("/api/auth/dashboard/login", {
     method: "POST",
     auth: false,
-    body: { email, password, mode, deviceName: "dashboard" }
+    body: { email, password, mode }
   });
 }
