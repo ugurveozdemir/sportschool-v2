@@ -179,7 +179,9 @@ app.UseAuditLogging();
 app.UseSafeExceptionResponses();
 app.UseSecurityHeaders();
 
-var dashboardRoot = Path.Combine(app.Environment.WebRootPath, "dashboard");
+var webRootPath = app.Environment.WebRootPath
+    ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+var dashboardRoot = Path.Combine(webRootPath, "dashboard");
 if (Directory.Exists(dashboardRoot))
 {
     app.UseStaticFiles(new StaticFileOptions
