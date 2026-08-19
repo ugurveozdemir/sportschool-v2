@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Features.Users;
 using Sportschool.Api.Tests.Infrastructure;
 
 namespace Sportschool.Api.Tests;
@@ -159,6 +161,37 @@ public sealed class AuthorizationTests : IClassFixture<TestAppFactory>
             currentPassword = "old-password",
             newPassword = "new-password"
         });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AccessToken_IsRejectedAfterItsRoleIsRemoved()
+    {
+        await using var factory = new TestAppFactory();
+        var owner = TestUsers.Create(
+            null,
+            $"former-owner-{Guid.NewGuid():N}@example.com",
+            "Former Owner",
+            "password",
+            UserRole.PlatformOwner);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Users.Add(owner);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(owner, UserRole.PlatformOwner);
+
+        await factory.SeedAsync(async db =>
+        {
+            var role = await db.UserRoles.SingleAsync(x =>
+                x.UserId == owner.Id && x.Role == UserRole.PlatformOwner);
+            db.UserRoles.Remove(role);
+        });
+
+        using var response = await client.GetAsync("/api/platform/schools");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

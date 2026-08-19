@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -22,6 +23,7 @@ using Sportschool.Api.Features.Platform;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Trainings;
+using Sportschool.Api.Features.Users;
 using Sportschool.Api.Infrastructure;
 using Sportschool.Api.Security;
 
@@ -106,24 +108,52 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 var schoolId = CurrentUser.GetSchoolId(context.Principal!);
                 var userId = CurrentUser.GetUserId(context.Principal!);
-                if (userId is null)
+                var loginRoleValue = context.Principal!.FindFirst("login_role")?.Value;
+                var roleValues = context.Principal.FindAll(ClaimTypes.Role)
+                    .Select(claim => claim.Value)
+                    .ToArray();
+                if (userId is null
+                    || !Enum.TryParse<UserRole>(loginRoleValue, out var loginRole)
+                    || !Enum.IsDefined(loginRole)
+                    || roleValues.Length == 0)
                 {
-                    context.Fail("User identifier is missing.");
+                    context.Fail("Required session claims are missing or invalid.");
+                    return;
+                }
+
+                var claimedRoles = new HashSet<UserRole>();
+                foreach (var roleValue in roleValues)
+                {
+                    if (!Enum.TryParse<UserRole>(roleValue, out var role) || !Enum.IsDefined(role))
+                    {
+                        context.Fail("Required session claims are missing or invalid.");
+                        return;
+                    }
+
+                    claimedRoles.Add(role);
+                }
+
+                if (!claimedRoles.Contains(loginRole))
+                {
+                    context.Fail("Login role is not included in the session roles.");
                     return;
                 }
 
                 var db = context.HttpContext.RequestServices.GetRequiredService<SportschoolDbContext>();
-                var sessionIsActive = await db.Users.AnyAsync(
-                    user => user.Id == userId.Value
+                var activeClaimedRoleCount = await db.Users
+                    .Where(user => user.Id == userId.Value
                         && user.IsActive
                         && (schoolId == null
                             ? user.SchoolId == null
-                            : user.SchoolId == schoolId.Value && user.School != null && user.School.IsActive),
-                    context.HttpContext.RequestAborted);
+                            : user.SchoolId == schoolId.Value && user.School != null && user.School.IsActive))
+                    .SelectMany(user => user.Roles)
+                    .CountAsync(
+                        roleAssignment => claimedRoles.Contains(roleAssignment.Role),
+                        context.HttpContext.RequestAborted);
 
-                if (!sessionIsActive)
+                if (activeClaimedRoleCount != claimedRoles.Count)
                 {
-                    context.Fail("User or school is inactive.");
+                    context.Fail("User, school, or session roles are no longer active.");
                 }
             }
         };
