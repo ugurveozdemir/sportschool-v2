@@ -170,9 +170,12 @@ public sealed class PlatformListEndpointTests
         });
 
         using var client = factory.CreateAuthenticatedClient(platformOwner, UserRole.PlatformOwner);
+        using var adminClient = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
 
         using var response = await client.DeleteAsync($"/api/platform/schools/{schoolId}/admins/{admin.Id}");
+        using var accessTokenResponse = await adminClient.GetAsync("/api/school/athletes");
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, accessTokenResponse.StatusCode);
 
         var admins = await client.GetFromJsonAsync<List<PlatformSchoolAdminResponse>>($"/api/platform/schools/{schoolId}/admins");
         Assert.Empty(admins!);
