@@ -162,7 +162,7 @@ if (provisionPlatformOwner || resetPlatformOwnerPassword)
     else
     {
         var user = await maintenance.ResetPasswordAsync(email, password);
-        app.Logger.LogInformation("PlatformOwner password was reset and active sessions were revoked for {Email}.", user.Email);
+        app.Logger.LogInformation("PlatformOwner password was reset and active refresh tokens were revoked for {Email}.", user.Email);
     }
 
     return;
