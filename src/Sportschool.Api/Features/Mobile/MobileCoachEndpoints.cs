@@ -703,8 +703,8 @@ public static class MobileCoachEndpoints
     private static bool IsValidReportRequest(SaveMobileCoachAthleteReportRequest request)
     {
         return request.AthleteProfileId != Guid.Empty
-            && !string.IsNullOrWhiteSpace(request.Summary)
-            && !string.IsNullOrWhiteSpace(request.ImprovementAreas)
+            && RequestValidation.HasRequiredText(request.Summary, maximumLength: 2000)
+            && RequestValidation.HasRequiredText(request.ImprovementAreas, maximumLength: 2000)
             && ReportScoreValidator.IsValid(request.SpeedScore)
             && ReportScoreValidator.IsValid(request.StrengthScore)
             && ReportScoreValidator.IsValid(request.DribblingScore)

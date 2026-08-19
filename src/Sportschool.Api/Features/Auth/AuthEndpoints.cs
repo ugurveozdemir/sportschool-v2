@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
@@ -35,6 +36,7 @@ public static class AuthEndpoints
             .AsNoTracking()
             .Where(x => x.IsActive)
             .OrderBy(x => x.Name)
+            .Take(RequestValidation.MaxUnpagedItems)
             .Select(x => new LoginSchoolResponse(x.Name, x.Code))
             .ToListAsync(cancellationToken);
 
@@ -51,7 +53,10 @@ public static class AuthEndpoints
         KeyedRequestLimiter requestLimiter,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        if (!RequestValidation.HasValidEmail(request.Email)
+            || !RequestValidation.HasValidPassword(request.Password)
+            || !RequestValidation.HasOptionalText(request.DeviceName, maximumLength: 120)
+            || !Enum.IsDefined(request.Mode))
         {
             return Results.BadRequest();
         }
@@ -100,7 +105,7 @@ public static class AuthEndpoints
         KeyedRequestLimiter requestLimiter,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        if (!RequestValidation.HasRequiredText(request.RefreshToken, maximumLength: 500))
         {
             return Results.BadRequest();
         }
@@ -152,7 +157,7 @@ public static class AuthEndpoints
         RefreshTokenService refreshTokenService,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        if (!RequestValidation.HasRequiredText(request.RefreshToken, maximumLength: 500))
         {
             return Results.BadRequest();
         }
@@ -177,9 +182,8 @@ public static class AuthEndpoints
         PasswordHasher passwordHasher,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.CurrentPassword)
-            || string.IsNullOrWhiteSpace(request.NewPassword)
-            || request.NewPassword.Length < 8)
+        if (!RequestValidation.HasValidPassword(request.CurrentPassword)
+            || !RequestValidation.HasValidPassword(request.NewPassword))
         {
             return Results.BadRequest();
         }

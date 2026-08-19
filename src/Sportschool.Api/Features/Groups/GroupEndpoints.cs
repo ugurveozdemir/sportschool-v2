@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Trainings;
@@ -264,7 +265,8 @@ public static class GroupEndpoints
             return Results.Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(request.Name))
+        if (!RequestValidation.HasRequiredText(request.Name, maximumLength: 120)
+            || !RequestValidation.HasOptionalText(request.Description, maximumLength: 500))
         {
             return Results.BadRequest();
         }
@@ -295,7 +297,8 @@ public static class GroupEndpoints
             return Results.Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(request.Name))
+        if (!RequestValidation.HasRequiredText(request.Name, maximumLength: 120)
+            || !RequestValidation.HasOptionalText(request.Description, maximumLength: 500))
         {
             return Results.BadRequest();
         }

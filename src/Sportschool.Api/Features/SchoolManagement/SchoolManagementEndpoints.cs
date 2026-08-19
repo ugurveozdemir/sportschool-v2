@@ -13,8 +13,6 @@ namespace Sportschool.Api.Features.SchoolManagement;
 
 public static class SchoolManagementEndpoints
 {
-    private const int MinimumPasswordLength = 8;
-
     public static RouteGroupBuilder MapSchoolManagementEndpoints(this IEndpointRouteBuilder app)
     {
         var adminGroup = app.MapGroup("/api/school")
@@ -49,6 +47,11 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
+        if (!RequestValidation.HasOptionalText(search, maximumLength: 160))
+        {
+            return Results.BadRequest();
+        }
+
         var query = db.Users
             .AsNoTracking()
             .Include(x => x.Roles)
@@ -64,6 +67,7 @@ public static class SchoolManagementEndpoints
 
         var users = await query
             .OrderBy(x => x.FullName)
+            .Take(RequestValidation.MaxUnpagedItems)
             .ToListAsync(cancellationToken);
 
         return Results.Ok(users.Select(SchoolUserResponse.From));
@@ -83,7 +87,8 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
-        if (!RequestValidation.HasValidPagination(page, pageSize))
+        if (!RequestValidation.HasValidPagination(page, pageSize)
+            || !RequestValidation.HasOptionalText(search, maximumLength: 160))
         {
             return Results.BadRequest();
         }
@@ -320,7 +325,8 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
-        if (!RequestValidation.HasValidPagination(page, pageSize))
+        if (!RequestValidation.HasValidPagination(page, pageSize)
+            || !RequestValidation.HasOptionalText(search, maximumLength: 160))
         {
             return Results.BadRequest();
         }
@@ -415,7 +421,8 @@ public static class SchoolManagementEndpoints
         TemporaryPasswordGenerator passwordGenerator,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.FullName))
+        if (!RequestValidation.HasValidEmail(request.Email)
+            || !RequestValidation.HasRequiredText(request.FullName, maximumLength: 160))
         {
             return Results.BadRequest();
         }
@@ -553,15 +560,16 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(request.FirstName)
-            || string.IsNullOrWhiteSpace(request.LastName)
-            || string.IsNullOrWhiteSpace(request.AthleteEmail)
-            || string.IsNullOrWhiteSpace(request.AthletePassword)
-            || request.AthletePassword.Length < MinimumPasswordLength
-            || string.IsNullOrWhiteSpace(request.ParentFullName)
-            || string.IsNullOrWhiteSpace(request.ParentPhone)
-            || string.IsNullOrWhiteSpace(request.ParentEmail)
-            || request.BirthDate > DateOnly.FromDateTime(DateTime.UtcNow))
+        if (!RequestValidation.HasRequiredText(request.FirstName, maximumLength: 80)
+            || !RequestValidation.HasRequiredText(request.LastName, maximumLength: 80)
+            || !RequestValidation.HasRequiredText($"{request.FirstName.Trim()} {request.LastName.Trim()}", maximumLength: 160)
+            || !RequestValidation.HasValidEmail(request.AthleteEmail)
+            || !RequestValidation.HasValidPassword(request.AthletePassword)
+            || !RequestValidation.HasRequiredText(request.ParentFullName, maximumLength: 160)
+            || !RequestValidation.HasRequiredText(request.ParentPhone, maximumLength: 40)
+            || !RequestValidation.HasValidEmail(request.ParentEmail)
+            || !RequestValidation.HasValidBirthDate(request.BirthDate)
+            || !Enum.IsDefined(request.PreferredFoot))
         {
             return Results.BadRequest();
         }
@@ -614,8 +622,7 @@ public static class SchoolManagementEndpoints
 
         if (parent is null)
         {
-            if (string.IsNullOrWhiteSpace(request.ParentPassword)
-                || request.ParentPassword.Length < MinimumPasswordLength)
+            if (!RequestValidation.HasValidPassword(request.ParentPassword))
             {
                 return Results.BadRequest();
             }
@@ -626,7 +633,7 @@ public static class SchoolManagementEndpoints
                 Email = request.ParentEmail.Trim(),
                 NormalizedEmail = normalizedParentEmail,
                 FullName = request.ParentFullName.Trim(),
-                PasswordHash = passwordHasher.Hash(request.ParentPassword)
+                PasswordHash = passwordHasher.Hash(request.ParentPassword!)
             };
             parent.Roles.Add(new UserRoleAssignment { User = parent, Role = UserRole.Parent });
             db.Users.Add(parent);

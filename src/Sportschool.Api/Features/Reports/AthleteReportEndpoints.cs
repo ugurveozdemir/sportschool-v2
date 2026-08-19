@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
@@ -199,8 +200,8 @@ public static class AthleteReportEndpoints
     private static bool IsValidRequest(SaveAthleteReportRequest request)
     {
         return request.AthleteProfileId != Guid.Empty
-            && !string.IsNullOrWhiteSpace(request.Summary)
-            && !string.IsNullOrWhiteSpace(request.ImprovementAreas)
+            && RequestValidation.HasRequiredText(request.Summary, maximumLength: 2000)
+            && RequestValidation.HasRequiredText(request.ImprovementAreas, maximumLength: 2000)
             && ReportScoreValidator.IsValid(request.SpeedScore)
             && ReportScoreValidator.IsValid(request.StrengthScore)
             && ReportScoreValidator.IsValid(request.DribblingScore)

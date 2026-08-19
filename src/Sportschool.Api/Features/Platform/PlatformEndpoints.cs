@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Schools;
 using Sportschool.Api.Features.Users;
@@ -8,8 +9,6 @@ namespace Sportschool.Api.Features.Platform;
 
 public static class PlatformEndpoints
 {
-    private const int MinimumPasswordLength = 8;
-
     public static RouteGroupBuilder MapPlatformEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/platform")
@@ -33,6 +32,11 @@ public static class PlatformEndpoints
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
+        if (!RequestValidation.HasOptionalText(search, maximumLength: 160))
+        {
+            return Results.BadRequest();
+        }
+
         var query = db.Schools.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -45,6 +49,7 @@ public static class PlatformEndpoints
 
         var schools = await query
             .OrderBy(x => x.Name)
+            .Take(RequestValidation.MaxUnpagedItems)
             .ToListAsync(cancellationToken);
 
         return Results.Ok(schools.Select(SchoolResponse.From));
@@ -55,7 +60,8 @@ public static class PlatformEndpoints
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Code))
+        if (!RequestValidation.HasRequiredText(request.Name, maximumLength: 160)
+            || !RequestValidation.HasRequiredText(request.Code, maximumLength: 40))
         {
             return Results.BadRequest();
         }
@@ -86,7 +92,7 @@ public static class PlatformEndpoints
         SportschoolDbContext db,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        if (!RequestValidation.HasRequiredText(request.Name, maximumLength: 160))
         {
             return Results.BadRequest();
         }
@@ -156,10 +162,9 @@ public static class PlatformEndpoints
         PasswordHasher passwordHasher,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email)
-            || string.IsNullOrWhiteSpace(request.FullName)
-            || string.IsNullOrWhiteSpace(request.Password)
-            || request.Password.Length < MinimumPasswordLength)
+        if (!RequestValidation.HasValidEmail(request.Email)
+            || !RequestValidation.HasRequiredText(request.FullName, maximumLength: 160)
+            || !RequestValidation.HasValidPassword(request.Password))
         {
             return Results.BadRequest();
         }
@@ -208,7 +213,7 @@ public static class PlatformEndpoints
         PasswordHasher passwordHasher,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < MinimumPasswordLength)
+        if (!RequestValidation.HasValidPassword(request.Password))
         {
             return Results.BadRequest();
         }
@@ -258,6 +263,7 @@ public static class PlatformEndpoints
                 && x.IsActive
                 && x.Roles.Any(role => role.Role == UserRole.SchoolAdmin))
             .OrderBy(x => x.FullName)
+            .Take(RequestValidation.MaxUnpagedItems)
             .ToListAsync(cancellationToken);
 
         return Results.Ok(admins.Select(PlatformSchoolAdminResponse.From));

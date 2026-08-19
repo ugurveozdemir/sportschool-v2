@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Users;
@@ -35,20 +36,27 @@ public static class AthleteApplicationEndpoints
         KeyedRequestLimiter requestLimiter,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.SchoolCode)
-            || string.IsNullOrWhiteSpace(request.AthleteFirstName)
-            || string.IsNullOrWhiteSpace(request.AthleteLastName)
-            || string.IsNullOrWhiteSpace(request.AthleteEmail)
-            || string.IsNullOrWhiteSpace(request.Password)
-            || string.IsNullOrWhiteSpace(request.ParentFullName)
-            || string.IsNullOrWhiteSpace(request.ParentPhone)
-            || string.IsNullOrWhiteSpace(request.ParentEmail))
+        if (!RequestValidation.HasRequiredText(request.SchoolCode, maximumLength: 40)
+            || !RequestValidation.HasRequiredText(request.AthleteFirstName, maximumLength: 80)
+            || !RequestValidation.HasRequiredText(request.AthleteLastName, maximumLength: 80)
+            || !RequestValidation.HasValidEmail(request.AthleteEmail)
+            || !RequestValidation.HasValidPassword(request.Password)
+            || !RequestValidation.HasRequiredText(request.ParentFullName, maximumLength: 160)
+            || !RequestValidation.HasRequiredText(request.ParentPhone, maximumLength: 40)
+            || !RequestValidation.HasValidEmail(request.ParentEmail)
+            || !RequestValidation.HasValidBirthDate(request.AthleteBirthDate))
         {
             return Results.BadRequest();
         }
 
         var normalizedSchoolCode = TextNormalizer.NormalizeSchoolCode(request.SchoolCode);
         var normalizedEmail = TextNormalizer.NormalizeEmail(request.AthleteEmail);
+        var normalizedParentEmail = TextNormalizer.NormalizeEmail(request.ParentEmail);
+        if (normalizedEmail == normalizedParentEmail)
+        {
+            return Results.BadRequest();
+        }
+
         var rateLimitKey = $"athlete-application:{normalizedSchoolCode}:{normalizedEmail}";
         if (!requestLimiter.TryAcquire(rateLimitKey, ApplicationAttemptLimit, ApplicationAttemptWindow, out var retryAfterSeconds))
         {
@@ -87,8 +95,6 @@ public static class AthleteApplicationEndpoints
             return Results.Conflict();
         }
 
-        var normalizedParentEmail = TextNormalizer.NormalizeEmail(request.ParentEmail);
-
         var application = new AthleteApplication
         {
             SchoolId = school.Id,
@@ -124,6 +130,7 @@ public static class AthleteApplicationEndpoints
         var applications = await db.AthleteApplications
             .Where(x => x.SchoolId == schoolId.Value)
             .OrderByDescending(x => x.CreatedAt)
+            .Take(RequestValidation.MaxUnpagedItems)
             .Select(x => AthleteApplicationResponse.From(x))
             .ToListAsync(cancellationToken);
 

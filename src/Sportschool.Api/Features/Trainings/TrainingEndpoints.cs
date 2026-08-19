@@ -158,8 +158,7 @@ public static class TrainingEndpoints
             return Results.Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(request.Title)
-            || request.EndsAt <= request.StartsAt
+        if (!HasValidTrainingDetails(request.Title, request.StartsAt, request.EndsAt, request.Location, request.Notes)
             || !Enum.IsDefined(request.Recurrence))
         {
             return Results.BadRequest();
@@ -307,8 +306,7 @@ public static class TrainingEndpoints
             return Results.Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(request.Title)
-            || request.EndsAt <= request.StartsAt)
+        if (!HasValidTrainingDetails(request.Title, request.StartsAt, request.EndsAt, request.Location, request.Notes))
         {
             return Results.BadRequest();
         }
@@ -487,6 +485,20 @@ public static class TrainingEndpoints
         }
 
         return session;
+    }
+
+    private static bool HasValidTrainingDetails(
+        string title,
+        DateTimeOffset startsAt,
+        DateTimeOffset endsAt,
+        string? location,
+        string? notes)
+    {
+        return RequestValidation.HasRequiredText(title, maximumLength: 160)
+            && RequestValidation.HasOptionalText(location, maximumLength: 160)
+            && RequestValidation.HasOptionalText(notes, maximumLength: 1000)
+            && endsAt > startsAt
+            && endsAt - startsAt <= TimeSpan.FromHours(24);
     }
 }
 

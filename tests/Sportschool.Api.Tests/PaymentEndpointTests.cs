@@ -124,6 +124,21 @@ public sealed class PaymentEndpointTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(1200.001)]
+    [InlineData(10000000000)]
+    public async Task PaymentSettings_RejectsInvalidMoneyAmount(decimal amount)
+    {
+        await SeedSchoolWithAthletesAsync();
+        using var client = _factory.CreateAuthenticatedClient(_coach, UserRole.Coach);
+
+        using var response = await client.PutAsJsonAsync(
+            "/api/school/payment-settings",
+            new SavePaymentSettingsRequest(amount, 15));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task MonthlyList_FillsAmountFromFee_WithAthleteOverride()
     {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
@@ -22,9 +23,9 @@ public static class BootstrapEndpoints
         PasswordHasher passwordHasher,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email)
-            || string.IsNullOrWhiteSpace(request.FullName)
-            || string.IsNullOrWhiteSpace(request.Password))
+        if (!RequestValidation.HasValidEmail(request.Email)
+            || !RequestValidation.HasRequiredText(request.FullName, maximumLength: 160)
+            || !RequestValidation.HasValidPassword(request.Password))
         {
             return Results.BadRequest();
         }

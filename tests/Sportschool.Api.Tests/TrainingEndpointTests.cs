@@ -20,6 +20,39 @@ public sealed class TrainingEndpointTests
     };
 
     [Fact]
+    public async Task CreateTrainingSession_LongDuration_ReturnsBadRequest()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var coach = TestUsers.Create(schoolId, "coach-long-training@example.com", "Coach", "password", UserRole.Coach);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Tenant School", "train-long"));
+            db.TrainingGroups.Add(new TrainingGroup { Id = groupId, SchoolId = schoolId, Name = "Group A" });
+            db.Users.Add(coach);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
+        var startsAt = DateTimeOffset.UtcNow.AddDays(1);
+        var request = new CreateTrainingRequest(
+            [groupId],
+            "Long Training",
+            startsAt,
+            startsAt.AddHours(25),
+            TrainingRecurrence.None,
+            null,
+            null,
+            null);
+
+        using var response = await client.PostAsJsonAsync("/api/school/trainings", request, JsonOptions);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CreateSingleTrainingSession_WorksCorrectly()
     {
         await using var factory = new TestAppFactory();

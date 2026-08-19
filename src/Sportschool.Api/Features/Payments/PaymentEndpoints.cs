@@ -57,7 +57,8 @@ public static class PaymentEndpoints
             return Results.Forbid();
         }
 
-        if (request.DefaultMonthlyFee is < 0 || request.PaymentDayOfMonth is < 1 or > 28)
+        if (request.DefaultMonthlyFee is { } defaultFee && !RequestValidation.HasValidMoneyAmount(defaultFee)
+            || request.PaymentDayOfMonth is < 1 or > 28)
         {
             return Results.BadRequest();
         }
@@ -88,7 +89,7 @@ public static class PaymentEndpoints
             return Results.Forbid();
         }
 
-        if (request.MonthlyFee is < 0)
+        if (request.MonthlyFee is { } monthlyFee && !RequestValidation.HasValidMoneyAmount(monthlyFee))
         {
             return Results.BadRequest();
         }
@@ -122,7 +123,7 @@ public static class PaymentEndpoints
             return Results.Forbid();
         }
 
-        if (month is < 1 or > 12 || year < 2000)
+        if (month is < 1 or > 12 || year is < 2000 or > 2100)
         {
             return Results.BadRequest();
         }
@@ -215,7 +216,10 @@ public static class PaymentEndpoints
             return Results.Forbid();
         }
 
-        if (request.Amount <= 0 || !Enum.IsDefined(request.Status) || month is < 1 or > 12 || year < 2000)
+        if (!RequestValidation.HasValidMoneyAmount(request.Amount, allowZero: false)
+            || !Enum.IsDefined(request.Status)
+            || month is < 1 or > 12
+            || year is < 2000 or > 2100)
         {
             return Results.BadRequest();
         }
