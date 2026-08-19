@@ -22,20 +22,29 @@ public static class HealthEndpoints
     {
         try
         {
-            return await db.Database.CanConnectAsync(cancellationToken)
-                ? Results.Ok(new HealthResponse("ready"))
-                : ServiceUnavailable();
+            if (!await db.Database.CanConnectAsync(cancellationToken))
+            {
+                return ServiceUnavailable("unavailable");
+            }
+
+            if (db.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL"
+                && (await db.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+            {
+                return ServiceUnavailable("migrations-pending");
+            }
+
+            return Results.Ok(new HealthResponse("ready"));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             loggerFactory.CreateLogger("DatabaseReadiness")
                 .LogWarning(exception, "Database readiness check failed.");
-            return ServiceUnavailable();
+            return ServiceUnavailable("unavailable");
         }
     }
 
-    private static IResult ServiceUnavailable() => Results.Json(
-        new HealthResponse("unavailable"),
+    private static IResult ServiceUnavailable(string status) => Results.Json(
+        new HealthResponse(status),
         statusCode: StatusCodes.Status503ServiceUnavailable);
 }
 

@@ -9,3 +9,13 @@ The first goal is a small, production-oriented ASP.NET Core API with PostgreSQL,
 Development passwords are not stored in source control. To seed local accounts with Docker Compose, copy `.env.example` to `.env`, set the three `DEV_SEED_*_PASSWORD` values, and set `DEV_SEED_ENABLED=true`.
 
 Production must provide `ConnectionStrings__DefaultConnection` and `Jwt__SigningKey` through the deployment environment.
+
+## Production database migrations
+
+Production startup does not change the database schema. After taking a verified backup, run migrations as a one-off deployment command before starting the API:
+
+```bash
+dotnet Sportschool.Api.dll --migrate
+```
+
+The command exits after applying migrations. `/api/health/ready` returns `503` while PostgreSQL has pending migrations.

@@ -23,7 +23,9 @@ using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Trainings;
 using Sportschool.Api.Security;
 
-var builder = WebApplication.CreateBuilder(args);
+var migrateOnly = args.Any(argument => string.Equals(argument, "--migrate", StringComparison.OrdinalIgnoreCase));
+var appArguments = args.Where(argument => !string.Equals(argument, "--migrate", StringComparison.OrdinalIgnoreCase)).ToArray();
+var builder = WebApplication.CreateBuilder(appArguments);
 
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -116,11 +118,17 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-if (!app.Environment.IsEnvironment("Testing"))
+if (!app.Environment.IsEnvironment("Testing") && (app.Environment.IsDevelopment() || migrateOnly))
 {
-    using var scope = app.Services.CreateScope();
+    await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<SportschoolDbContext>();
-    db.Database.Migrate();
+    await db.Database.MigrateAsync();
+}
+
+if (migrateOnly)
+{
+    app.Logger.LogInformation("Database migrations completed successfully.");
+    return;
 }
 
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
