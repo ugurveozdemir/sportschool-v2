@@ -44,7 +44,7 @@ export default function CoachAthleteDetailScreen() {
   const latestReport = trainingReports[0];
   const chartValues = trainingReports.length > 0
     ? trainingReports.slice(0, 6).reverse().map(reportAverage)
-    : [35, 48, 55, 64, 70, 78];
+    : [];
 
   return (
     <ScreenShell title={getShellTitle(session)} navItems={getMobileNav(session)}>
@@ -63,11 +63,34 @@ export default function CoachAthleteDetailScreen() {
         </View>
       </View>
 
-      <View style={styles.metricsGrid}>
-        <CircularScore value={latestReport?.technicalDevelopmentScore ?? 0} label="Teknik" />
-        <CircularScore value={latestReport?.physicalConditionScore ?? 0} label="Fizik" />
-        <CircularScore value={latestReport?.disciplineScore ?? 0} label="Disiplin" color={colors.primary} />
-      </View>
+      <SurfaceCard style={styles.card}>
+        <SectionTitle title="Gelişim Özeti" />
+        <View style={styles.metricsGrid}>
+          <CircularScore value={latestReport?.technicalDevelopmentScore ?? 0} label="Teknik" />
+          <CircularScore value={latestReport?.physicalConditionScore ?? 0} label="Fizik" />
+          <CircularScore value={latestReport?.disciplineScore ?? 0} label="Disiplin" color={colors.primary} />
+        </View>
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.card}>
+        <SectionTitle title="Temel Bilgiler" />
+        <Info label="Doğum tarihi" value={formatDate(athlete.birthDate)} />
+        <Info label="Yaş" value={`${formatAge(athlete.birthDate)} yaş`} />
+        <Info label="Baskın ayak" value={preferredFootLabel(athlete.preferredFoot)} />
+      </SurfaceCard>
+
+      <SurfaceCard style={styles.card}>
+        <SectionTitle title="Akademi Bilgileri" />
+        <Info label="Kayıt tarihi" value={formatDate(athlete.createdAt)} />
+        {athlete.groups.length === 0 ? <Text style={styles.muted}>Henüz grup ataması yok.</Text> : null}
+        {athlete.groups.map((group) => (
+          <View key={group} style={styles.groupRow}>
+            <MaterialCommunityIcons name="account-group-outline" size={22} color={colors.primary} />
+            <Text style={styles.groupName}>{group}</Text>
+            <Pill label="Aktif" tone="success" />
+          </View>
+        ))}
+      </SurfaceCard>
 
       <SurfaceCard style={styles.card}>
         <SectionTitle title="Veli Bilgileri" />
@@ -76,12 +99,9 @@ export default function CoachAthleteDetailScreen() {
       </SurfaceCard>
 
       <SurfaceCard style={styles.card}>
-        <SectionTitle title="Gelişim Grafiği" action={trainingReports.length > 0 ? "Son 6 Antrenman" : "Örnek"} />
-        <BarChart values={chartValues} />
-      </SurfaceCard>
-
-      <SurfaceCard style={styles.card}>
-        <SectionTitle title="Antrenman Raporları" />
+        <SectionTitle title="Gelişim Geçmişi" action={trainingReports.length > 0 ? "Son 6 Antrenman" : undefined} />
+        {trainingReports.length > 0 ? <BarChart values={chartValues} /> : null}
+        <Text style={styles.historyLabel}>Antrenman Raporları</Text>
         {trainingReports.length === 0 ? <Text style={styles.muted}>Tamamlanan antrenman raporu bulunmuyor.</Text> : null}
         {trainingReports.map((report) => (
           <Pressable key={report.id} onPress={() => setSelectedReport(report)} style={styles.reportItem}>
@@ -117,6 +137,25 @@ function reportAverage(report: TrainingReportResponse) {
     + report.psychologicalDevelopmentScore
     + report.tacticalDevelopmentScore
     + report.technicalDevelopmentScore) / 7;
+}
+
+function preferredFootLabel(value: "Unknown" | "Right" | "Left" | "Both") {
+  return {
+    Unknown: "Belirtilmedi",
+    Right: "Sağ",
+    Left: "Sol",
+    Both: "İki ayaklı"
+  }[value];
+}
+
+function formatAge(birthDate: string) {
+  const today = new Date();
+  const birth = new Date(`${birthDate}T00:00:00`);
+  let age = today.getFullYear() - birth.getFullYear();
+  const hasNotHadBirthday = today.getMonth() < birth.getMonth()
+    || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+  if (hasNotHadBirthday) age--;
+  return age;
 }
 
 function initials(name: string) {
@@ -183,6 +222,9 @@ const styles = StyleSheet.create({
   detailScoreGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   emptyCard: { gap: spacing.md },
   flexOne: { flex: 1 },
+  groupName: { ...typography.bodyLarge, color: colors.primary, flex: 1 },
+  groupRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.sm, paddingTop: spacing.md },
+  historyLabel: { ...typography.title, color: colors.onSurface, marginTop: spacing.sm },
   identity: { alignItems: "center", gap: spacing.sm },
   infoLabel: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
   infoRow: { borderBottomColor: colors.outlineVariant, borderBottomWidth: 1, gap: spacing.xs, paddingVertical: spacing.sm },

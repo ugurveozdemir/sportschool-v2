@@ -10,6 +10,7 @@ import { logout } from "@/features/auth/api";
 import { useCoachGroups } from "@/features/coach/api";
 import { useDevelopmentSummary, useGroups, useProfile } from "@/features/me/api";
 import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
+import type { TrainingReportResponse } from "@/features/me/types";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { CircularScore, InitialsAvatar, Pill, ProfileAvatar, ScreenShell, SectionTitle, SurfaceCard } from "@/shared/components/MobileUi";
@@ -66,7 +67,7 @@ export default function ProfileScreen() {
       navItems={getMobileNav(session)}
       avatar={isCoach ? undefined : <SelectedAthleteAvatar fallbackLabel="A" />}
     >
-      {!isCoach ? <Text style={styles.profileTitle}>{isParent ? "Hesabım" : "Profilim"}</Text> : null}
+      {!isCoach ? <Text style={styles.profileTitle}>{isParent ? "Sporcu Profili" : "Profilim"}</Text> : null}
       {isParent ? (
         <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
           <SectionTitle title="Veli Hesabım" />
@@ -76,7 +77,6 @@ export default function ProfileScreen() {
         </SurfaceCard>
       ) : null}
       <ParentAthleteSelector />
-      {isParent ? <Text style={styles.sectionHeading}>Sporcu Profili</Text> : null}
       <View style={[styles.profileHero, isCompact && styles.profileHeroCompact, !isCoach && styles.memberProfileHero, !isCoach && isCompact && styles.memberProfileHeroCompact]}>
         <View style={styles.avatarWrap}>
           {isCoach ? <InitialsAvatar label={initials(displayName ?? "A")} size={isCompact ? 72 : 96} tone="dark" /> : <ProfileAvatar uri={profile?.profileImageUrl ? resolveApiUrl(profile.profileImageUrl) : null} label={initials(displayName ?? "A")} size={isCompact ? 72 : 96} tone="dark" />}
@@ -114,16 +114,32 @@ export default function ProfileScreen() {
         )
       ) : null}
 
+      {!isCoach ? (
+        <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
+          <SectionTitle title="Temel Bilgiler" />
+          <Info label="Doğum tarihi" value={profile ? formatDate(profile.birthDate) : "-"} />
+          <Info label="Yaş" value={profile ? `${formatAge(profile.birthDate)} yaş` : "-"} />
+          <Info label="Baskın ayak" value={profile ? preferredFootLabel(profile.preferredFoot) : "-"} />
+          <Info label="E-posta" value={profile?.email ?? "-"} />
+        </SurfaceCard>
+      ) : null}
+
       <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
-        <SectionTitle title="Sporcu Bilgileri" />
-        {!isCoach ? <Info label="Doğum tarihi" value={profile ? formatDate(profile.birthDate) : "-"} /> : null}
-        {!isCoach ? <Info label="Yaş" value={profile ? `${formatAge(profile.birthDate)} yaş` : "-"} /> : null}
-        {!isCoach ? <Info label="Baskın ayak" value={profile ? preferredFootLabel(profile.preferredFoot) : "-"} /> : null}
-        {!isCoach ? <Info label="E-posta" value={profile?.email ?? "-"} /> : null}
+        <SectionTitle title="Akademi Bilgileri" />
         {!isCoach ? <Info label="Kayıt tarihi" value={profile?.createdAt ? formatDate(profile.createdAt) : "-"} /> : null}
+        {groups.length === 0 ? <Text style={styles.muted}>Henüz grup ataması yok.</Text> : null}
+        {groups.map((group) => (
+          <View key={group.id} style={styles.groupRow}>
+            <View style={styles.groupLead}>
+              <MaterialCommunityIcons name={isCoach ? "shield-account-outline" : "account-group-outline"} size={22} color={colors.primary} />
+              <Text style={styles.groupName}>{group.name}</Text>
+            </View>
+            <Pill label={isCoach && "athleteCount" in group ? `${group.athleteCount} sporcu` : "Aktif"} tone="success" />
+          </View>
+        ))}
       </SurfaceCard>
 
-      {!isCoach && !isParent ? (
+      {!isCoach ? (
         <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
           <SectionTitle title="Veli Bilgileri" />
           <Info label="Ad soyad" value={profile?.parentFullName ?? "-"} />
@@ -139,25 +155,38 @@ export default function ProfileScreen() {
         </SurfaceCard>
       ) : null}
 
-      <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
-        <SectionTitle title="Gruplar" />
-        {groups.length === 0 ? <Text style={styles.muted}>Henüz grup ataması yok.</Text> : null}
-        {groups.map((group) => (
-          <View key={group.id} style={styles.groupRow}>
-            <View style={styles.groupLead}>
-              <MaterialCommunityIcons name={isCoach ? "shield-account-outline" : "account-group-outline"} size={22} color={colors.primary} />
-              <Text style={styles.groupName}>{group.name}</Text>
-            </View>
-            <Pill label={isCoach && "athleteCount" in group ? `${group.athleteCount} sporcu` : "Aktif"} tone="success" />
-          </View>
-        ))}
-      </SurfaceCard>
+      {!isCoach ? <DevelopmentHistory reports={developmentQuery.data?.reports ?? []} /> : null}
 
       <Pressable disabled={logoutMutation.isPending} onPress={() => logoutMutation.mutate()} style={styles.logoutButton}>
         <MaterialCommunityIcons name="logout" size={20} color={colors.error} />
         <Text style={styles.logoutText}>Çıkış Yap</Text>
       </Pressable>
     </ScreenShell>
+  );
+}
+
+function DevelopmentHistory({ reports }: { reports: TrainingReportResponse[] }) {
+  const recentReports = reports.slice(0, 3);
+
+  return (
+    <SurfaceCard style={styles.card}>
+      <View style={styles.developmentHeader}>
+        <Text style={styles.developmentTitle}>Gelişim Geçmişi</Text>
+        <Pressable onPress={() => router.push("/development")}>
+          <Text style={styles.developmentLink}>Tüm raporlar</Text>
+        </Pressable>
+      </View>
+      {recentReports.length === 0 ? <Text style={styles.muted}>Henüz yayınlanmış gelişim raporu bulunmuyor.</Text> : null}
+      {recentReports.map((report) => (
+        <Pressable key={report.id} onPress={() => router.push({ pathname: "/reports/[trainingId]/member", params: { trainingId: report.trainingSessionId } })} style={styles.reportRow}>
+          <View>
+            <Text style={styles.reportDate}>{formatDate(report.trainingCompletedAt)}</Text>
+            <Text style={styles.reportTitle}>{report.trainingTitle}</Text>
+          </View>
+          <Pill label={`%${reportAverage(report).toFixed(0)}`} tone="success" />
+        </Pressable>
+      ))}
+    </SurfaceCard>
   );
 }
 
@@ -193,6 +222,16 @@ function formatAge(birthDate: string) {
   return age;
 }
 
+function reportAverage(report: TrainingReportResponse) {
+  return (report.nutritionScore
+    + report.cognitiveDevelopmentScore
+    + report.disciplineScore
+    + report.physicalConditionScore
+    + report.psychologicalDevelopmentScore
+    + report.tacticalDevelopmentScore
+    + report.technicalDevelopmentScore) / 7;
+}
+
 const styles = StyleSheet.create({
   avatarWrap: { position: "relative" },
   card: { gap: spacing.md },
@@ -218,6 +257,9 @@ const styles = StyleSheet.create({
   profileHero: { alignItems: "center", gap: spacing.md },
   profileHeroCompact: { gap: spacing.sm },
   profileTitle: { ...typography.display, color: colors.primary },
+  reportDate: { ...typography.label, color: colors.onSurfaceVariant, textTransform: "uppercase" },
+  reportRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.md },
+  reportTitle: { ...typography.bodyLarge, color: colors.onSurface },
   scoreGrid: { flexDirection: "row", gap: spacing.sm, justifyContent: "space-around" },
   sectionHeading: { ...typography.headline, color: colors.onSurface },
   settingIcon: { alignItems: "center", backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.lg, height: 42, justifyContent: "center", width: 42 },

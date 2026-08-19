@@ -67,6 +67,8 @@ export type CoachAthleteDetailResponse = {
   firstName: string;
   lastName: string;
   birthDate: string;
+  preferredFoot: "Unknown" | "Right" | "Left" | "Both";
+  createdAt: string;
   parentFullName: string;
   parentPhone: string;
   profileImageUrl: string | null;
