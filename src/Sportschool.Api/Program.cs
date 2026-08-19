@@ -21,6 +21,7 @@ using Sportschool.Api.Features.Platform;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Trainings;
+using Sportschool.Api.Infrastructure;
 using Sportschool.Api.Security;
 
 var migrateOnly = args.Any(argument => string.Equals(argument, "--migrate", StringComparison.OrdinalIgnoreCase));
@@ -28,6 +29,7 @@ var appArguments = args.Where(argument => !string.Equals(argument, "--migrate", 
 var builder = WebApplication.CreateBuilder(appArguments);
 
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
@@ -136,6 +138,10 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
     app.MapOpenApi();
     app.MapBootstrapEndpoints();
 }
+
+app.UseRequestCorrelation();
+app.UseSafeExceptionResponses();
+app.UseSecurityHeaders();
 
 var dashboardRoot = Path.Combine(app.Environment.WebRootPath, "dashboard");
 if (Directory.Exists(dashboardRoot))

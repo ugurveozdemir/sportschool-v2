@@ -29,6 +29,20 @@ public sealed class HealthEndpointTests : IClassFixture<TestAppFactory>
     }
 
     [Fact]
+    public async Task ApiResponses_IncludeSecurityAndCorrelationHeaders()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/health");
+
+        Assert.Equal("nosniff", Header(response, "X-Content-Type-Options"));
+        Assert.Equal("DENY", Header(response, "X-Frame-Options"));
+        Assert.Equal("no-referrer", Header(response, "Referrer-Policy"));
+        Assert.Contains("frame-ancestors 'none'", Header(response, "Content-Security-Policy"));
+        Assert.False(string.IsNullOrWhiteSpace(Header(response, "X-Correlation-ID")));
+    }
+
+    [Fact]
     public async Task ReadyHealthEndpoint_ReturnsOkWhenDatabaseIsAvailable()
     {
         using var client = _factory.CreateClient();
@@ -50,4 +64,7 @@ public sealed class HealthEndpointTests : IClassFixture<TestAppFactory>
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.NotEqual("text/html", response.Content.Headers.ContentType?.MediaType);
     }
+
+    private static string Header(HttpResponseMessage response, string name) =>
+        Assert.Single(response.Headers.GetValues(name));
 }
