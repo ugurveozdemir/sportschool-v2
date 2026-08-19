@@ -12,8 +12,8 @@ type RequestOptions = {
   retryOnUnauthorized?: boolean;
 };
 
-const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
-  ?? (Platform.OS === "android" ? "http://10.0.2.2:5062" : "http://localhost:5062");
+const baseUrl = resolveBaseUrl();
+let pendingRefresh: Promise<boolean> | null = null;
 
 export function resolveApiUrl(pathOrUrl: string) {
   if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
@@ -63,7 +63,15 @@ async function sendRequest<TResponse>(path: string, options: RequestOptions): Pr
   return body as TResponse;
 }
 
-async function refreshAccessToken() {
+function refreshAccessToken() {
+  pendingRefresh ??= performRefresh().finally(() => {
+    pendingRefresh = null;
+  });
+
+  return pendingRefresh;
+}
+
+async function performRefresh() {
   const session = getCurrentSession();
   if (!session?.refreshToken) {
     await replaceCurrentSession(null);
@@ -77,12 +85,48 @@ async function refreshAccessToken() {
       auth: false,
       retryOnUnauthorized: false
     });
+
+    if (getCurrentSession()?.refreshToken !== session.refreshToken) {
+      return false;
+    }
+
     await replaceCurrentSession(refreshed);
     return true;
   } catch {
-    await replaceCurrentSession(null);
+    if (getCurrentSession()?.refreshToken === session.refreshToken) {
+      await replaceCurrentSession(null);
+    }
+
     return false;
   }
+}
+
+function resolveBaseUrl() {
+  const configuredUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (!configuredUrl) {
+    if (!__DEV__) {
+      throw new Error("EXPO_PUBLIC_API_BASE_URL is required for production builds.");
+    }
+
+    return Platform.OS === "android" ? "http://10.0.2.2:5062" : "http://localhost:5062";
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(configuredUrl);
+  } catch {
+    throw new Error("EXPO_PUBLIC_API_BASE_URL must be a valid absolute URL.");
+  }
+
+  if (!__DEV__ && parsedUrl.protocol !== "https:") {
+    throw new Error("EXPO_PUBLIC_API_BASE_URL must use HTTPS for production builds.");
+  }
+
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    throw new Error("EXPO_PUBLIC_API_BASE_URL must use HTTP or HTTPS.");
+  }
+
+  return configuredUrl.replace(/\/+$/, "");
 }
 
 function parseJson(text: string) {
