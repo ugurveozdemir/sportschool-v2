@@ -60,6 +60,7 @@ public sealed class PlatformOwnerMaintenance(
 
         var normalizedEmail = TextNormalizer.NormalizeEmail(email!);
         var user = await db.Users
+            .AsSplitQuery()
             .Include(x => x.Roles)
             .Include(x => x.RefreshTokens)
             .SingleOrDefaultAsync(
