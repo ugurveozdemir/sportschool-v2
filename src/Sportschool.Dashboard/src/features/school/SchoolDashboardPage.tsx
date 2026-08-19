@@ -2,7 +2,7 @@ import { CalendarOutlined, CheckCircleOutlined, TeamOutlined, UserOutlined, Wall
 import { useQuery } from "@tanstack/react-query";
 import { Card, Empty, List, Statistic, Tag, Typography } from "antd";
 import { apiRequest } from "../../app/api/apiClient";
-import { getStoredSession } from "../../app/auth/sessionStore";
+import { getSession } from "../../app/auth/sessionStore";
 
 type DashboardSummary = {
   todayTrainings: TrainingItem[];
@@ -38,7 +38,7 @@ type RecentReport = {
 };
 
 export function SchoolDashboardPage() {
-  const session = getStoredSession();
+  const session = getSession();
   const summaryQuery = useQuery({
     queryKey: ["school", "dashboard", "summary"],
     queryFn: () => apiRequest<DashboardSummary>("/api/school/dashboard/summary")

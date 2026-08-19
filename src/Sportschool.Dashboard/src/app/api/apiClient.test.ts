@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearStoredSession, getStoredSession, storeSession, type AuthSession } from "../auth/sessionStore";
+import { clearSession, getSession, setSession, type AuthSession } from "../auth/sessionStore";
 import { ApiError, apiRequest } from "./apiClient";
 
 const oldSession = createSession("old-access");
@@ -9,8 +9,8 @@ const refreshedSession = createSession("new-access");
 
 describe("apiRequest session refresh", () => {
   beforeEach(() => {
-    localStorage.clear();
-    storeSession(oldSession);
+    clearSession();
+    setSession(oldSession);
   });
 
   afterEach(() => {
@@ -37,7 +37,7 @@ describe("apiRequest session refresh", () => {
 
     await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([{ ok: true }, { ok: true }]);
     expect(fetchMock.mock.calls.filter(([path]) => path === "/api/auth/dashboard/refresh")).toHaveLength(1);
-    expect(getStoredSession()).toEqual(refreshedSession);
+    expect(getSession()).toEqual(refreshedSession);
   });
 
   it("does not restore a session cleared while refresh is in flight", async () => {
@@ -48,11 +48,11 @@ describe("apiRequest session refresh", () => {
 
     const request = apiRequest("/api/protected");
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    clearStoredSession();
+    clearSession();
     refreshResponse.resolve(jsonResponse(refreshedSession));
 
     await expect(request).rejects.toBeInstanceOf(ApiError);
-    expect(getStoredSession()).toBeNull();
+    expect(getSession()).toBeNull();
   });
 
   it("does not clear a newer login when an older refresh fails", async () => {
@@ -64,11 +64,11 @@ describe("apiRequest session refresh", () => {
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
 
     const newerLogin = createSession("latest-access");
-    storeSession(newerLogin);
+    setSession(newerLogin);
     refreshResponse.resolve(new Response(null, { status: 401 }));
 
     await expect(request).rejects.toBeInstanceOf(ApiError);
-    expect(getStoredSession()).toEqual(newerLogin);
+    expect(getSession()).toEqual(newerLogin);
   });
 });
 

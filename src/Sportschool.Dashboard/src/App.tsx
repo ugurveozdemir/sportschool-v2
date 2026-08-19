@@ -13,7 +13,7 @@ import { Avatar, Button, Card, Layout, Menu, Space, Typography, type MenuProps }
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
 import { authProvider } from "./app/auth/authProvider";
-import { getStoredSession, type UserRole } from "./app/auth/sessionStore";
+import { getSession, type UserRole } from "./app/auth/sessionStore";
 import { LoginPage } from "./app/pages/LoginPage";
 
 const SchoolsPage = lazy(() => import("./features/platform/SchoolsPage").then(({ SchoolsPage }) => ({ default: SchoolsPage })));
@@ -120,7 +120,7 @@ export function App() {
 }
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = getStoredSession();
+  const session = getSession();
   const navigate = useNavigate();
   const location = useLocation();
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
@@ -178,7 +178,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 }
 
 function DashboardHome() {
-  const session = getStoredSession();
+  const session = getSession();
   const isPlatformOwner = session?.loginRole === "PlatformOwner";
   if (isPlatformOwner) return <SchoolsPage />;
 
@@ -226,6 +226,6 @@ function SchoolModulePage({ module }: { module: AppModule }) {
 }
 
 function RoleGuard({ children, roles }: { children: React.ReactNode; roles: UserRole[] }) {
-  const session = getStoredSession();
+  const session = getSession();
   return session && roles.includes(session.loginRole) ? children : <Navigate to="/" replace />;
 }

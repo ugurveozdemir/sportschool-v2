@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { authProvider } from "./authProvider";
-import { getStoredSession, storeSession, type AuthSession } from "./sessionStore";
+import { clearSession, getSession, setSession, type AuthSession } from "./sessionStore";
 
 const schoolAdminSession: AuthSession = {
   accessToken: "access-token",
@@ -16,7 +16,7 @@ const schoolAdminSession: AuthSession = {
 };
 
 describe("authProvider", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => clearSession());
 
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -35,7 +35,8 @@ describe("authProvider", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(requestBody(fetchMock, 0)).toMatchObject({ mode: "PlatformOwner" });
     expect(requestBody(fetchMock, 1)).toMatchObject({ mode: "SchoolAdmin" });
-    expect(getStoredSession()).toEqual(schoolAdminSession);
+    expect(getSession()).toEqual(schoolAdminSession);
+    expect(localStorage.getItem("sportschool.dashboard.session")).toBeNull();
   });
 
   it("does not send a login request when credentials are missing", async () => {
@@ -49,17 +50,17 @@ describe("authProvider", () => {
   });
 
   it("clears the local session even when the logout request fails", async () => {
-    storeSession(schoolAdminSession);
+    setSession(schoolAdminSession);
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network unavailable")));
 
     const result = await authProvider.logout({});
 
     expect(result).toMatchObject({ success: true, redirectTo: "/login" });
-    expect(getStoredSession()).toBeNull();
+    expect(getSession()).toBeNull();
   });
 
   it("clears the local session before the server logout completes", async () => {
-    storeSession(schoolAdminSession);
+    setSession(schoolAdminSession);
     let completeLogout!: (response: Response) => void;
     const serverLogout = new Promise<Response>((resolve) => {
       completeLogout = resolve;
@@ -68,9 +69,19 @@ describe("authProvider", () => {
 
     const logout = authProvider.logout({});
 
-    expect(getStoredSession()).toBeNull();
+    expect(getSession()).toBeNull();
     completeLogout(new Response(null, { status: 204 }));
     await expect(logout).resolves.toMatchObject({ success: true, redirectTo: "/login" });
+  });
+
+  it("restores the in-memory session from the refresh cookie after a reload", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(schoolAdminSession)));
+
+    const result = await authProvider.check({});
+
+    expect(result).toMatchObject({ authenticated: true });
+    expect(getSession()).toEqual(schoolAdminSession);
+    expect(localStorage.getItem("sportschool.dashboard.session")).toBeNull();
   });
 });
 

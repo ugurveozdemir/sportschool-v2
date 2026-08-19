@@ -11,31 +11,40 @@ export type AuthSession = {
   roles: UserRole[];
 };
 
-const storageKey = "sportschool.dashboard.session";
+const legacyStorageKey = "sportschool.dashboard.session";
 const userRoles: UserRole[] = ["PlatformOwner", "SchoolAdmin", "Coach", "Parent", "Athlete"];
+let activeSession: AuthSession | null = null;
+let sessionRevision = 0;
 
-export function getStoredSession(): AuthSession | null {
-  const value = localStorage.getItem(storageKey);
-  if (!value) return null;
+export function getSession(): AuthSession | null {
+  removeLegacyStoredSession();
+  return activeSession;
+}
 
-  try {
-    const session = JSON.parse(value) as unknown;
-    if (isAuthSession(session)) return session;
+export function getSessionRevision(): number {
+  return sessionRevision;
+}
 
-    localStorage.removeItem(storageKey);
-    return null;
-  } catch {
-    localStorage.removeItem(storageKey);
-    return null;
+export function setSession(session: AuthSession): void {
+  if (!isAuthSession(session)) {
+    throw new Error("Invalid dashboard session.");
   }
+
+  removeLegacyStoredSession();
+  activeSession = session;
+  sessionRevision++;
 }
 
-export function storeSession(session: AuthSession): void {
-  localStorage.setItem(storageKey, JSON.stringify(session));
+export function clearSession(): void {
+  removeLegacyStoredSession();
+  activeSession = null;
+  sessionRevision++;
 }
 
-export function clearStoredSession(): void {
-  localStorage.removeItem(storageKey);
+function removeLegacyStoredSession(): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(legacyStorageKey);
+  }
 }
 
 function isAuthSession(value: unknown): value is AuthSession {

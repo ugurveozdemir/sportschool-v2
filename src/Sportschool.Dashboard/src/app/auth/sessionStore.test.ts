@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { getStoredSession, storeSession, type AuthSession } from "./sessionStore";
+import { clearSession, getSession, setSession, type AuthSession } from "./sessionStore";
 
 const validSession: AuthSession = {
   accessToken: "access-token",
@@ -15,21 +15,21 @@ const validSession: AuthSession = {
 };
 
 describe("sessionStore", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => clearSession());
 
-  it("round-trips a valid session", () => {
-    storeSession(validSession);
-    expect(getStoredSession()).toEqual(validSession);
+  it("keeps a valid session in memory without using browser storage", () => {
+    setSession(validSession);
+
+    expect(getSession()).toEqual(validSession);
+    expect(localStorage.getItem("sportschool.dashboard.session")).toBeNull();
   });
 
-  it("removes malformed or inconsistent sessions", () => {
+  it("removes a legacy stored session", () => {
     localStorage.setItem("sportschool.dashboard.session", JSON.stringify({
-      ...validSession,
-      loginRole: "PlatformOwner",
-      roles: ["SchoolAdmin"]
+      ...validSession
     }));
 
-    expect(getStoredSession()).toBeNull();
+    expect(getSession()).toBeNull();
     expect(localStorage.getItem("sportschool.dashboard.session")).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { clearStoredSession, getStoredSession, storeSession, type AuthSession } from "../auth/sessionStore";
+import { clearSession, getSession, getSessionRevision, setSession, type AuthSession } from "../auth/sessionStore";
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -18,11 +18,11 @@ export class ApiError extends Error {
 let pendingRefresh: Promise<AuthSession | null> | null = null;
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
-  let sessionToken = options.auth === false ? null : getStoredSession()?.accessToken ?? null;
+  let sessionToken = options.auth === false ? null : getSession()?.accessToken ?? null;
   let response = await sendRequest(path, options);
 
   if (response.status === 401 && options.auth !== false && (await refreshSession())) {
-    sessionToken = getStoredSession()?.accessToken ?? null;
+    sessionToken = getSession()?.accessToken ?? null;
     response = await sendRequest(path, options);
   }
 
@@ -36,7 +36,7 @@ export async function apiRequest<TResponse>(path: string, options: RequestOption
 }
 
 function sendRequest(path: string, options: RequestOptions): Promise<Response> {
-  const session = getStoredSession();
+  const session = getSession();
   const headers = new Headers({ Accept: "application/json" });
   const isFormData = options.body instanceof FormData;
   const body = options.body instanceof FormData
@@ -55,11 +55,10 @@ function sendRequest(path: string, options: RequestOptions): Promise<Response> {
 }
 
 function refreshSession(): Promise<AuthSession | null> {
-  const accessToken = getStoredSession()?.accessToken;
-  if (!accessToken) return Promise.resolve(null);
   if (pendingRefresh) return pendingRefresh;
 
-  const refreshAttempt = performRefresh(accessToken).finally(() => {
+  const expectedRevision = getSessionRevision();
+  const refreshAttempt = performRefresh(expectedRevision).finally(() => {
     if (pendingRefresh === refreshAttempt) {
       pendingRefresh = null;
     }
@@ -68,7 +67,7 @@ function refreshSession(): Promise<AuthSession | null> {
   return pendingRefresh;
 }
 
-async function performRefresh(accessToken: string): Promise<AuthSession | null> {
+async function performRefresh(expectedRevision: number): Promise<AuthSession | null> {
   const response = await fetch("/api/auth/dashboard/refresh", {
     method: "POST",
     headers: { Accept: "application/json" },
@@ -76,20 +75,30 @@ async function performRefresh(accessToken: string): Promise<AuthSession | null> 
   });
 
   if (!response.ok) {
-    clearSessionIfCurrent(accessToken);
+    if (getSessionRevision() === expectedRevision) clearSession();
     return null;
   }
 
   const refreshed = (await response.json()) as AuthSession;
-  if (getStoredSession()?.accessToken !== accessToken) return null;
+  if (getSessionRevision() !== expectedRevision) return null;
 
-  storeSession(refreshed);
+  setSession(refreshed);
   return refreshed;
 }
 
 function clearSessionIfCurrent(accessToken: string | null): void {
-  if (accessToken && getStoredSession()?.accessToken === accessToken) {
-    clearStoredSession();
+  if (accessToken && getSession()?.accessToken === accessToken) {
+    clearSession();
+  }
+}
+
+export async function restoreDashboardSession(): Promise<AuthSession | null> {
+  if (getSession()) return getSession();
+
+  try {
+    return await refreshSession();
+  } catch {
+    return null;
   }
 }
 

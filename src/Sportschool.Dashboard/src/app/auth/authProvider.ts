@@ -1,6 +1,6 @@
 import type { AuthProvider } from "@refinedev/core";
-import { ApiError, apiRequest, revokeDashboardSession } from "../api/apiClient";
-import { clearStoredSession, getStoredSession, storeSession, type AuthSession } from "./sessionStore";
+import { ApiError, apiRequest, restoreDashboardSession, revokeDashboardSession } from "../api/apiClient";
+import { clearSession, getSession, setSession, type AuthSession } from "./sessionStore";
 
 type LoginInput = {
   email?: string;
@@ -15,7 +15,7 @@ export const authProvider: AuthProvider = {
 
     try {
       const session = await loginDashboard(input.email, input.password);
-      storeSession(session);
+      setSession(session);
       return { success: true, redirectTo: "/" };
     } catch {
       return { success: false, error: new Error("E-posta veya şifre hatalı.") };
@@ -23,7 +23,7 @@ export const authProvider: AuthProvider = {
   },
 
   async logout() {
-    clearStoredSession();
+    clearSession();
     try {
       await revokeDashboardSession();
     } catch {
@@ -33,7 +33,7 @@ export const authProvider: AuthProvider = {
   },
 
   async check() {
-    const session = getStoredSession();
+    const session = getSession() ?? await restoreDashboardSession();
     const canUseDashboard = session?.loginRole === "PlatformOwner" || session?.loginRole === "SchoolAdmin";
     return canUseDashboard
       ? { authenticated: true }
@@ -42,19 +42,19 @@ export const authProvider: AuthProvider = {
 
   async onError(error) {
     if (error instanceof ApiError && error.status === 401) {
-      clearStoredSession();
+      clearSession();
       return { logout: true, redirectTo: "/login", error };
     }
     return {};
   },
 
   async getIdentity() {
-    const session = getStoredSession();
+    const session = getSession();
     return session ? { id: session.userId, name: session.fullName, email: session.email } : null;
   },
 
   async getPermissions() {
-    return getStoredSession()?.roles ?? [];
+    return getSession()?.roles ?? [];
   }
 };
 
