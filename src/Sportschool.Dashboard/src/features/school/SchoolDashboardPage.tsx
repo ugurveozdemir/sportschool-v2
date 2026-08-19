@@ -77,7 +77,7 @@ export function SchoolDashboardPage() {
                         {training.completedAt ? "Tamamlandı" : training.startedAt ? "Devam ediyor" : "Planlandı"}
                       </Tag>
                       <Typography.Text type="secondary">
-                        {training.recordedAttendanceCount}/{training.totalAthletes} yoklama
+                        {training.recordedAttendanceCount}/{training.totalAthletes} yoklama girildi
                         {training.startedAt ? ` · ${training.recordedReportCount}/${training.presentCount} rapor` : ""}
                       </Typography.Text>
                     </div>

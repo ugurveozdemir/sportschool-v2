@@ -363,7 +363,7 @@ function AttendancePickerModal({ visible, trainings, onClose, onSelect }: { visi
                 </View>
                 {started ? (
                   <Pill
-                    label={training.recordedAttendanceCount >= training.totalAthletes && training.totalAthletes > 0 ? "Tamamlandı" : `${training.recordedAttendanceCount}/${training.totalAthletes}`}
+                    label={training.recordedAttendanceCount >= training.totalAthletes && training.totalAthletes > 0 ? "Yoklama tamam" : `${training.recordedAttendanceCount}/${training.totalAthletes} girildi`}
                     tone={training.recordedAttendanceCount >= training.totalAthletes && training.totalAthletes > 0 ? "success" : "neutral"}
                   />
                 ) : (

@@ -413,7 +413,7 @@ function TrainingGroups({ training }: { training: Training }) {
 }
 
 function AttendanceSummary({ training }: { training: Training }) {
-  return <Typography.Text>{training.attendanceSummary.recordedCount}/{training.attendanceSummary.totalAthletes}</Typography.Text>;
+  return <Typography.Text>{training.attendanceSummary.recordedCount}/{training.attendanceSummary.totalAthletes} girildi</Typography.Text>;
 }
 
 function TrainingStatusTag({ training, now }: { training: Training; now: Date }) {
