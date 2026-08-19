@@ -1,6 +1,5 @@
 import type { AttendanceStatus, PaymentStatus } from "@/shared/constants/domain";
-import type { AthleteReportResponse } from "@/features/me/types";
-import type { TrainingReportResponse } from "@/features/me/types";
+import type { AthleteReportResponse, TrainingReportResponse } from "@/features/me/types";
 
 export type CoachSummaryResponse = {
   todayTrainings: CoachTrainingItem[];
