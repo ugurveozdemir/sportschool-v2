@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Users;
@@ -22,8 +23,7 @@ public static class AthleteMediaEndpoints
             .DisableAntiforgery();
         adminGroup.MapDelete("/athletes/{athleteProfileId:guid}/profile-image", DeleteProfileImageAsync);
         adminGroup.MapGet("/athletes/{athleteProfileId:guid}/videos", ListAthleteVideosAsync);
-        adminGroup.MapPost("/athlete-videos", UploadVideoAsync)
-            .DisableAntiforgery();
+        adminGroup.MapPost("/athlete-videos", CreateVideoUploadAsync);
         adminGroup.MapPatch("/athlete-videos/{videoId:guid}/publication", SetPublicationAsync);
         adminGroup.MapDelete("/athlete-videos/{videoId:guid}", DeleteVideoAsync);
 
@@ -117,18 +117,23 @@ public static class AthleteMediaEndpoints
         return Results.NoContent();
     }
 
-    private static async Task<IResult> UploadVideoAsync(
+    private static async Task<IResult> CreateVideoUploadAsync(
         Guid athleteProfileId,
-        IFormFile video,
-        string? caption,
+        CreateVideoUploadRequest request,
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
-        IMediaStorage storage,
+        IMuxVideoClient mux,
+        IOptions<MuxOptions> muxOptions,
         MediaAccessUrlService mediaUrls,
+        IMuxPlaybackUrlService muxPlaybackUrls,
         CancellationToken cancellationToken)
     {
-        var extension = GetVideoExtension(video);
-        if (extension is null || !IsValidCaption(caption))
+        if (!muxOptions.Value.Enabled)
+        {
+            return Results.Problem("Mux video uploads are not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (!IsValidVideoUpload(request))
         {
             return Results.BadRequest(new { message = "Video MP4 veya MOV olmalı, 100 MB'ı geçmemeli ve açıklama 300 karakterden kısa olmalıdır." });
         }
@@ -146,26 +151,25 @@ public static class AthleteMediaEndpoints
             return Results.NotFound();
         }
 
-        var storageKey = await storage.SaveAsync(
-            video,
-            $"athlete-videos/{schoolId.Value:N}/{athlete.Id:N}",
-            extension,
-            cancellationToken);
         var athleteVideo = new AthleteVideo
         {
             SchoolId = schoolId.Value,
             AthleteProfileId = athlete.Id,
             UploadedByUserId = userId.Value,
-            StorageKey = storageKey,
-            Caption = string.IsNullOrWhiteSpace(caption) ? null : caption.Trim()
+            Caption = string.IsNullOrWhiteSpace(request.Caption) ? null : request.Caption.Trim(),
+            Status = AthleteVideoStatus.Processing
         };
+        var upload = await mux.CreateDirectUploadAsync(athleteVideo.Id, cancellationToken);
+        athleteVideo.MuxUploadId = upload.Id;
 
         db.AthleteVideos.Add(athleteVideo);
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created(
             $"/api/school/athlete-videos/{athleteVideo.Id}",
-            AthleteVideoResponse.From(athleteVideo, athlete, mediaUrls));
+            new CreateVideoUploadResponse(
+                AthleteVideoResponse.From(athleteVideo, athlete, mediaUrls, muxPlaybackUrls),
+                upload.Url));
     }
 
     private static async Task<IResult> ListAthleteVideosAsync(
@@ -173,6 +177,7 @@ public static class AthleteMediaEndpoints
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         MediaAccessUrlService mediaUrls,
+        IMuxPlaybackUrlService muxPlaybackUrls,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -193,7 +198,7 @@ public static class AthleteMediaEndpoints
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(videos.Select(x => AthleteVideoResponse.From(x, athlete, mediaUrls)));
+        return Results.Ok(videos.Select(x => AthleteVideoResponse.From(x, athlete, mediaUrls, muxPlaybackUrls)));
     }
 
     private static async Task<IResult> SetPublicationAsync(
@@ -202,6 +207,7 @@ public static class AthleteMediaEndpoints
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         MediaAccessUrlService mediaUrls,
+        IMuxPlaybackUrlService muxPlaybackUrls,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -218,11 +224,18 @@ public static class AthleteMediaEndpoints
             return Results.NotFound();
         }
 
+        if (request.IsPublished
+            && (video.Status != AthleteVideoStatus.Ready
+                || (video.MuxPlaybackId is null && video.StorageKey is null)))
+        {
+            return Results.Conflict(new { message = "Video işlenmeden yayınlanamaz." });
+        }
+
         video.IsPublished = request.IsPublished;
         video.PublishedAt = request.IsPublished ? DateTimeOffset.UtcNow : null;
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(AthleteVideoResponse.From(video, video.AthleteProfile, mediaUrls));
+        return Results.Ok(AthleteVideoResponse.From(video, video.AthleteProfile, mediaUrls, muxPlaybackUrls));
     }
 
     private static async Task<IResult> DeleteVideoAsync(
@@ -230,7 +243,8 @@ public static class AthleteMediaEndpoints
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         IMediaStorage storage,
-        MediaAccessUrlService mediaUrls,
+        IMuxVideoClient mux,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -248,7 +262,27 @@ public static class AthleteMediaEndpoints
 
         video.IsActive = false;
         await db.SaveChangesAsync(cancellationToken);
-        await storage.DeleteAsync(video.StorageKey, cancellationToken);
+
+        if (video.StorageKey is not null)
+        {
+            await storage.DeleteAsync(video.StorageKey, cancellationToken);
+        }
+
+        if (video.MuxAssetId is not null)
+        {
+            try
+            {
+                await mux.DeleteAssetAsync(video.MuxAssetId, cancellationToken);
+            }
+            catch (HttpRequestException exception)
+            {
+                loggerFactory.CreateLogger("MuxVideoDeletion").LogError(
+                    exception,
+                    "Mux asset {MuxAssetId} could not be deleted for video {VideoId}.",
+                    video.MuxAssetId,
+                    video.Id);
+            }
+        }
 
         return Results.NoContent();
     }
@@ -260,6 +294,7 @@ public static class AthleteMediaEndpoints
         ClaimsPrincipal currentUser,
         SportschoolDbContext db,
         MediaAccessUrlService mediaUrls,
+        IMuxPlaybackUrlService muxPlaybackUrls,
         CancellationToken cancellationToken)
     {
         var schoolId = CurrentUser.GetSchoolId(currentUser);
@@ -276,6 +311,7 @@ public static class AthleteMediaEndpoints
                 && x.IsActive
                 && x.IsPublished
                 && x.Status == AthleteVideoStatus.Ready
+                && (x.MuxPlaybackId != null || x.StorageKey != null)
                 && x.AthleteProfile.IsActive);
 
         var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
@@ -313,7 +349,7 @@ public static class AthleteMediaEndpoints
         }
         var hasMore = videos.Count > take;
         var items = videos.Take(take)
-            .Select(x => AthleteVideoResponse.From(x, x.AthleteProfile, mediaUrls))
+            .Select(x => AthleteVideoResponse.From(x, x.AthleteProfile, mediaUrls, muxPlaybackUrls))
             .ToList();
         var nextBefore = hasMore ? items[^1].PublishedAt : null;
         Guid? nextBeforeId = hasMore ? items[^1].Id : null;
@@ -331,7 +367,13 @@ public static class AthleteMediaEndpoints
             .FirstOrDefaultAsync(x => x.Id == athleteProfileId && x.SchoolId == schoolId && x.IsActive, cancellationToken);
     }
 
-    private static bool IsValidCaption(string? caption) => caption is null || caption.Trim().Length <= 300;
+    private static bool IsValidVideoUpload(CreateVideoUploadRequest request)
+    {
+        var extension = Path.GetExtension(request.FileName).ToLowerInvariant();
+        return request.FileSize is > 0 and <= MaxVideoBytes
+            && extension is ".mp4" or ".mov"
+            && (request.Caption is null || request.Caption.Trim().Length <= 300);
+    }
 
     private static string? GetImageExtension(IFormFile file)
     {
@@ -352,27 +394,6 @@ public static class AthleteMediaEndpoints
         };
     }
 
-    private static string? GetVideoExtension(IFormFile file)
-    {
-        if (file.Length is <= 0 or > MaxVideoBytes)
-        {
-            return null;
-        }
-
-        var header = ReadHeader(file, 12);
-        if (header.Length < 12 || !header.AsSpan(4, 4).SequenceEqual("ftyp"u8))
-        {
-            return null;
-        }
-
-        return Path.GetExtension(file.FileName).ToLowerInvariant() switch
-        {
-            ".mp4" => ".mp4",
-            ".mov" when header.AsSpan(8, 4).SequenceEqual("qt  "u8) => ".mov",
-            _ => null
-        };
-    }
-
     private static byte[] ReadHeader(IFormFile file, int length)
     {
         using var stream = file.OpenReadStream();
@@ -384,6 +405,10 @@ public static class AthleteMediaEndpoints
 
 public sealed record ProfileImageResponse(Guid AthleteProfileId, string Url);
 
+public sealed record CreateVideoUploadRequest(string FileName, long FileSize, string? Caption);
+
+public sealed record CreateVideoUploadResponse(AthleteVideoResponse Video, string UploadUrl);
+
 public sealed record SetVideoPublicationRequest(bool IsPublished);
 
 public sealed record AthleteVideoResponse(
@@ -392,14 +417,18 @@ public sealed record AthleteVideoResponse(
     string AthleteFirstName,
     string AthleteLastName,
     string? AthleteProfileImageUrl,
-    string VideoUrl,
+    string? VideoUrl,
     string? Caption,
     AthleteVideoStatus Status,
     bool IsPublished,
     DateTimeOffset CreatedAt,
     DateTimeOffset? PublishedAt)
 {
-    public static AthleteVideoResponse From(AthleteVideo video, AthleteProfile athlete, MediaAccessUrlService mediaUrls)
+    public static AthleteVideoResponse From(
+        AthleteVideo video,
+        AthleteProfile athlete,
+        MediaAccessUrlService mediaUrls,
+        IMuxPlaybackUrlService muxPlaybackUrls)
     {
         return new AthleteVideoResponse(
             video.Id,
@@ -407,7 +436,9 @@ public sealed record AthleteVideoResponse(
             athlete.FirstName,
             athlete.LastName,
             athlete.ProfileImageStorageKey is null ? null : mediaUrls.CreateProfileImageUrl(athlete.SchoolId, athlete.Id, athlete.ProfileImageVersion),
-            mediaUrls.CreateVideoUrl(video.SchoolId, video.Id),
+            video.MuxPlaybackId is not null
+                ? muxPlaybackUrls.CreateVideoUrl(video.MuxPlaybackId)
+                : video.StorageKey is not null ? mediaUrls.CreateVideoUrl(video.SchoolId, video.Id) : null,
             video.Caption,
             video.Status,
             video.IsPublished,

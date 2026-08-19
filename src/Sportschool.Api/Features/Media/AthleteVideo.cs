@@ -20,7 +20,13 @@ public sealed class AthleteVideo
 
     public AppUser UploadedBy { get; set; } = null!;
 
-    public required string StorageKey { get; set; }
+    public string? StorageKey { get; set; }
+
+    public string? MuxUploadId { get; set; }
+
+    public string? MuxAssetId { get; set; }
+
+    public string? MuxPlaybackId { get; set; }
 
     public string? Caption { get; set; }
 

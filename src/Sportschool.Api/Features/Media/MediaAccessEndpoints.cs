@@ -54,7 +54,7 @@ public static class MediaAccessEndpoints
             .FirstOrDefaultAsync(
                 x => x.Id == videoId && x.SchoolId == schoolId && x.IsActive && x.AthleteProfile.IsActive,
                 cancellationToken);
-        return video is null
+        return video?.StorageKey is null
             ? Results.NotFound()
             : await FileResultAsync(video.StorageKey, storage, httpContext, cancellationToken);
     }

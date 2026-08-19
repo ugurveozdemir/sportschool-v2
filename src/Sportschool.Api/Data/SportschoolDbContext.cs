@@ -466,7 +466,10 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
         modelBuilder.Entity<AthleteVideo>(video =>
         {
             video.HasKey(x => x.Id);
-            video.Property(x => x.StorageKey).HasMaxLength(500).IsRequired();
+            video.Property(x => x.StorageKey).HasMaxLength(500);
+            video.Property(x => x.MuxUploadId).HasMaxLength(255);
+            video.Property(x => x.MuxAssetId).HasMaxLength(255);
+            video.Property(x => x.MuxPlaybackId).HasMaxLength(255);
             video.Property(x => x.Caption).HasMaxLength(300);
             video.Property(x => x.Status).HasConversion<string>().HasMaxLength(40);
             video.HasIndex(x => new { x.SchoolId, x.IsActive, x.IsPublished, x.PublishedAt });

@@ -6,7 +6,7 @@ export type AthleteVideo = {
   athleteFirstName: string;
   athleteLastName: string;
   athleteProfileImageUrl: string | null;
-  videoUrl: string;
+  videoUrl: string | null;
   caption: string | null;
   status: "Processing" | "Ready" | "Failed";
   isPublished: boolean;
@@ -28,12 +28,29 @@ export function listAthleteVideos(athleteId: string): Promise<AthleteVideo[]> {
   return apiRequest<AthleteVideo[]>(`/api/school/athletes/${athleteId}/videos`);
 }
 
-export function uploadAthleteVideo(athleteId: string, video: File, caption?: string): Promise<AthleteVideo> {
-  const body = new FormData();
-  body.append("video", video);
+export async function uploadAthleteVideo(
+  athleteId: string,
+  video: File,
+  caption?: string,
+  onProgress?: (percentage: number) => void
+): Promise<AthleteVideo> {
   const query = new URLSearchParams({ athleteProfileId: athleteId });
-  if (caption?.trim()) query.set("caption", caption.trim());
-  return apiRequest<AthleteVideo>(`/api/school/athlete-videos?${query}`, { method: "POST", body });
+  const result = await apiRequest<{ video: AthleteVideo; uploadUrl: string }>(`/api/school/athlete-videos?${query}`, {
+    method: "POST",
+    body: {
+      fileName: video.name,
+      fileSize: video.size,
+      caption: caption?.trim() || null
+    }
+  });
+
+  try {
+    await uploadFileToMux(result.uploadUrl, video, onProgress);
+    return result.video;
+  } catch (error) {
+    await deleteAthleteVideo(result.video.id).catch(() => undefined);
+    throw error;
+  }
 }
 
 export function setVideoPublication(videoId: string, isPublished: boolean): Promise<AthleteVideo> {
@@ -42,4 +59,27 @@ export function setVideoPublication(videoId: string, isPublished: boolean): Prom
 
 export function deleteAthleteVideo(videoId: string): Promise<void> {
   return apiRequest<void>(`/api/school/athlete-videos/${videoId}`, { method: "DELETE" });
+}
+
+function uploadFileToMux(uploadUrl: string, video: File, onProgress?: (percentage: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("PUT", uploadUrl);
+    request.setRequestHeader("Content-Type", video.type || "application/octet-stream");
+    request.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        onProgress?.(Math.round((event.loaded / event.total) * 100));
+      }
+    });
+    request.addEventListener("load", () => {
+      if (request.status >= 200 && request.status < 300) {
+        onProgress?.(100);
+        resolve();
+      } else {
+        reject(new Error("Video Mux'a yüklenemedi."));
+      }
+    });
+    request.addEventListener("error", () => reject(new Error("Video Mux'a yüklenemedi.")));
+    request.send(video);
+  });
 }

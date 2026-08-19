@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sportschool.Api.Data;
+using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Users;
 using Sportschool.Api.Security;
 
@@ -13,8 +14,12 @@ namespace Sportschool.Api.Tests.Infrastructure;
 
 public sealed class TestAppFactory : WebApplicationFactory<Program>
 {
+    public const string MuxWebhookSecret = "test-mux-webhook-secret";
+
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly string _mediaPath = Path.Combine(Path.GetTempPath(), "sportschool-api-tests", Guid.NewGuid().ToString("N"));
+
+    public FakeMuxVideoClient Mux { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -22,11 +27,22 @@ public sealed class TestAppFactory : WebApplicationFactory<Program>
         builder.UseSetting("Application:TimeZone", "UTC");
         builder.UseSetting("Jwt:SigningKey", JwtOptions.DevelopmentSigningKey);
         builder.UseSetting("Media:LocalStoragePath", _mediaPath);
+        builder.UseSetting("Mux:Enabled", "true");
+        builder.UseSetting("Mux:TokenId", "test-token-id");
+        builder.UseSetting("Mux:TokenSecret", "test-token-secret");
+        builder.UseSetting("Mux:WebhookSigningSecret", MuxWebhookSecret);
+        builder.UseSetting("Mux:PlaybackSigningKeyId", "test-signing-key-id");
+        builder.UseSetting("Mux:PlaybackSigningPrivateKey", "dGVzdA==");
+        builder.UseSetting("Mux:UploadOrigin", "http://localhost");
         builder.ConfigureServices(services =>
         {
             _connection.Open();
             services.RemoveAll<DbContextOptions<SportschoolDbContext>>();
             services.AddDbContext<SportschoolDbContext>(options => options.UseSqlite(_connection));
+            services.RemoveAll<IMuxVideoClient>();
+            services.AddSingleton<IMuxVideoClient>(Mux);
+            services.RemoveAll<IMuxPlaybackUrlService>();
+            services.AddSingleton<IMuxPlaybackUrlService, FakeMuxPlaybackUrlService>();
 
             var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();

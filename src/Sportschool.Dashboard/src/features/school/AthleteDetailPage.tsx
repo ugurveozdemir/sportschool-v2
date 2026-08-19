@@ -11,13 +11,14 @@ import {
   VideoCameraOutlined
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Avatar, Button, Card, Descriptions, Empty, Form, Input, InputNumber, Modal, Popconfirm, Result, Skeleton, Space, Switch, Tag, Typography, message } from "antd";
+import { Alert, Avatar, Button, Card, Descriptions, Empty, Form, Input, InputNumber, Modal, Popconfirm, Progress, Result, Skeleton, Space, Switch, Tag, Typography, message } from "antd";
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ApiError } from "../../app/api/apiClient";
 import { deleteAthleteVideo, deleteProfileImage, listAthleteVideos, setVideoPublication, uploadAthleteVideo, uploadProfileImage, type AthleteVideo } from "./athleteMediaApi";
 import { getAthlete, type PreferredFoot } from "./athletesApi";
 import { updateAthleteFee } from "./paymentsApi";
+import { HlsVideo } from "./HlsVideo";
 
 type VideoFormValues = { caption?: string };
 type FeeFormValues = { monthlyFee?: number };
@@ -31,6 +32,7 @@ export function AthleteDetailPage() {
   const profileImageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
   const athleteQuery = useQuery({
@@ -41,7 +43,8 @@ export function AthleteDetailPage() {
   const videosQuery = useQuery({
     enabled: Boolean(athleteId),
     queryKey: ["school", "athletes", athleteId, "videos"],
-    queryFn: () => listAthleteVideos(athleteId!)
+    queryFn: () => listAthleteVideos(athleteId!),
+    refetchInterval: (query) => query.state.data?.some((video) => video.status === "Processing") ? 3000 : false
   });
 
   const refreshAthlete = () => {
@@ -67,9 +70,9 @@ export function AthleteDetailPage() {
     onError: (error) => message.error(mediaErrorMessage(error))
   });
   const uploadVideoMutation = useMutation({
-    mutationFn: (values: VideoFormValues) => uploadAthleteVideo(athleteId!, selectedVideo!, values.caption),
+    mutationFn: (values: VideoFormValues) => uploadAthleteVideo(athleteId!, selectedVideo!, values.caption, setUploadProgress),
     onSuccess: () => {
-      message.success("Video eklendi. Yayınlamak için ilgili anahtarı açın.");
+      message.success("Video Mux'a yüklendi ve hazırlanıyor.");
       closeVideoModal();
       refreshVideos();
     },
@@ -128,6 +131,7 @@ export function AthleteDetailPage() {
 
   function closeVideoModal() {
     setSelectedVideo(null);
+    setUploadProgress(0);
     videoForm.resetFields();
     setIsVideoModalOpen(false);
   }
@@ -277,6 +281,7 @@ export function AthleteDetailPage() {
         onOk={() => videoForm.submit()}
       >
         <Typography.Paragraph><Typography.Text strong>{selectedVideo?.name}</Typography.Text> · {formatFileSize(selectedVideo?.size ?? 0)}</Typography.Paragraph>
+        {uploadVideoMutation.isPending && <Progress percent={uploadProgress} status="active" />}
         <Form form={videoForm} layout="vertical" onFinish={(values) => uploadVideoMutation.mutate(values)}>
           <Form.Item name="caption" label="Açıklama" rules={[{ max: 300, message: "Açıklama en fazla 300 karakter olabilir." }]}>
             <Input.TextArea rows={3} placeholder="Örn. Teknik gelişim antrenmanı" />
@@ -291,7 +296,9 @@ function VideoCard({ video, publicationPending, deletePending, onPublicationChan
   const isReady = video.status === "Ready";
   return (
     <div className="athlete-video-card">
-      <video className="athlete-video-player" controls preload="metadata" src={video.videoUrl}>Tarayıcınız video oynatmayı desteklemiyor.</video>
+      {video.videoUrl
+        ? <HlsVideo className="athlete-video-player" src={video.videoUrl} />
+        : <div className="athlete-video-player" />}
       <Space className="athlete-video-meta" wrap>
         <Tag color={video.isPublished ? "green" : "gold"}>{video.isPublished ? "Yayında" : "Taslak"}</Tag>
         {!isReady && <Tag color="red">{video.status === "Processing" ? "İşleniyor" : "Hazırlanamadı"}</Tag>}

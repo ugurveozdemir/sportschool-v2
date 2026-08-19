@@ -10,6 +10,36 @@ Development passwords are not stored in source control. To seed local accounts w
 
 Production must provide `ConnectionStrings__DefaultConnection` and `Jwt__SigningKey` through the deployment environment.
 
+## Local Mux Video setup
+
+Video uploads use Mux Direct Uploads, verified webhooks, and signed playback URLs. Keep all Mux credentials outside source control.
+
+Create a Mux access token with Video read/write access and a URL signing key. The signing private key is returned only once and must remain base64 encoded. Store the local values with .NET user secrets:
+
+```bash
+dotnet user-secrets set "Mux:Enabled" "true" --project src/Sportschool.Api/Sportschool.Api.csproj
+dotnet user-secrets set "Mux:TokenId" "YOUR_TOKEN_ID" --project src/Sportschool.Api/Sportschool.Api.csproj
+dotnet user-secrets set "Mux:TokenSecret" "YOUR_TOKEN_SECRET" --project src/Sportschool.Api/Sportschool.Api.csproj
+dotnet user-secrets set "Mux:PlaybackSigningKeyId" "YOUR_SIGNING_KEY_ID" --project src/Sportschool.Api/Sportschool.Api.csproj
+dotnet user-secrets set "Mux:PlaybackSigningPrivateKey" "YOUR_BASE64_PRIVATE_KEY" --project src/Sportschool.Api/Sportschool.Api.csproj
+dotnet user-secrets set "Mux:UploadOrigin" "http://localhost:5173" --project src/Sportschool.Api/Sportschool.Api.csproj
+```
+
+The API expects Mux webhook events at `/api/webhooks/mux`. For local development, authenticate the Mux CLI and forward events to the API:
+
+```bash
+npx @mux/cli login
+npx @mux/cli webhooks listen --forward-to http://localhost:5062/api/webhooks/mux
+```
+
+The listener prints a webhook signing secret. Store it before starting the API:
+
+```bash
+dotnet user-secrets set "Mux:WebhookSigningSecret" "SECRET_PRINTED_BY_MUX_CLI" --project src/Sportschool.Api/Sportschool.Api.csproj
+```
+
+When running the dashboard from the API instead of Vite, change `Mux:UploadOrigin` to `http://localhost:5062`. Docker Compose reads the equivalent `MUX_*` values from the ignored `.env` file.
+
 ## Production database migrations
 
 Production startup does not change the database schema. After taking a verified backup, run migrations as a one-off deployment command before starting the API:

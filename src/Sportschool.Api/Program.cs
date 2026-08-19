@@ -47,6 +47,10 @@ builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
+builder.Services.AddOptions<MuxOptions>()
+    .Bind(builder.Configuration.GetSection(MuxOptions.SectionName))
+    .Validate(options => !options.Enabled || options.HasRequiredSettings(), "Mux settings are incomplete or invalid.")
+    .ValidateOnStart();
 var developmentSigningKeyIsAllowed = builder.Environment.IsDevelopment()
     || builder.Environment.IsEnvironment("Testing");
 builder.Services.AddOptions<JwtOptions>()
@@ -75,10 +79,14 @@ builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
 builder.Services.AddSingleton<TemporaryPasswordGenerator>();
 builder.Services.AddScoped<PlatformOwnerMaintenance>();
-builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 100 * 1024 * 1024);
-builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 100 * 1024 * 1024);
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 6 * 1024 * 1024);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 6 * 1024 * 1024);
 builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
 builder.Services.AddSingleton<MediaAccessUrlService>();
+builder.Services.AddSingleton<IMuxPlaybackUrlService, MuxPlaybackUrlService>();
+builder.Services.AddSingleton<MuxWebhookVerifier>();
+builder.Services.AddHttpClient<IMuxVideoClient, MuxVideoClient>(client =>
+    client.BaseAddress = new Uri("https://api.mux.com/video/v1/"));
 builder.Services.AddHostedService<DevSeedHostedService>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
@@ -243,6 +251,7 @@ app.MapSchoolManagementEndpoints();
 app.MapDashboardEndpoints();
 app.MapAthleteMediaEndpoints();
 app.MapMediaAccessEndpoints();
+app.MapMuxWebhookEndpoints();
 app.MapMethods(
     "/api/{**path}",
     [HttpMethods.Get, HttpMethods.Post, HttpMethods.Put, HttpMethods.Patch, HttpMethods.Delete, HttpMethods.Options, HttpMethods.Head],

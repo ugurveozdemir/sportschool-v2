@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -109,7 +111,7 @@ public sealed class AthleteMediaEndpointTests
     }
 
     [Fact]
-    public async Task SchoolAdminCanUploadMp4WhenBrowserUsesGenericMimeType()
+    public async Task SchoolAdminCanCreateMuxUploadForMp4()
     {
         await using var factory = new TestAppFactory();
         var schoolId = Guid.NewGuid();
@@ -126,11 +128,16 @@ public sealed class AthleteMediaEndpointTests
         });
 
         using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
-        using var upload = CreateUpload("video", "training.mp4", "application/octet-stream", [0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);
-
-        var response = await client.PostAsync($"/api/school/athlete-videos?athleteProfileId={athlete.Id}", upload);
+        var response = await client.PostAsJsonAsync(
+            $"/api/school/athlete-videos?athleteProfileId={athlete.Id}",
+            new CreateVideoUploadRequest("training.mp4", 12, null));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<CreateVideoUploadResponse>(JsonOptions);
+        Assert.NotNull(result);
+        Assert.Equal(AthleteVideoStatus.Processing, result.Video.Status);
+        Assert.Equal($"https://upload.mux.test/{result.Video.Id:N}", result.UploadUrl);
+        Assert.Contains(result.Video.Id, factory.Mux.CreatedVideoIds);
     }
 
     [Fact]
@@ -156,13 +163,21 @@ public sealed class AthleteMediaEndpointTests
         });
 
         using var adminClient = factory.CreateAuthenticatedClient(adminA, UserRole.SchoolAdmin);
-        using var upload = CreateUpload("video", "training.mp4", "video/mp4", [0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109]);
-        var uploadResponse = await adminClient.PostAsync(
-            $"/api/school/athlete-videos?athleteProfileId={athleteA.Id}&caption=Great%20training",
-            upload);
+        var uploadResponse = await adminClient.PostAsJsonAsync(
+            $"/api/school/athlete-videos?athleteProfileId={athleteA.Id}",
+            new CreateVideoUploadRequest("training.mp4", 12, "Great training"));
         Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
-        var video = await uploadResponse.Content.ReadFromJsonAsync<AthleteVideoResponse>(JsonOptions);
-        Assert.NotNull(video);
+        var upload = await uploadResponse.Content.ReadFromJsonAsync<CreateVideoUploadResponse>(JsonOptions);
+        Assert.NotNull(upload);
+        var video = upload.Video;
+
+        await factory.SeedAsync(async db =>
+        {
+            var storedVideo = await db.AthleteVideos.SingleAsync(x => x.Id == video.Id);
+            storedVideo.Status = AthleteVideoStatus.Ready;
+            storedVideo.MuxAssetId = "asset-ready";
+            storedVideo.MuxPlaybackId = "playback-ready";
+        });
 
         var publishResponse = await adminClient.PatchAsJsonAsync(
             $"/api/school/athlete-videos/{video.Id}/publication",
@@ -178,6 +193,55 @@ public sealed class AthleteMediaEndpointTests
         using var athleteBClient = factory.CreateAuthenticatedClient(athleteBUser, UserRole.Athlete);
         var schoolBFeed = await athleteBClient.GetFromJsonAsync<AthleteFeedResponse>("/api/feed", JsonOptions);
         Assert.Empty(schoolBFeed!.Items);
+    }
+
+    [Fact]
+    public async Task ValidMuxWebhookMarksVideoReady()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "media-webhook-admin@example.com", "Media Admin", "password", UserRole.SchoolAdmin);
+        var athleteUser = TestUsers.Create(schoolId, "media-webhook-athlete@example.com", "Media Athlete", "password", UserRole.Athlete);
+        var athlete = CreateAthlete(schoolId, athleteUser, "Lale", "Yilmaz");
+        var video = new AthleteVideo
+        {
+            SchoolId = schoolId,
+            AthleteProfileId = athlete.Id,
+            UploadedByUserId = admin.Id,
+            MuxUploadId = "upload-webhook",
+            Status = AthleteVideoStatus.Processing
+        };
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Webhook School", "media-webhook"));
+            db.Users.AddRange(admin, athleteUser);
+            db.AthleteProfiles.Add(athlete);
+            db.AthleteVideos.Add(video);
+            return Task.CompletedTask;
+        });
+
+        var body = JsonSerializer.Serialize(new
+        {
+            type = "video.asset.ready",
+            data = new
+            {
+                id = "asset-webhook",
+                passthrough = video.Id.ToString(),
+                playback_ids = new[] { new { id = "playback-webhook", policy = "signed" } }
+            }
+        });
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+        content.Headers.Add("Mux-Signature", CreateMuxSignature(body));
+
+        using var client = factory.CreateClient();
+        var response = await client.PostAsync("/api/webhooks/mux", content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updatedVideo = await factory.QueryAsync(db => db.AthleteVideos.SingleAsync(x => x.Id == video.Id));
+        Assert.Equal(AthleteVideoStatus.Ready, updatedVideo.Status);
+        Assert.Equal("asset-webhook", updatedVideo.MuxAssetId);
+        Assert.Equal("playback-webhook", updatedVideo.MuxPlaybackId);
     }
 
     [Fact]
@@ -233,6 +297,15 @@ public sealed class AthleteMediaEndpointTests
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         content.Add(file, fieldName, fileName);
         return content;
+    }
+
+    private static string CreateMuxSignature(string body)
+    {
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = Encoding.UTF8.GetBytes($"{timestamp}.{body}");
+        var secret = Encoding.UTF8.GetBytes(TestAppFactory.MuxWebhookSecret);
+        var signature = Convert.ToHexString(HMACSHA256.HashData(secret, payload)).ToLowerInvariant();
+        return $"t={timestamp},v1={signature}";
     }
 
     private static School CreateSchool(Guid id, string name, string code) => new()
