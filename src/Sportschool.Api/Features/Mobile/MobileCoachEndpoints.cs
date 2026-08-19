@@ -349,16 +349,23 @@ public static class MobileCoachEndpoints
 
         var start = (from ?? LocalDayRange.StartOfToday(timeZone)).ToUniversalTime();
         var end = (to ?? start.AddDays(14)).ToUniversalTime();
-        if (end <= start)
+        if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 90))
         {
             return Results.BadRequest();
         }
 
-        var trainingRows = await db.TrainingSessions
+        var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+        var trainingQuery = db.TrainingSessions
             .AsNoTracking()
             .Where(x => x.SchoolId == context.SchoolId
                 && x.CoachId == context.CoachId
-                && x.IsActive)
+                && x.IsActive);
+        if (!usesSqlite)
+        {
+            trainingQuery = trainingQuery.Where(x => x.StartsAt >= start && x.StartsAt < end);
+        }
+
+        var trainingRows = await trainingQuery
             .Select(x => new MobileCoachTrainingItem(
                 x.Id,
                 x.Title,
@@ -385,12 +392,16 @@ public static class MobileCoachEndpoints
                 x.Notes))
             .ToListAsync(cancellationToken);
 
-        var trainings = trainingRows
-            .Where(x => x.StartsAt >= start && x.StartsAt < end)
-            .OrderBy(x => x.StartsAt)
-            .ToList();
+        if (usesSqlite)
+        {
+            trainingRows = trainingRows
+                .Where(x => x.StartsAt >= start && x.StartsAt < end)
+                .ToList();
+        }
 
-        return Results.Ok(trainings);
+        trainingRows = trainingRows.OrderBy(x => x.StartsAt).ToList();
+
+        return Results.Ok(trainingRows);
     }
 
     private static async Task<IResult> GetAttendanceRosterAsync(

@@ -40,7 +40,7 @@ public static class DashboardEndpoints
         var todayStart = LocalDayRange.StartOfToday(timeZone);
         var start = from ?? todayStart;
         var end = to ?? start.AddDays(7);
-        if (end <= start)
+        if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 31))
         {
             return Results.BadRequest();
         }
@@ -50,9 +50,17 @@ public static class DashboardEndpoints
         var paymentMonth = localNow.Month;
         var paymentToday = DateOnly.FromDateTime(localNow.DateTime);
 
-        var trainingRows = await db.TrainingSessions
+        var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+        var trainingQuery = db.TrainingSessions
             .AsNoTracking()
-            .Where(x => x.SchoolId == schoolId.Value && x.IsActive)
+            .Where(x => x.SchoolId == schoolId.Value
+                && x.IsActive);
+        if (!usesSqlite)
+        {
+            trainingQuery = trainingQuery.Where(x => x.StartsAt >= start && x.StartsAt < end);
+        }
+
+        var trainingRows = await trainingQuery
             .Select(x => new DashboardTrainingItem(
                 x.Id,
                 x.Title,
@@ -81,10 +89,15 @@ public static class DashboardEndpoints
                 db.AttendanceRecords.Count(a => a.TrainingSessionId == x.Id && a.Status == AttendanceStatus.Present),
                 db.TrainingAthleteReports.Count(report => report.TrainingSessionId == x.Id)))
             .ToListAsync(cancellationToken);
-        var trainings = trainingRows
-            .Where(x => x.StartsAt >= start && x.StartsAt < end)
-            .OrderBy(x => x.StartsAt)
-            .ToList();
+
+        if (usesSqlite)
+        {
+            trainingRows = trainingRows
+                .Where(x => x.StartsAt >= start && x.StartsAt < end)
+                .ToList();
+        }
+
+        trainingRows = trainingRows.OrderBy(x => x.StartsAt).ToList();
 
         var activeAthleteCount = await db.AthleteProfiles
             .AsNoTracking()
@@ -108,7 +121,7 @@ public static class DashboardEndpoints
         var unpaidPaymentCount = paymentRows.Count(x =>
             x.Payment is null || PaymentStatusCalculator.GetEffectiveStatus(x.Payment, paymentToday) != PaymentStatus.Paid);
 
-        var reportRows = await db.AthleteReports
+        var recentReportQuery = db.AthleteReports
             .AsNoTracking()
             .Where(x => x.SchoolId == schoolId.Value)
             .Select(x => new DashboardRecentReport(
@@ -116,17 +129,21 @@ public static class DashboardEndpoints
                 x.AthleteProfileId,
                 x.AthleteProfile.FirstName + " " + x.AthleteProfile.LastName,
                 x.Summary,
-                x.CreatedAt))
-            .ToListAsync(cancellationToken);
-        var recentReports = reportRows
-            .OrderByDescending(x => x.CreatedAt)
-            .Take(5)
-            .ToList();
+                x.CreatedAt));
+        var recentReports = usesSqlite
+            ? (await recentReportQuery.ToListAsync(cancellationToken))
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(5)
+                .ToList()
+            : await recentReportQuery
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(5)
+                .ToListAsync(cancellationToken);
 
         return Results.Ok(new DashboardSummaryResponse(
-            trainings.Where(x => x.StartsAt >= todayStart && x.StartsAt < todayEnd).ToArray(),
-            trainings.Count,
-            trainings.Count(x => x.TotalAthletes > x.RecordedAttendanceCount),
+            trainingRows.Where(x => x.StartsAt >= todayStart && x.StartsAt < todayEnd).ToArray(),
+            trainingRows.Count,
+            trainingRows.Count(x => x.TotalAthletes > x.RecordedAttendanceCount),
             activeAthleteCount,
             activeGroupCount,
             unpaidPaymentCount,

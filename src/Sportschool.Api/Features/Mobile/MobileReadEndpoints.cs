@@ -94,7 +94,7 @@ public static class MobileReadEndpoints
 
         var start = from ?? LocalDayRange.StartOfToday(timeZone);
         var end = to ?? start.AddDays(30);
-        if (end <= start)
+        if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 366))
         {
             return Results.BadRequest();
         }

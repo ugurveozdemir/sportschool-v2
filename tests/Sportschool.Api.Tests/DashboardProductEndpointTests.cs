@@ -45,6 +45,23 @@ public sealed class DashboardProductEndpointTests
     }
 
     [Fact]
+    public async Task DashboardAndTrainingLists_RejectExcessiveDateRanges()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedProductFixtureAsync(factory);
+        using var client = factory.CreateAuthenticatedClient(fixture.Coach, UserRole.Coach);
+        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        using var dashboardResponse = await client.GetAsync(
+            $"/api/school/dashboard/summary?from={Uri.EscapeDataString(start.ToString("O"))}&to={Uri.EscapeDataString(start.AddDays(32).ToString("O"))}");
+        using var trainingResponse = await client.GetAsync(
+            $"/api/school/trainings?from={Uri.EscapeDataString(start.ToString("O"))}&to={Uri.EscapeDataString(start.AddDays(367).ToString("O"))}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, dashboardResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, trainingResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task StaffTrainingListAndAttendanceRosterStayInsideTenant()
     {
         await using var factory = new TestAppFactory();

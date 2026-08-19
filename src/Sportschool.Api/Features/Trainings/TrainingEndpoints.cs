@@ -41,14 +41,22 @@ public static class TrainingEndpoints
 
         var start = from ?? LocalDayRange.StartOfToday(timeZone);
         var end = to ?? start.AddDays(7);
-        if (end <= start)
+        if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 366))
         {
             return Results.BadRequest();
         }
 
-        var trainingRows = await db.TrainingSessions
+        var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+        var trainingQuery = db.TrainingSessions
             .AsNoTracking()
-            .Where(x => x.SchoolId == schoolId.Value && x.IsActive)
+            .Where(x => x.SchoolId == schoolId.Value
+                && x.IsActive);
+        if (!usesSqlite)
+        {
+            trainingQuery = trainingQuery.Where(x => x.StartsAt >= start && x.StartsAt < end);
+        }
+
+        var trainingRows = await trainingQuery
             .Select(x => new TrainingListResponse(
                 x.Id,
                 x.Title,
@@ -77,12 +85,17 @@ public static class TrainingEndpoints
                 x.CompletedAt,
                 x.CompletedByUserId))
             .ToListAsync(cancellationToken);
-        var trainings = trainingRows
-            .Where(x => x.StartsAt >= start && x.StartsAt < end)
-            .OrderBy(x => x.StartsAt)
-            .ToList();
 
-        return Results.Ok(trainings);
+        if (usesSqlite)
+        {
+            trainingRows = trainingRows
+                .Where(x => x.StartsAt >= start && x.StartsAt < end)
+                .ToList();
+        }
+
+        trainingRows = trainingRows.OrderBy(x => x.StartsAt).ToList();
+
+        return Results.Ok(trainingRows);
     }
 
     private static async Task<IResult> GetTrainingAsync(

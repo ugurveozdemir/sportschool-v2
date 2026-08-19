@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Sportschool.Api.Common;
 using Sportschool.Api.Data;
 using Sportschool.Api.Features.Athletes;
 using Sportschool.Api.Features.Groups;
@@ -82,6 +83,11 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
+        if (!RequestValidation.HasValidPagination(page, pageSize))
+        {
+            return Results.BadRequest();
+        }
+
         var query = db.Users
             .AsNoTracking()
             .Include(x => x.Roles)
@@ -113,7 +119,9 @@ public static class SchoolManagementEndpoints
             return Results.Ok(new PaginatedList<CoachRosterResponse>(items, totalCount, page.Value, pageSize.Value));
         }
 
-        var allCoaches = await orderedQuery.ToListAsync(cancellationToken);
+        var allCoaches = await orderedQuery
+            .Take(RequestValidation.MaxUnpagedItems)
+            .ToListAsync(cancellationToken);
         return Results.Ok(await CreateCoachRosterResponsesAsync(allCoaches));
 
         async Task<List<CoachRosterResponse>> CreateCoachRosterResponsesAsync(List<AppUser> coaches)
@@ -312,6 +320,11 @@ public static class SchoolManagementEndpoints
             return Results.Forbid();
         }
 
+        if (!RequestValidation.HasValidPagination(page, pageSize))
+        {
+            return Results.BadRequest();
+        }
+
         var query = db.AthleteProfiles
             .AsNoTracking()
             .Include(x => x.User)
@@ -354,6 +367,7 @@ public static class SchoolManagementEndpoints
         else
         {
             var athletes = await orderedQuery
+                .Take(RequestValidation.MaxUnpagedItems)
                 .ToListAsync(cancellationToken);
             var items = await CreateRosterResponsesAsync(athletes);
 

@@ -114,6 +114,29 @@ public sealed class SchoolRosterEndpointTests
     }
 
     [Fact]
+    public async Task RosterLists_RejectInvalidPagination()
+    {
+        await using var factory = new TestAppFactory();
+        var schoolId = Guid.NewGuid();
+        var admin = TestUsers.Create(schoolId, "admin-invalid-page@example.com", "Admin", "password", UserRole.SchoolAdmin);
+
+        await factory.SeedAsync(db =>
+        {
+            db.Schools.Add(CreateSchool(schoolId, "Pagination School", "pagination"));
+            db.Users.Add(admin);
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateAuthenticatedClient(admin, UserRole.SchoolAdmin);
+
+        using var missingPageSize = await client.GetAsync("/api/school/coaches?page=1");
+        using var excessivePageSize = await client.GetAsync("/api/school/athletes?page=1&pageSize=101");
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, missingPageSize.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, excessivePageSize.StatusCode);
+    }
+
+    [Fact]
     public async Task SchoolAdminCanGetCoachProfileWithLifecycleStatsAndHistory()
     {
         await using var factory = new TestAppFactory();
