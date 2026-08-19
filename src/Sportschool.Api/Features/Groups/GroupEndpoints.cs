@@ -69,14 +69,17 @@ public static class GroupEndpoints
             return Results.NotFound();
         }
 
-        var athleteRows = await db.GroupAthletes
+        var athleteQuery = db.GroupAthletes
             .AsNoTracking()
             .Where(x => x.GroupId == groupId
                 && x.AthleteProfile.SchoolId == schoolId.Value
                 && x.AthleteProfile.IsActive
-                && x.AthleteProfile.User.IsActive)
+                && x.AthleteProfile.User.IsActive);
+        var athleteCount = await athleteQuery.CountAsync(cancellationToken);
+        var athleteRows = await athleteQuery
             .OrderBy(x => x.AthleteProfile.LastName)
             .ThenBy(x => x.AthleteProfile.FirstName)
+            .Take(RequestValidation.MaxUnpagedItems)
             .Select(x => new
             {
                 x.AthleteProfile.Id,
@@ -96,21 +99,46 @@ public static class GroupEndpoints
                 && x.IsActive
                 && x.Groups.Any(trainingGroup => trainingGroup.GroupId == groupId));
 
-        var trainingRows = await groupTrainings
-            .Select(GroupTrainingResponse.Project())
-            .ToListAsync(cancellationToken);
-        var upcomingRows = trainingRows
-            .Where(x => x.StartsAt >= now && x.StartedAt is null && x.CompletedAt is null)
-            .OrderBy(x => x.StartsAt)
-            .ToList();
-        var recentRows = trainingRows
-            .Where(x => x.StartsAt < now || x.StartedAt is not null || x.CompletedAt is not null)
-            .OrderByDescending(x => x.StartsAt)
-            .ToList();
-        var upcomingTrainingCount = upcomingRows.Count;
-        var completedTrainingCount = trainingRows.Count(x => x.CompletedAt is not null);
-        var upcomingTrainings = upcomingRows.Take(10).ToArray();
-        var recentTrainings = recentRows.Take(10).ToArray();
+        int upcomingTrainingCount;
+        int completedTrainingCount;
+        GroupTrainingResponse[] upcomingTrainings;
+        GroupTrainingResponse[] recentTrainings;
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+        {
+            var trainingRows = await groupTrainings
+                .Select(GroupTrainingResponse.Project())
+                .ToListAsync(cancellationToken);
+            var upcomingRows = trainingRows
+                .Where(x => x.StartsAt >= now && x.StartedAt is null && x.CompletedAt is null)
+                .OrderBy(x => x.StartsAt)
+                .ToList();
+            var recentRows = trainingRows
+                .Where(x => x.StartsAt < now || x.StartedAt is not null || x.CompletedAt is not null)
+                .OrderByDescending(x => x.StartsAt)
+                .ToList();
+            upcomingTrainingCount = upcomingRows.Count;
+            completedTrainingCount = trainingRows.Count(x => x.CompletedAt is not null);
+            upcomingTrainings = upcomingRows.Take(10).ToArray();
+            recentTrainings = recentRows.Take(10).ToArray();
+        }
+        else
+        {
+            var upcomingQuery = groupTrainings
+                .Where(x => x.StartsAt >= now && x.StartedAt == null && x.CompletedAt == null);
+            upcomingTrainingCount = await upcomingQuery.CountAsync(cancellationToken);
+            completedTrainingCount = await groupTrainings.CountAsync(x => x.CompletedAt != null, cancellationToken);
+            upcomingTrainings = await upcomingQuery
+                .OrderBy(x => x.StartsAt)
+                .Take(10)
+                .Select(GroupTrainingResponse.Project())
+                .ToArrayAsync(cancellationToken);
+            recentTrainings = await groupTrainings
+                .Where(x => x.StartsAt < now || x.StartedAt != null || x.CompletedAt != null)
+                .OrderByDescending(x => x.StartsAt)
+                .Take(10)
+                .Select(GroupTrainingResponse.Project())
+                .ToArrayAsync(cancellationToken);
+        }
 
         var athletes = athleteRows.Select(x => new GroupAthleteResponse(
             x.Id,
@@ -127,7 +155,7 @@ public static class GroupEndpoints
             group.Description,
             group.IsActive,
             group.CreatedAt,
-            athleteRows.Count,
+            athleteCount,
             upcomingTrainingCount,
             completedTrainingCount,
             athletes.ToArray(),
@@ -165,6 +193,7 @@ public static class GroupEndpoints
                 && x.AthleteProfile.User.IsActive)
             .OrderBy(x => x.AthleteProfile.LastName)
             .ThenBy(x => x.AthleteProfile.FirstName)
+            .Take(RequestValidation.MaxUnpagedItems)
             .Select(x => new
             {
                 x.AthleteProfile.Id,
@@ -198,6 +227,11 @@ public static class GroupEndpoints
             return Results.Forbid();
         }
 
+        if (!RequestValidation.HasOptionalText(search, maximumLength: 160))
+        {
+            return Results.BadRequest();
+        }
+
         var normalizedSearch = search?.Trim();
         var groupsQuery = db.TrainingGroups
             .AsNoTracking()
@@ -211,6 +245,7 @@ public static class GroupEndpoints
 
         var groups = await groupsQuery
             .OrderBy(x => x.Name)
+            .Take(RequestValidation.MaxUnpagedItems)
             .Select(x => new { x.Id, x.SchoolId, x.Name, x.Description, x.IsActive })
             .ToListAsync(cancellationToken);
 
@@ -229,19 +264,38 @@ public static class GroupEndpoints
             .Select(x => new { GroupId = x.Key, Count = x.Count() })
             .ToDictionaryAsync(x => x.GroupId, x => x.Count, cancellationToken);
 
-        var upcomingTrainingGroups = await db.TrainingSessionGroups
+        var now = DateTimeOffset.UtcNow;
+        var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+        var upcomingTrainingQuery = db.TrainingSessionGroups
             .AsNoTracking()
             .Where(x => groupIds.Contains(x.GroupId)
                 && x.TrainingSession.SchoolId == schoolId.Value
                 && x.TrainingSession.IsActive
-                && x.TrainingSession.CompletedAt == null)
-            .Select(x => new { x.GroupId, x.TrainingSession.StartsAt, x.TrainingSession.StartedAt })
-            .ToListAsync(cancellationToken);
-        var now = DateTimeOffset.UtcNow;
-        var upcomingTrainingCounts = upcomingTrainingGroups
-            .Where(x => x.StartedAt is null && x.StartsAt >= now)
-            .GroupBy(x => x.GroupId)
-            .ToDictionary(x => x.Key, x => x.Count());
+                && x.TrainingSession.CompletedAt == null
+                && x.TrainingSession.StartedAt == null);
+        if (!usesSqlite)
+        {
+            upcomingTrainingQuery = upcomingTrainingQuery.Where(x => x.TrainingSession.StartsAt >= now);
+        }
+
+        Dictionary<Guid, int> upcomingTrainingCounts;
+        if (usesSqlite)
+        {
+            var upcomingTrainingGroups = await upcomingTrainingQuery
+                .Select(x => new { x.GroupId, x.TrainingSession.StartsAt })
+                .ToListAsync(cancellationToken);
+            upcomingTrainingCounts = upcomingTrainingGroups
+                .Where(x => x.StartsAt >= now)
+                .GroupBy(x => x.GroupId)
+                .ToDictionary(x => x.Key, x => x.Count());
+        }
+        else
+        {
+            upcomingTrainingCounts = await upcomingTrainingQuery
+                .GroupBy(x => x.GroupId)
+                .Select(x => new { GroupId = x.Key, Count = x.Count() })
+                .ToDictionaryAsync(x => x.GroupId, x => x.Count, cancellationToken);
+        }
 
         return Results.Ok(groups.Select(group => new GroupResponse(
             group.Id,

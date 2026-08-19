@@ -137,15 +137,24 @@ public static class SchoolManagementEndpoints
             }
 
             var coachIds = coaches.Select(x => x.Id).ToArray();
-            var trainingCandidates = await db.TrainingSessions
+            var now = DateTimeOffset.UtcNow;
+            var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+            var trainingQuery = db.TrainingSessions
                 .AsNoTracking()
                 .Where(x => x.SchoolId == schoolId.Value
                     && x.IsActive
-                    && x.CompletedAt == null)
+                    && x.CompletedAt == null
+                    && coachIds.Contains(x.CoachId));
+            if (!usesSqlite)
+            {
+                trainingQuery = trainingQuery.Where(x => x.StartsAt >= now);
+            }
+
+            var trainingCandidates = await trainingQuery
                 .Select(x => new { x.Id, x.CoachId, x.Title, x.StartsAt })
                 .ToListAsync(cancellationToken);
             var upcomingTrainingRows = trainingCandidates
-                .Where(x => x.StartsAt >= DateTimeOffset.UtcNow && coachIds.Contains(x.CoachId))
+                .Where(x => x.StartsAt >= now)
                 .OrderBy(x => x.StartsAt)
                 .ToList();
             var nextTrainingByCoachId = upcomingTrainingRows
@@ -216,37 +225,100 @@ public static class SchoolManagementEndpoints
             return Results.NotFound();
         }
 
-        var trainingRows = await db.TrainingSessions
-            .AsNoTracking()
-            .Where(x => x.SchoolId == schoolId.Value && x.CoachId == coachId)
-            .Select(x => new
-            {
-                x.Id,
-                x.Title,
-                x.StartsAt,
-                x.EndsAt,
-                x.StartedAt,
-                x.StartedByUserId,
-                x.CompletedAt,
-                x.CompletedByUserId,
-                x.IsActive
-            })
-            .ToListAsync(cancellationToken);
         var now = DateTimeOffset.UtcNow;
-        var activeTrainingRows = trainingRows.Where(x => x.IsActive).ToList();
-        var nextTrainingRow = activeTrainingRows
-            .Where(x => x.StartedAt is null && x.CompletedAt is null && x.StartsAt >= now)
-            .OrderBy(x => x.StartsAt)
-            .FirstOrDefault();
-        var historyTrainingRows = trainingRows
-            .Where(x => x.StartedAt is not null || x.CompletedAt is not null)
-            .OrderByDescending(x => x.CompletedAt ?? x.StartedAt ?? x.StartsAt)
-            .Take(8)
-            .ToList();
-        var trainingIds = trainingRows.Select(x => x.Id).ToArray();
+        var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+        var trainingQuery = db.TrainingSessions
+            .AsNoTracking()
+            .Where(x => x.SchoolId == schoolId.Value && x.CoachId == coachId);
+
+        CoachTrainingRow? nextTrainingRow;
+        List<CoachTrainingRow> historyTrainingRows;
+        int startedTrainingCount;
+        int completedTrainingCount;
+        int upcomingTrainingCount;
+        int inProgressTrainingCount;
+
+        if (usesSqlite)
+        {
+            var trainingRows = await trainingQuery
+                .Select(x => new CoachTrainingRow(
+                    x.Id,
+                    x.Title,
+                    x.StartsAt,
+                    x.EndsAt,
+                    x.StartedAt,
+                    x.StartedByUserId,
+                    x.CompletedAt,
+                    x.CompletedByUserId,
+                    x.IsActive))
+                .ToListAsync(cancellationToken);
+            var activeTrainingRows = trainingRows.Where(x => x.IsActive).ToList();
+            nextTrainingRow = activeTrainingRows
+                .Where(x => x.StartedAt is null && x.CompletedAt is null && x.StartsAt >= now)
+                .OrderBy(x => x.StartsAt)
+                .FirstOrDefault();
+            historyTrainingRows = trainingRows
+                .Where(x => x.StartedAt is not null || x.CompletedAt is not null)
+                .OrderByDescending(x => x.CompletedAt ?? x.StartedAt ?? x.StartsAt)
+                .Take(8)
+                .ToList();
+            startedTrainingCount = trainingRows.Count(x => x.StartedByUserId == coachId);
+            completedTrainingCount = trainingRows.Count(x => x.CompletedByUserId == coachId);
+            upcomingTrainingCount = activeTrainingRows.Count(x => x.StartedAt is null && x.CompletedAt is null && x.StartsAt >= now);
+            inProgressTrainingCount = activeTrainingRows.Count(x => x.StartedAt is not null && x.CompletedAt is null);
+        }
+        else
+        {
+            var activeTrainingQuery = trainingQuery.Where(x => x.IsActive);
+            nextTrainingRow = await activeTrainingQuery
+                .Where(x => x.StartedAt == null && x.CompletedAt == null && x.StartsAt >= now)
+                .OrderBy(x => x.StartsAt)
+                .Select(x => new CoachTrainingRow(
+                    x.Id,
+                    x.Title,
+                    x.StartsAt,
+                    x.EndsAt,
+                    x.StartedAt,
+                    x.StartedByUserId,
+                    x.CompletedAt,
+                    x.CompletedByUserId,
+                    x.IsActive))
+                .FirstOrDefaultAsync(cancellationToken);
+            historyTrainingRows = await trainingQuery
+                .Where(x => x.StartedAt != null || x.CompletedAt != null)
+                .OrderByDescending(x => x.CompletedAt ?? x.StartedAt ?? x.StartsAt)
+                .Take(8)
+                .Select(x => new CoachTrainingRow(
+                    x.Id,
+                    x.Title,
+                    x.StartsAt,
+                    x.EndsAt,
+                    x.StartedAt,
+                    x.StartedByUserId,
+                    x.CompletedAt,
+                    x.CompletedByUserId,
+                    x.IsActive))
+                .ToListAsync(cancellationToken);
+
+            startedTrainingCount = await trainingQuery.CountAsync(x => x.StartedByUserId == coachId, cancellationToken);
+            completedTrainingCount = await trainingQuery.CountAsync(x => x.CompletedByUserId == coachId, cancellationToken);
+            upcomingTrainingCount = await activeTrainingQuery.CountAsync(
+                x => x.StartedAt == null && x.CompletedAt == null && x.StartsAt >= now,
+                cancellationToken);
+            inProgressTrainingCount = await activeTrainingQuery.CountAsync(
+                x => x.StartedAt != null && x.CompletedAt == null,
+                cancellationToken);
+        }
+
+        var displayedTrainingIds = historyTrainingRows
+            .Select(x => x.Id)
+            .Append(nextTrainingRow?.Id ?? Guid.Empty)
+            .Where(x => x != Guid.Empty)
+            .Distinct()
+            .ToArray();
         var groupRows = await db.TrainingSessionGroups
             .AsNoTracking()
-            .Where(x => trainingIds.Contains(x.TrainingSessionId)
+            .Where(x => displayedTrainingIds.Contains(x.TrainingSessionId)
                 && x.Group.SchoolId == schoolId.Value
                 && x.Group.IsActive)
             .OrderBy(x => x.Group.Name)
@@ -259,19 +331,27 @@ public static class SchoolManagementEndpoints
         var groupsByTrainingId = groupRows
             .GroupBy(x => x.TrainingSessionId)
             .ToDictionary(x => x.Key, x => (IReadOnlyCollection<AthleteGroupResponse>)x.Select(row => row.Group).ToArray());
-        var groups = groupRows
-            .Select(x => x.Group)
-            .DistinctBy(x => x.Id)
+        var coachGroups = await db.TrainingSessionGroups
+            .AsNoTracking()
+            .Where(x => x.TrainingSession.SchoolId == schoolId.Value
+                && x.TrainingSession.CoachId == coachId
+                && x.Group.SchoolId == schoolId.Value
+                && x.Group.IsActive)
+            .Select(x => new { x.Group.Id, x.Group.Name })
+            .Distinct()
             .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+        var groups = coachGroups
+            .Select(x => new AthleteGroupResponse(x.Id, x.Name))
             .ToArray();
         var reportCount = await db.TrainingAthleteReports
             .CountAsync(x => x.SchoolId == schoolId.Value && x.CoachId == coachId, cancellationToken);
 
         var stats = new CoachProfileStatsResponse(
-            trainingRows.Count(x => x.StartedByUserId == coachId),
-            trainingRows.Count(x => x.CompletedByUserId == coachId),
-            activeTrainingRows.Count(x => x.StartedAt is null && x.CompletedAt is null && x.StartsAt >= now),
-            activeTrainingRows.Count(x => x.StartedAt is not null && x.CompletedAt is null),
+            startedTrainingCount,
+            completedTrainingCount,
+            upcomingTrainingCount,
+            inProgressTrainingCount,
             reportCount);
         var nextTraining = nextTrainingRow is null
             ? null
@@ -764,6 +844,17 @@ public static class SchoolManagementEndpoints
 
         return Results.NoContent();
     }
+
+    private sealed record CoachTrainingRow(
+        Guid Id,
+        string Title,
+        DateTimeOffset StartsAt,
+        DateTimeOffset EndsAt,
+        DateTimeOffset? StartedAt,
+        Guid? StartedByUserId,
+        DateTimeOffset? CompletedAt,
+        Guid? CompletedByUserId,
+        bool IsActive);
 }
 
 public sealed record CreateCoachRequest(string Email, string FullName);

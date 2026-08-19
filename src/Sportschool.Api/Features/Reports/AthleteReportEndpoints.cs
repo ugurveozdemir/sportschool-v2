@@ -142,13 +142,10 @@ public static class AthleteReportEndpoints
             return Results.NotFound();
         }
 
-        var reportRows = await db.AthleteReports
-            .Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == athleteProfileId)
-            .ToListAsync(cancellationToken);
-        var reports = reportRows
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(AthleteReportResponse.From)
-            .ToList();
+        var reports = await ListReportsAsync(
+            db.AthleteReports.Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == athleteProfileId),
+            db,
+            cancellationToken);
 
         return Results.Ok(reports);
     }
@@ -186,15 +183,37 @@ public static class AthleteReportEndpoints
             return Results.NotFound();
         }
 
-        var reportRows = await db.AthleteReports
-            .Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == athleteProfile.Id)
-            .ToListAsync(cancellationToken);
-        var reports = reportRows
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(AthleteReportResponse.From)
-            .ToList();
+        var reports = await ListReportsAsync(
+            db.AthleteReports.Where(x => x.SchoolId == schoolId.Value && x.AthleteProfileId == athleteProfile.Id),
+            db,
+            cancellationToken);
 
         return Results.Ok(reports);
+    }
+
+    private static async Task<List<AthleteReportResponse>> ListReportsAsync(
+        IQueryable<AthleteReport> query,
+        SportschoolDbContext db,
+        CancellationToken cancellationToken)
+    {
+        query = query.AsNoTracking();
+        List<AthleteReport> reportRows;
+        if (db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite")
+        {
+            reportRows = (await query.ToListAsync(cancellationToken))
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(RequestValidation.MaxUnpagedItems)
+                .ToList();
+        }
+        else
+        {
+            reportRows = await query
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(RequestValidation.MaxUnpagedItems)
+                .ToListAsync(cancellationToken);
+        }
+
+        return reportRows.Select(AthleteReportResponse.From).ToList();
     }
 
     private static bool IsValidRequest(SaveAthleteReportRequest request)
