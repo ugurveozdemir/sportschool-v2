@@ -25,7 +25,18 @@ using Sportschool.Api.Infrastructure;
 using Sportschool.Api.Security;
 
 var migrateOnly = args.Any(argument => string.Equals(argument, "--migrate", StringComparison.OrdinalIgnoreCase));
-var appArguments = args.Where(argument => !string.Equals(argument, "--migrate", StringComparison.OrdinalIgnoreCase)).ToArray();
+var provisionPlatformOwner = args.Any(argument => string.Equals(argument, "--provision-platform-owner", StringComparison.OrdinalIgnoreCase));
+var resetPlatformOwnerPassword = args.Any(argument => string.Equals(argument, "--reset-platform-owner-password", StringComparison.OrdinalIgnoreCase));
+var maintenanceCommandCount = new[] { migrateOnly, provisionPlatformOwner, resetPlatformOwnerPassword }.Count(x => x);
+if (maintenanceCommandCount > 1)
+{
+    throw new InvalidOperationException("Only one maintenance command can be run at a time.");
+}
+
+var maintenanceArguments = new[] { "--migrate", "--provision-platform-owner", "--reset-platform-owner-password" };
+var appArguments = args
+    .Where(argument => !maintenanceArguments.Contains(argument, StringComparer.OrdinalIgnoreCase))
+    .ToArray();
 var builder = WebApplication.CreateBuilder(appArguments);
 
 builder.Services.AddOpenApi();
@@ -60,6 +71,7 @@ builder.Services.AddSingleton<KeyedRequestLimiter>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<RefreshTokenService>();
 builder.Services.AddSingleton<TemporaryPasswordGenerator>();
+builder.Services.AddScoped<PlatformOwnerMaintenance>();
 builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 100 * 1024 * 1024);
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 100 * 1024 * 1024);
 builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
@@ -130,6 +142,28 @@ if (!app.Environment.IsEnvironment("Testing") && (app.Environment.IsDevelopment(
 if (migrateOnly)
 {
     app.Logger.LogInformation("Database migrations completed successfully.");
+    return;
+}
+
+if (provisionPlatformOwner || resetPlatformOwnerPassword)
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var maintenance = scope.ServiceProvider.GetRequiredService<PlatformOwnerMaintenance>();
+    var email = app.Configuration["Provisioning:PlatformOwner:Email"];
+    var password = app.Configuration["Provisioning:PlatformOwner:Password"];
+
+    if (provisionPlatformOwner)
+    {
+        var fullName = app.Configuration["Provisioning:PlatformOwner:FullName"];
+        var user = await maintenance.ProvisionAsync(email, fullName, password);
+        app.Logger.LogInformation("PlatformOwner {Email} was provisioned successfully.", user.Email);
+    }
+    else
+    {
+        var user = await maintenance.ResetPasswordAsync(email, password);
+        app.Logger.LogInformation("PlatformOwner password was reset and active sessions were revoked for {Email}.", user.Email);
+    }
+
     return;
 }
 
