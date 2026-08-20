@@ -21,7 +21,11 @@ RUN dotnet publish src/Sportschool.Api/Sportschool.Api.csproj -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=api-build /app/publish ./
-RUN mkdir -p /app/AppData/Media && chown -R app:app /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/AppData/Media \
+    && chown -R app:app /app
 USER app
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "Sportschool.Api.dll"]
