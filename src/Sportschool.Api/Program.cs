@@ -62,6 +62,12 @@ builder.Services.AddOptions<JwtOptions>()
         x => developmentSigningKeyIsAllowed || !string.Equals(x.SigningKey, JwtOptions.DevelopmentSigningKey, StringComparison.Ordinal),
         "The development JWT signing key cannot be used outside Development or Testing.")
     .ValidateOnStart();
+builder.Services.AddOptions<R2Options>()
+    .Bind(builder.Configuration.GetSection(R2Options.SectionName))
+    .Validate(
+        x => !builder.Environment.IsProduction() || x.IsConfigured,
+        "R2 storage must be configured in production.")
+    .ValidateOnStart();
 
 if (!builder.Environment.IsEnvironment("Testing"))
 {
@@ -81,7 +87,14 @@ builder.Services.AddSingleton<TemporaryPasswordGenerator>();
 builder.Services.AddScoped<PlatformOwnerMaintenance>();
 builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 6 * 1024 * 1024);
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 6 * 1024 * 1024);
-builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddSingleton<IMediaStorage, R2MediaStorage>();
+}
+else
+{
+    builder.Services.AddSingleton<IMediaStorage, LocalMediaStorage>();
+}
 builder.Services.AddSingleton<MediaAccessUrlService>();
 builder.Services.AddSingleton<IMuxPlaybackUrlService, MuxPlaybackUrlService>();
 builder.Services.AddSingleton<MuxWebhookVerifier>();
