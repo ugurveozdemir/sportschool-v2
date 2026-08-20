@@ -88,8 +88,13 @@ public static class ApiPipelineExtensions
         });
     }
 
-    public static IApplicationBuilder UseSecurityHeaders(this IApplicationBuilder app)
+    public static IApplicationBuilder UseSecurityHeaders(this IApplicationBuilder app, string? publicApiUrl)
     {
+        var apiOrigin = publicApiUrl?.TrimEnd('/');
+        var allowedApiOrigin = Uri.TryCreate(apiOrigin, UriKind.Absolute, out var uri)
+            ? uri.GetLeftPart(UriPartial.Authority)
+            : null;
+
         return app.Use(async (context, next) =>
         {
             context.Response.OnStarting(() =>
@@ -98,12 +103,12 @@ public static class ApiPipelineExtensions
                 headers["Content-Security-Policy"] = string.Join(' ',
                     "default-src 'self';",
                     "base-uri 'self';",
-                    "connect-src 'self' https://*.mux.com https://storage.googleapis.com;",
+                    $"connect-src 'self' {allowedApiOrigin} https://*.mux.com https://storage.googleapis.com;",
                     "font-src 'self' data:;",
                     "form-action 'self';",
                     "frame-ancestors 'none';",
-                    "img-src 'self' data: blob:;",
-                    "media-src 'self' https://*.mux.com blob:;",
+                    $"img-src 'self' {allowedApiOrigin} data: blob:;",
+                    $"media-src 'self' {allowedApiOrigin} https://*.mux.com blob:;",
                     "object-src 'none';",
                     "script-src 'self';",
                     "style-src 'self' 'unsafe-inline';");

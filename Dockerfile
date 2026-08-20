@@ -3,6 +3,8 @@
 # --- Stage 1: build the React dashboard into the API's dashboard directory ---
 FROM node:24-alpine AS dashboard-build
 WORKDIR /src/Sportschool.Dashboard
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY src/Sportschool.Dashboard/package*.json ./
 RUN npm ci
 COPY src/Sportschool.Dashboard/ ./

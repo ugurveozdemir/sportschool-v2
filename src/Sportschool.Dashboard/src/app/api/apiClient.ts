@@ -16,6 +16,8 @@ export class ApiError extends Error {
 }
 
 let pendingRefresh: Promise<AuthSession | null> | null = null;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, "");
+const requestCredentials: RequestCredentials = apiBaseUrl ? "include" : "same-origin";
 
 export async function apiRequest<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
   let sessionToken = options.auth === false ? null : getSession()?.accessToken ?? null;
@@ -46,11 +48,11 @@ function sendRequest(path: string, options: RequestOptions): Promise<Response> {
   if (options.body !== undefined && !isFormData) headers.set("Content-Type", "application/json");
   if (options.auth !== false && session?.accessToken) headers.set("Authorization", `Bearer ${session.accessToken}`);
 
-  return fetch(path, {
+  return fetch(apiUrl(path), {
     method: options.method ?? "GET",
     headers,
     body,
-    credentials: "same-origin"
+    credentials: requestCredentials
   });
 }
 
@@ -68,10 +70,10 @@ function refreshSession(): Promise<AuthSession | null> {
 }
 
 async function performRefresh(expectedRevision: number): Promise<AuthSession | null> {
-  const response = await fetch("/api/auth/dashboard/refresh", {
+  const response = await fetch(apiUrl("/api/auth/dashboard/refresh"), {
     method: "POST",
     headers: { Accept: "application/json" },
-    credentials: "same-origin"
+    credentials: requestCredentials
   });
 
   if (!response.ok) {
@@ -90,6 +92,11 @@ function clearSessionIfCurrent(accessToken: string | null): void {
   if (accessToken && getSession()?.accessToken === accessToken) {
     clearSession();
   }
+}
+
+function apiUrl(path: string): string {
+  if (!apiBaseUrl || /^https?:\/\//.test(path)) return path;
+  return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export async function restoreDashboardSession(): Promise<AuthSession | null> {

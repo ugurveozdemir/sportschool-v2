@@ -25,6 +25,7 @@ public sealed class TestAppFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("Application:TimeZone", "UTC");
+        builder.UseSetting("Dashboard:Origin", "https://dashboard.example.com");
         builder.UseSetting("Jwt:SigningKey", JwtOptions.DevelopmentSigningKey);
         builder.UseSetting("Media:LocalStoragePath", _mediaPath);
         builder.UseSetting("Mux:Enabled", "true");

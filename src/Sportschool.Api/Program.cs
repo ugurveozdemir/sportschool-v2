@@ -41,9 +41,24 @@ var appArguments = args
     .Where(argument => !maintenanceArguments.Contains(argument, StringComparer.OrdinalIgnoreCase))
     .ToArray();
 var builder = WebApplication.CreateBuilder(appArguments);
+var dashboardOrigin = builder.Configuration["Dashboard:Origin"]?.TrimEnd('/');
+if (!string.IsNullOrWhiteSpace(dashboardOrigin)
+    && (!Uri.TryCreate(dashboardOrigin, UriKind.Absolute, out var dashboardUri)
+        || dashboardUri.Scheme != Uri.UriSchemeHttps))
+{
+    throw new InvalidOperationException("Dashboard origin must be an HTTPS URL.");
+}
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+if (!string.IsNullOrWhiteSpace(dashboardOrigin))
+{
+    builder.Services.AddCors(options => options.AddPolicy("Dashboard", policy => policy
+        .WithOrigins(dashboardOrigin)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()));
+}
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
@@ -228,7 +243,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 app.UseRequestCorrelation();
 app.UseAuditLogging();
 app.UseSafeExceptionResponses();
-app.UseSecurityHeaders();
+app.UseSecurityHeaders(builder.Configuration["Api:PublicUrl"]);
 
 var webRootPath = app.Environment.WebRootPath
     ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
@@ -239,6 +254,11 @@ if (Directory.Exists(dashboardRoot))
     {
         FileProvider = new PhysicalFileProvider(dashboardRoot)
     });
+}
+
+if (!string.IsNullOrWhiteSpace(dashboardOrigin))
+{
+    app.UseCors("Dashboard");
 }
 
 app.UseAuthentication();
