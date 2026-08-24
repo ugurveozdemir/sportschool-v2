@@ -3,17 +3,32 @@
     "name": "Sportschool",
     "slug": "sportschool-mobile",
     "version": "0.1.0",
+    "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "scheme": "sportschool",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "plugins": ["expo-router", "expo-secure-store", "expo-font"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#131316",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-font"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#131316"
+        "backgroundColor": "#131316",
+        "foregroundImage": "./assets/adaptive-icon.png"
       }
     },
     "web": {
