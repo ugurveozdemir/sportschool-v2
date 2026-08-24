@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useSession } from "@/core/sessionProvider";
 import { login } from "@/features/auth/api";
+import { getErrorMessage } from "@/shared/api/apiError";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schemas";
 import { AcademyLogoAvatar } from "@/shared/components/AcademyLogoAvatar";
 import { brand } from "@/shared/constants/brand";
@@ -51,7 +52,7 @@ export default function LoginScreen() {
       await setSession(session);
       router.replace("/home");
     },
-    onError: () => Alert.alert("Giriş başarısız", "E-posta, şifre veya rol bilgisini kontrol et.")
+    onError: (error) => Alert.alert("Giriş başarısız", getErrorMessage(error, "E-posta, şifre veya rol bilgisini kontrol et."))
   });
 
   return (

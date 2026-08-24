@@ -9,7 +9,9 @@ import { useFeed } from "@/features/feed/api";
 import type { AthleteFeedVideo } from "@/features/feed/types";
 import { SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import { resolveApiUrl } from "@/shared/api/apiClient";
+import { getErrorMessage } from "@/shared/api/apiError";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { ErrorState } from "@/shared/components/ErrorState";
 import { LoadingState } from "@/shared/components/LoadingState";
 import { ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { colors } from "@/shared/design/colors";
@@ -31,6 +33,14 @@ export default function FeedScreen() {
 
   if (feedQuery.isLoading) {
     return <LoadingState label="Videolar yükleniyor" />;
+  }
+
+  if (feedQuery.isError) {
+    return <ErrorState
+      title="Videolar yüklenemedi"
+      description={getErrorMessage(feedQuery.error, "Videolar şu an alınamadı.")}
+      onRetry={() => void refetch()}
+    />;
   }
 
   const videos = feedQuery.data?.pages.flatMap((page) => page.items) ?? [];

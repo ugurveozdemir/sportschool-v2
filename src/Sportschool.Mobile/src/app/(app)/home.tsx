@@ -13,7 +13,10 @@ import type { CoachSummaryResponse, CoachTrainingItem } from "@/features/coach/t
 import { useAttendance, useDevelopmentSummary, useGroups, useNextTraining, usePayments, useProfile, useTrainings } from "@/features/me/api";
 import { ParentAthleteSelector, SelectedAthleteAvatar } from "@/features/me/ParentAthleteSelector";
 import type { AttendanceResponse, DevelopmentMetricAverages, DevelopmentSummaryResponse, PaymentResponse, TrainingResponse } from "@/features/me/types";
+import { getErrorMessage } from "@/shared/api/apiError";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { ErrorState } from "@/shared/components/ErrorState";
+import { LoadingState } from "@/shared/components/LoadingState";
 import { InitialsAvatar, MetricTile, Pill, ProfileAvatar, ScreenShell, SurfaceCard } from "@/shared/components/MobileUi";
 import { resolveApiUrl } from "@/shared/api/apiClient";
 import type { AttendanceStatus } from "@/shared/constants/domain";
@@ -67,6 +70,22 @@ export default function HomeScreen() {
   }, [isCoach, isParent, queryClient, refetchNextTraining, refetchPayments, refetchProfile, refetchTrainings]));
 
   if (isCoach) {
+    if (coachSummaryQuery.isLoading || coachTrainingsQuery.isLoading) {
+      return <LoadingState label="Ana sayfa yükleniyor" />;
+    }
+
+    const coachError = coachSummaryQuery.isError ? coachSummaryQuery.error : coachTrainingsQuery.error;
+    if (coachError) {
+      return <ErrorState
+        title="Ana sayfa yüklenemedi"
+        description={getErrorMessage(coachError, "Akademi verileri şu an alınamadı.")}
+        onRetry={() => {
+          void coachSummaryQuery.refetch();
+          void coachTrainingsQuery.refetch();
+        }}
+      />;
+    }
+
     return (
       <CoachHome
         isSchoolAdmin={isSchoolAdmin}
@@ -77,6 +96,24 @@ export default function HomeScreen() {
         trainings={coachTrainingsQuery.data ?? []}
       />
     );
+  }
+
+  const memberQueries = isParent
+    ? [profileQuery, trainingsQuery, nextTrainingQuery, groupsQuery, attendanceQuery, developmentQuery, paymentsQuery, announcementsQuery, unreadCountQuery]
+    : [profileQuery, nextTrainingQuery, groupsQuery, attendanceQuery, developmentQuery, announcementsQuery, unreadCountQuery];
+  if (memberQueries.some((query) => query.isLoading)) {
+    return <LoadingState label="Ana sayfa yükleniyor" />;
+  }
+
+  const memberError = memberQueries.find((query) => query.isError)?.error;
+  if (memberError) {
+    return <ErrorState
+      title="Ana sayfa yüklenemedi"
+      description={getErrorMessage(memberError, "Sporcu verileri şu an alınamadı.")}
+      onRetry={() => {
+        void Promise.all(memberQueries.map((query) => query.refetch()));
+      }}
+    />;
   }
 
   const profile = profileQuery.data;
@@ -110,7 +147,7 @@ export default function HomeScreen() {
     <AthleteHome
       navItems={navItems}
       shellTitle={shellTitle}
-      firstName={profile?.firstName ?? "Arda"}
+      firstName={profile?.firstName ?? "Sporcu"}
       profileImageUrl={profile?.profileImageUrl}
       nextTraining={nextTraining}
       groupCount={groupsQuery.data?.length ?? 0}
