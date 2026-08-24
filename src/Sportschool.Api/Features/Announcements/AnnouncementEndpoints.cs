@@ -293,6 +293,7 @@ public static class AnnouncementEndpoints
             return Results.Forbid();
         }
 
+        request = request with { ExpiresAt = request.ExpiresAt?.ToUniversalTime() };
         var now = DateTimeOffset.UtcNow;
         if (!IsValidRequest(request, now))
         {
@@ -337,6 +338,7 @@ public static class AnnouncementEndpoints
             return Results.Forbid();
         }
 
+        request = request with { ExpiresAt = request.ExpiresAt?.ToUniversalTime() };
         var now = DateTimeOffset.UtcNow;
         if (!IsValidRequest(request, now))
         {

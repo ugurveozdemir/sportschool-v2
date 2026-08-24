@@ -70,11 +70,12 @@ public sealed class TrainingEndpointTests
 
         using var client = factory.CreateAuthenticatedClient(coach, UserRole.Coach);
 
+        var startsAtUtc = DateTimeOffset.UtcNow.AddDays(1);
         var request = new CreateTrainingRequest(
             GroupIds: [groupId],
             Title: "Basketball Fundamentals",
-            StartsAt: DateTimeOffset.UtcNow.AddDays(1),
-            EndsAt: DateTimeOffset.UtcNow.AddDays(1).AddHours(1),
+            StartsAt: startsAtUtc.ToOffset(TimeSpan.FromHours(3)),
+            EndsAt: startsAtUtc.AddHours(1).ToOffset(TimeSpan.FromHours(3)),
             Recurrence: TrainingRecurrence.None,
             RecurrenceEndsOn: null,
             Location: "Gym A",
@@ -94,6 +95,8 @@ public sealed class TrainingEndpointTests
         var singleSession = Assert.Single(dbSessions);
         Assert.Equal(body.Id, singleSession.Id);
         Assert.Equal("Gym A", singleSession.Location);
+        Assert.Equal(TimeSpan.Zero, singleSession.StartsAt.Offset);
+        Assert.Equal(startsAtUtc, singleSession.StartsAt);
         var savedGroup = await factory.QueryAsync(db => db.TrainingSessionGroups.SingleAsync(x => x.TrainingSessionId == singleSession.Id));
         Assert.Equal(groupId, savedGroup.GroupId);
     }

@@ -275,7 +275,7 @@ public sealed class AthleteMediaEndpointTests
         Assert.NotNull(firstPage.NextBeforeId);
 
         var secondPage = await client.GetFromJsonAsync<AthleteFeedResponse>(
-            $"/api/feed?pageSize=1&before={Uri.EscapeDataString(firstPage.NextBefore.Value.ToString("O"))}&beforeId={firstPage.NextBeforeId}",
+            $"/api/feed?pageSize=1&before={Uri.EscapeDataString(firstPage.NextBefore.Value.ToOffset(TimeSpan.FromHours(3)).ToString("O"))}&beforeId={firstPage.NextBeforeId}",
             JsonOptions);
         Assert.NotNull(secondPage);
         Assert.NotEqual(firstPage.Items[0].Id, secondPage.Items[0].Id);

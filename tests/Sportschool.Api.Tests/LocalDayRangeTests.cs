@@ -38,4 +38,15 @@ public sealed class LocalDayRangeTests
 
         Assert.Equal(new DateTimeOffset(2026, 6, 23, 0, 0, 0, TimeSpan.Zero), todayStart);
     }
+
+    [Fact]
+    public void StartOfTodayUtc_ConvertsLocalMidnightToUtcInstant()
+    {
+        var nowUtc = new DateTimeOffset(2026, 6, 23, 22, 0, 0, TimeSpan.Zero);
+
+        var todayStartUtc = LocalDayRange.StartOfTodayUtc(Istanbul, nowUtc);
+
+        Assert.Equal(TimeSpan.Zero, todayStartUtc.Offset);
+        Assert.Equal(new DateTimeOffset(2026, 6, 23, 21, 0, 0, TimeSpan.Zero), todayStartUtc);
+    }
 }

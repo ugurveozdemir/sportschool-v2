@@ -92,8 +92,8 @@ public static class MobileReadEndpoints
             return Results.NotFound();
         }
 
-        var start = from ?? LocalDayRange.StartOfToday(timeZone);
-        var end = to ?? start.AddDays(30);
+        var start = (from ?? LocalDayRange.StartOfTodayUtc(timeZone)).ToUniversalTime();
+        var end = (to ?? start.AddDays(30)).ToUniversalTime();
         if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 366))
         {
             return Results.BadRequest();

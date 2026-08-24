@@ -44,7 +44,7 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var todayStart = LocalDayRange.StartOfToday(timeZone);
+        var todayStart = LocalDayRange.StartOfTodayUtc(timeZone);
         var todayEnd = todayStart.AddDays(1);
         var weekEnd = todayStart.AddDays(7);
 
@@ -351,7 +351,7 @@ public static class MobileCoachEndpoints
             return Results.Forbid();
         }
 
-        var start = (from ?? LocalDayRange.StartOfToday(timeZone)).ToUniversalTime();
+        var start = (from ?? LocalDayRange.StartOfTodayUtc(timeZone)).ToUniversalTime();
         var end = (to ?? start.AddDays(14)).ToUniversalTime();
         if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 90))
         {

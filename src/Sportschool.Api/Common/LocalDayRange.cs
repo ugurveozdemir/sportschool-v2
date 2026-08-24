@@ -13,4 +13,9 @@ public static class LocalDayRange
         var midnight = local.Date;
         return new DateTimeOffset(midnight, timeZone.GetUtcOffset(midnight));
     }
+
+    public static DateTimeOffset StartOfTodayUtc(TimeZoneInfo timeZone, DateTimeOffset? nowUtc = null)
+    {
+        return StartOfToday(timeZone, nowUtc).ToUniversalTime();
+    }
 }

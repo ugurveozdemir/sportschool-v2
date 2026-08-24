@@ -39,8 +39,8 @@ public static class TrainingEndpoints
             return Results.Forbid();
         }
 
-        var start = from ?? LocalDayRange.StartOfToday(timeZone);
-        var end = to ?? start.AddDays(7);
+        var start = (from ?? LocalDayRange.StartOfTodayUtc(timeZone)).ToUniversalTime();
+        var end = (to ?? start.AddDays(7)).ToUniversalTime();
         if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 366))
         {
             return Results.BadRequest();
@@ -157,6 +157,12 @@ public static class TrainingEndpoints
         {
             return Results.Forbid();
         }
+
+        request = request with
+        {
+            StartsAt = request.StartsAt.ToUniversalTime(),
+            EndsAt = request.EndsAt.ToUniversalTime()
+        };
 
         if (!HasValidTrainingDetails(request.Title, request.StartsAt, request.EndsAt, request.Location, request.Notes)
             || !Enum.IsDefined(request.Recurrence))
@@ -305,6 +311,12 @@ public static class TrainingEndpoints
         {
             return Results.Forbid();
         }
+
+        request = request with
+        {
+            StartsAt = request.StartsAt.ToUniversalTime(),
+            EndsAt = request.EndsAt.ToUniversalTime()
+        };
 
         if (!HasValidTrainingDetails(request.Title, request.StartsAt, request.EndsAt, request.Location, request.Notes))
         {

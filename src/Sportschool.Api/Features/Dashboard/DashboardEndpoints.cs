@@ -37,9 +37,9 @@ public static class DashboardEndpoints
         }
 
         var localNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, timeZone);
-        var todayStart = LocalDayRange.StartOfToday(timeZone);
-        var start = from ?? todayStart;
-        var end = to ?? start.AddDays(7);
+        var todayStart = LocalDayRange.StartOfTodayUtc(timeZone);
+        var start = (from ?? todayStart).ToUniversalTime();
+        var end = (to ?? start.AddDays(7)).ToUniversalTime();
         if (!RequestValidation.HasValidDateRange(start, end, maximumDays: 31))
         {
             return Results.BadRequest();

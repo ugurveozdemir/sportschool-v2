@@ -177,6 +177,30 @@ public sealed class AnnouncementEndpointTests
         Assert.False(isActive);
     }
 
+    [Fact]
+    public async Task SchoolAdminAnnouncement_StoresExpirationAsUtc()
+    {
+        await using var factory = new TestAppFactory();
+        var fixture = await SeedAnnouncementScenarioAsync(factory);
+        using var client = factory.CreateAuthenticatedClient(fixture.Admin, UserRole.SchoolAdmin);
+        var expiresAtUtc = DateTimeOffset.UtcNow.AddDays(1);
+        var request = new SaveAnnouncementRequest(
+            "UTC duyurusu",
+            "Yerel saat ofseti veritabanına UTC olarak kaydedilir.",
+            expiresAtUtc.ToOffset(TimeSpan.FromHours(3)));
+
+        using var response = await client.PostAsJsonAsync("/api/school/announcements", request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var storedExpiresAt = await factory.QueryAsync(db => db.Announcements
+            .Where(x => x.Title == request.Title)
+            .Select(x => x.ExpiresAt)
+            .SingleAsync());
+        Assert.NotNull(storedExpiresAt);
+        Assert.Equal(TimeSpan.Zero, storedExpiresAt.Value.Offset);
+        Assert.Equal(expiresAtUtc, storedExpiresAt.Value);
+    }
+
     private static async Task<AnnouncementFixture> SeedAnnouncementScenarioAsync(TestAppFactory factory)
     {
         var suffix = Guid.NewGuid().ToString("N");

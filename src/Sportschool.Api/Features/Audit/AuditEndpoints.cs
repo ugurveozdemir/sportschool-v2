@@ -63,8 +63,8 @@ public static class AuditEndpoints
         CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
-        var rangeStart = from ?? now.AddDays(-30);
-        var rangeEnd = to ?? now;
+        var rangeStart = (from ?? now.AddDays(-30)).ToUniversalTime();
+        var rangeEnd = (to ?? now).ToUniversalTime();
         var selectedPage = page ?? 1;
         var selectedPageSize = pageSize ?? DefaultPageSize;
         if (!RequestValidation.HasValidDateRange(rangeStart, rangeEnd, MaximumDateRangeDays)

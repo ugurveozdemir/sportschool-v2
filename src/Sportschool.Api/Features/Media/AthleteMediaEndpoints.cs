@@ -304,6 +304,7 @@ public static class AthleteMediaEndpoints
         }
 
         var take = Math.Clamp(pageSize ?? 10, 1, MaxPageSize);
+        var cursor = before?.ToUniversalTime();
         var query = db.AthleteVideos
             .AsNoTracking()
             .Include(x => x.AthleteProfile)
@@ -315,10 +316,10 @@ public static class AthleteMediaEndpoints
                 && x.AthleteProfile.IsActive);
 
         var usesSqlite = db.Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
-        if (before is not null && !usesSqlite)
+        if (cursor is not null && !usesSqlite)
         {
-            query = query.Where(x => x.PublishedAt < before.Value
-                || (beforeId.HasValue && x.PublishedAt == before.Value && x.Id.CompareTo(beforeId.Value) < 0));
+            query = query.Where(x => x.PublishedAt < cursor.Value
+                || (beforeId.HasValue && x.PublishedAt == cursor.Value && x.Id.CompareTo(beforeId.Value) < 0));
         }
 
         List<AthleteVideo> videos;
@@ -327,10 +328,10 @@ public static class AthleteMediaEndpoints
             // SQLite cannot order DateTimeOffset values. The production PostgreSQL query below
             // stays server-side; this branch only supports the in-memory SQLite test database.
             var localVideos = await query.ToListAsync(cancellationToken);
-            if (before is not null)
+            if (cursor is not null)
             {
-                localVideos = localVideos.Where(x => x.PublishedAt < before.Value
-                    || (beforeId.HasValue && x.PublishedAt == before.Value && x.Id.CompareTo(beforeId.Value) < 0)).ToList();
+                localVideos = localVideos.Where(x => x.PublishedAt < cursor.Value
+                    || (beforeId.HasValue && x.PublishedAt == cursor.Value && x.Id.CompareTo(beforeId.Value) < 0)).ToList();
             }
 
             videos = localVideos
