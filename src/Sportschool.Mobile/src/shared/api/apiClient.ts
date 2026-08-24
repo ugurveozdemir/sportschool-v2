@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 
 import { getCurrentSession, replaceCurrentSession } from "@/core/sessionProvider";
 import { endpoints } from "@/shared/constants/endpoints";
-import { ApiError } from "@/shared/api/apiError";
+import { ApiError, NetworkError } from "@/shared/api/apiError";
 import type { Session } from "@/shared/types/session";
 
 type RequestOptions = {
@@ -10,9 +10,11 @@ type RequestOptions = {
   body?: unknown;
   auth?: boolean;
   retryOnUnauthorized?: boolean;
+  timeoutMs?: number;
 };
 
 const baseUrl = resolveBaseUrl();
+const defaultRequestTimeoutMs = 15_000;
 let pendingRefresh: Promise<boolean> | null = null;
 
 export function resolveApiUrl(pathOrUrl: string) {
@@ -41,11 +43,25 @@ async function sendRequest<TResponse>(path: string, options: RequestOptions): Pr
     headers.set("Authorization", `Bearer ${session.accessToken}`);
   }
 
-  const response = await fetch(resolveApiUrl(path), {
-    method,
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? defaultRequestTimeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(resolveApiUrl(path), {
+      method,
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal
+    });
+  } catch {
+    if (controller.signal.aborted) {
+      throw new NetworkError("İstek zaman aşımına uğradı.", "timeout");
+    }
+
+    throw new NetworkError("Sunucuya ulaşılamadı.", "network");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (response.status === 401 && options.auth !== false && options.retryOnUnauthorized !== false) {
     const refreshed = await refreshAccessToken();
