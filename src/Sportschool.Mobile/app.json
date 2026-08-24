@@ -35,6 +35,13 @@
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "263eb8cf-baf6-4cc4-8a52-43e4ee806b45"
+      }
+    },
+    "owner": "ugur991"
   }
 }

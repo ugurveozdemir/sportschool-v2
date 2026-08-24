@@ -5,6 +5,27 @@
 
 # dotenv files
 .env
+.env.*
+!.env.example
+
+# Expo / EAS local state and credentials
+src/Sportschool.Mobile/.eas/
+src/Sportschool.Mobile/credentials.json
+
+# Expo prebuild output. This project uses managed/CNG builds, so native folders are generated when needed.
+src/Sportschool.Mobile/ios/
+src/Sportschool.Mobile/android/
+
+# Local signing credentials and exported mobile builds
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+*.keystore
+*.jks
+*.apk
+*.aab
+*.ipa
 
 # Frontend dependencies and generated dashboard assets
 node_modules/
