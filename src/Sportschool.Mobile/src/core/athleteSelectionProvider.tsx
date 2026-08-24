@@ -22,6 +22,10 @@ export function AthleteSelectionProvider({ children }: PropsWithChildren) {
   const [selectedAthleteProfileId, setSelectedAthleteProfileId] = useState<string | null>(null);
 
   useEffect(() => {
+    setSelectedAthleteProfileId(null);
+  }, [session?.loginRole, session?.schoolId, session?.userId]);
+
+  useEffect(() => {
     if (!isMember) {
       setSelectedAthleteProfileId(null);
       return;

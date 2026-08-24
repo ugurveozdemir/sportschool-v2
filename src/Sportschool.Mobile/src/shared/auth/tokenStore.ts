@@ -6,7 +6,16 @@ const sessionKey = "sportschool.session";
 
 export async function getStoredSession() {
   const raw = await SecureStore.getItemAsync(sessionKey);
-  return raw ? (JSON.parse(raw) as Session) : null;
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as Session;
+  } catch {
+    await clearStoredSession();
+    return null;
+  }
 }
 
 export async function setStoredSession(session: Session) {

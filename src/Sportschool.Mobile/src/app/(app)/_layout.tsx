@@ -1,6 +1,19 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
+
+import { useSession } from "@/core/sessionProvider";
+import { LoadingState } from "@/shared/components/LoadingState";
 
 export default function AppTabs() {
+  const { isReady, session } = useSession();
+
+  if (!isReady) {
+    return <LoadingState label="Oturum yükleniyor" />;
+  }
+
+  if (!session) {
+    return <Redirect href="/role" />;
+  }
+
   return (
     <Tabs
       screenOptions={{

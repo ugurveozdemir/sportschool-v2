@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react";
 
+import { queryClient } from "@/core/queryClient";
 import { clearStoredSession, getStoredSession, setStoredSession } from "@/shared/auth/tokenStore";
 import type { Session } from "@/shared/types/session";
 
@@ -20,6 +21,11 @@ export function getCurrentSession() {
 }
 
 export async function replaceCurrentSession(session: Session | null) {
+  const sessionChanged = !isSameSession(currentSession, session);
+  if (sessionChanged) {
+    queryClient.clear();
+  }
+
   currentSession = session;
   if (session) {
     await setStoredSession(session);
@@ -27,6 +33,12 @@ export async function replaceCurrentSession(session: Session | null) {
     await clearStoredSession();
   }
   sessionListener?.(session);
+}
+
+function isSameSession(current: Session | null, next: Session | null) {
+  return current?.userId === next?.userId
+    && current?.schoolId === next?.schoolId
+    && current?.loginRole === next?.loginRole;
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
