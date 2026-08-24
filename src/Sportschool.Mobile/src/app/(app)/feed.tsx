@@ -1,8 +1,9 @@
+import { useEvent } from "expo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
-import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
 import { useFeed } from "@/features/feed/api";
@@ -58,7 +59,7 @@ export default function FeedScreen() {
       </View>
 
       {videos.length === 0 ? <SurfaceCard><EmptyState title="Henüz video yok" description="Okul yöneticisi yayınladığında videolar burada görünecek." /></SurfaceCard> : null}
-      {videos.map((video) => <FeedVideoCard key={video.id} video={video} />)}
+      {videos.map((video) => <FeedVideoCard key={video.id} video={video} onRefresh={() => void refetch()} />)}
       {feedQuery.hasNextPage ? (
         <Pressable disabled={feedQuery.isFetchingNextPage} onPress={() => feedQuery.fetchNextPage()} style={styles.loadMore}>
           <Text style={styles.loadMoreText}>{feedQuery.isFetchingNextPage ? "Videolar yükleniyor…" : "Daha fazla video göster"}</Text>
@@ -68,11 +69,18 @@ export default function FeedScreen() {
   );
 }
 
-function FeedVideoCard({ video }: { video: AthleteFeedVideo }) {
-  const player = useVideoPlayer(resolveApiUrl(video.videoUrl), (createdPlayer) => {
+function FeedVideoCard({ video, onRefresh }: { video: AthleteFeedVideo; onRefresh: () => void }) {
+  const source = resolveApiUrl(video.videoUrl);
+  const player = useVideoPlayer(source, (createdPlayer) => {
     createdPlayer.loop = false;
   });
+  const status = useEvent(player, "statusChange", { status: player.status });
   const athleteName = `${video.athleteFirstName} ${video.athleteLastName}`;
+
+  function retryPlayback() {
+    onRefresh();
+    void player.replaceAsync(source);
+  }
 
   return (
     <SurfaceCard style={styles.card}>
@@ -84,7 +92,18 @@ function FeedVideoCard({ video }: { video: AthleteFeedVideo }) {
         </View>
         <MaterialCommunityIcons name="soccer" size={23} color={colors.secondary} />
       </View>
-      <VideoView player={player} style={styles.video} nativeControls allowsFullscreen />
+      <View style={styles.videoContainer}>
+        <VideoView player={player} style={styles.video} nativeControls allowsFullscreen />
+        {status?.status === "loading" ? <View pointerEvents="none" style={styles.videoOverlay}><ActivityIndicator color={colors.primaryContainer} /></View> : null}
+        {status?.status === "error" ? (
+          <View style={styles.videoOverlay}>
+            <Text style={styles.videoError}>Video şu an oynatılamıyor.</Text>
+            <Pressable onPress={retryPlayback} style={styles.retryButton}>
+              <Text style={styles.retryButtonText}>Videoyu yenile</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
       {video.caption ? <Text style={styles.caption}>{video.caption}</Text> : null}
     </SurfaceCard>
   );
@@ -103,5 +122,10 @@ const styles = StyleSheet.create({
   loadMoreText: { ...typography.title, color: colors.primary },
   subtitle: { ...typography.body, color: colors.onSurfaceVariant },
   title: { ...typography.headline, color: colors.primary },
-  video: { backgroundColor: colors.primary, borderRadius: radius.md, height: 195, overflow: "hidden", width: "100%" }
+  retryButton: { borderColor: colors.primaryContainer, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  retryButtonText: { ...typography.label, color: colors.primaryContainer },
+  video: { backgroundColor: colors.primary, height: 195, width: "100%" },
+  videoContainer: { backgroundColor: colors.primary, borderRadius: radius.md, height: 195, overflow: "hidden", width: "100%" },
+  videoError: { ...typography.body, color: colors.onSurface, textAlign: "center" },
+  videoOverlay: { alignItems: "center", backgroundColor: "rgba(19, 19, 22, 0.82)", gap: spacing.sm, justifyContent: "center", ...StyleSheet.absoluteFillObject }
 });
