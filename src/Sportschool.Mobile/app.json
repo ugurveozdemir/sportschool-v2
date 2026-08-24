@@ -23,9 +23,11 @@
       "expo-font"
     ],
     "ios": {
+      "bundleIdentifier": "com.turkocagi.elitfutbolakademisi",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.turkocagi.elitfutbolakademisi",
       "adaptiveIcon": {
         "backgroundColor": "#131316",
         "foregroundImage": "./assets/adaptive-icon.png"
