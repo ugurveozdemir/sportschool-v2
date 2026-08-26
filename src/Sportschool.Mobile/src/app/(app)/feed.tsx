@@ -1,8 +1,8 @@
 import { useEvent } from "expo";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { useFocusEffect } from "expo-router";
-import { useCallback } from "react";
+import { useFocusEffect, useNavigation } from "expo-router";
+import { useCallback, useEffect } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "@/core/sessionProvider";
@@ -70,6 +70,7 @@ export default function FeedScreen() {
 }
 
 function FeedVideoCard({ video, onRefresh }: { video: AthleteFeedVideo; onRefresh: () => void }) {
+  const navigation = useNavigation();
   const source = resolveApiUrl(video.videoUrl);
   const player = useVideoPlayer(source, (createdPlayer) => {
     createdPlayer.loop = false;
@@ -77,11 +78,11 @@ function FeedVideoCard({ video, onRefresh }: { video: AthleteFeedVideo; onRefres
   const status = useEvent(player, "statusChange", { status: player.status });
   const athleteName = `${video.athleteFirstName} ${video.athleteLastName}`;
 
-  useFocusEffect(useCallback(() => {
-    return () => {
+  useEffect(() => navigation.addListener("blur", () => {
+    if (player.playing) {
       player.pause();
-    };
-  }, [player]));
+    }
+  }), [navigation, player]);
 
   function retryPlayback() {
     onRefresh();
@@ -99,7 +100,7 @@ function FeedVideoCard({ video, onRefresh }: { video: AthleteFeedVideo; onRefres
         <MaterialCommunityIcons name="soccer" size={23} color={colors.secondary} />
       </View>
       <View style={styles.videoContainer}>
-        <VideoView player={player} style={styles.video} nativeControls allowsFullscreen />
+        <VideoView player={player} style={styles.video} nativeControls fullscreenOptions={{ enable: true }} />
         {status?.status === "loading" ? <View pointerEvents="none" style={styles.videoOverlay}><ActivityIndicator color={colors.primaryContainer} /></View> : null}
         {status?.status === "error" ? (
           <View style={styles.videoOverlay}>
