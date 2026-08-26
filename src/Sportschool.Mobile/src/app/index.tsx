@@ -60,7 +60,7 @@ export default function IndexRoute() {
           style={styles.motto}
         >
           <Text style={styles.mottoLight}>İYİ </Text>
-          <Text style={styles.mottoAccent}>BİREY</Text>
+          <Text style={styles.mottoAccent}>BİREY,</Text>
           <Text style={styles.mottoLight}> İYİ </Text>
           <Text style={styles.mottoAccent}>VATANDAŞ,</Text>
           <Text style={styles.mottoLight}> İYİ </Text>
