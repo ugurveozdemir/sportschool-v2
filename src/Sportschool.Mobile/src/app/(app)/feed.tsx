@@ -77,6 +77,12 @@ function FeedVideoCard({ video, onRefresh }: { video: AthleteFeedVideo; onRefres
   const status = useEvent(player, "statusChange", { status: player.status });
   const athleteName = `${video.athleteFirstName} ${video.athleteLastName}`;
 
+  useFocusEffect(useCallback(() => {
+    return () => {
+      player.pause();
+    };
+  }, [player]));
+
   function retryPlayback() {
     onRefresh();
     void player.replaceAsync(source);
