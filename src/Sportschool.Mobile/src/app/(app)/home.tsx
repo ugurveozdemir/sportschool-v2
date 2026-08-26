@@ -263,6 +263,11 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
           label="DUYURULAR"
           onPress={() => router.push("/announcements")}
         />
+        <HomeMenuAction
+          icon="play-box-multiple-outline"
+          label="VİDEOLAR"
+          onPress={() => router.push("/feed")}
+        />
       </View>
 
       <View style={styles.coachStats}>
