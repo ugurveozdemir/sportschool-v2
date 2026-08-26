@@ -264,6 +264,7 @@ function CoachHome({ sessionName, summary, trainings, navItems, shellTitle, isSc
           onPress={() => router.push("/announcements")}
         />
         <HomeMenuAction
+          highlighted
           icon="play-box-multiple-outline"
           label="VİDEOLAR"
           onPress={() => router.push("/feed")}
