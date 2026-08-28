@@ -24,7 +24,10 @@
     ],
     "ios": {
       "bundleIdentifier": "com.turkocagi.elitfutbolakademisi",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.turkocagi.elitfutbolakademisi",
