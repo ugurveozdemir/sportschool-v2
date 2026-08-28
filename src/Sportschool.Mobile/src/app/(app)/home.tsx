@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
   coachHeroCompact: { gap: spacing.sm, padding: 10 },
   coachHeroButton: {
     alignItems: "center",
-    backgroundColor: colors.primaryContainer,
+    backgroundColor: colors.background,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
     minHeight: 50
   },
   coachHeroButtonCompact: { marginBottom: -10, marginHorizontal: -10, minHeight: 44 },
-  coachHeroButtonText: { ...typography.title, color: colors.onPrimary },
+  coachHeroButtonText: { ...typography.title, color: colors.onSurface },
   coachHeroButtonTextCompact: { fontSize: 15, lineHeight: 20 },
   coachHeroDate: {
     alignItems: "center",
