@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
   coachHeroCompact: { gap: spacing.sm, padding: 10 },
   coachHeroButton: {
     alignItems: "center",
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceContainer,
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "center",
