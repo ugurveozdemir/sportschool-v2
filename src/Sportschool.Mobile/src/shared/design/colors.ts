@@ -14,7 +14,6 @@ export const colors = {
   featuredCardBorder: "#D4D4D8",
   onFeaturedCard: "#18181B",
   onFeaturedCardVariant: "#52525B",
-  primaryOnFeaturedCard: "#8A6500",
   primary: "#FFECB9",
   primaryContainer: "#FACC15",
   onPrimaryContainer: "#3C2F00",

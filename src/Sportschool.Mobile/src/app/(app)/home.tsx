@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   },
   coachHeroDateCompact: { gap: 2, padding: spacing.sm },
   coachHeroDateText: {
-    color: colors.primaryOnFeaturedCard,
+    color: colors.onFeaturedCard,
     fontFamily: "HankenGrotesk_800ExtraBold",
     fontSize: 32,
     lineHeight: 38
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
   },
   coachHeroTime: { ...typography.bodyLarge, color: colors.onFeaturedCardVariant },
   coachHeroTimeCompact: { fontSize: 13, lineHeight: 18 },
-  coachHeroWeekday: { ...typography.label, color: colors.primaryOnFeaturedCard, letterSpacing: 1.4 },
+  coachHeroWeekday: { ...typography.label, color: colors.onFeaturedCard, letterSpacing: 1.4 },
   coachHeroWeekdayCompact: { fontSize: 11, letterSpacing: 1.1, lineHeight: 15 },
   homeMenu: { gap: spacing.md },
   homeMenuCompact: { gap: 10 },
