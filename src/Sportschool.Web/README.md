@@ -19,6 +19,31 @@ Bu dizinde `npm run dev` çalıştırın; Node.js ve Python 3 yeterlidir.
 Dağıtım dosyaları için `npm run build` çalıştırın. `dist/` herhangi bir
 statik web sunucusuyla yayınlanabilir. Mevcut API yönlendirmeleri değiştirilmez.
 
+## Coolify / Hetzner
+
+Mevcut API ve yönetim panelinden ayrı bir Application oluşturun:
+
+- Repository: Bu depo; landing page dosyalarını içeren branch.
+- Build Pack: `Dockerfile`.
+- Base Directory: `/src/Sportschool.Web`.
+- Dockerfile Location: `/Dockerfile`.
+- Ports Exposes: `80`.
+- Domains: Yayınlanacak ana domainin `https://` adresi; kök yol `/`.
+
+Domainin DNS kaydı Hetzner sunucusuna yönelmelidir. HTTPS ve dış yönlendirmeyi
+Coolify proxy yönetir; uygulama için doğrudan host portu açmaya gerek yoktur.
+Bu Dockerfile yalnızca `public/` içeriğini taşır; API, veritabanı, Sites
+ayarları ve ortam dosyaları imaja dahil edilmez.
+
+Yerel container kontrolü:
+
+```bash
+docker build -t sportschool-web .
+docker run --rm -p 127.0.0.1:5181:80 sportschool-web
+```
+
+Ana sayfa `/`, destek `/destek.html`, gizlilik `/gizlilik.html` adresindedir.
+
 ## Herkese açık yayın ve App Store öncesi
 
 Gizlilik sayfası nihai politika değildir. Sorumlu kişi/kurumun resmi adı,
