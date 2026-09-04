@@ -46,8 +46,9 @@ Ana sayfa `/`, destek `/destek.html`, gizlilik `/gizlilik.html` adresindedir.
 
 ## Herkese açık yayın ve App Store öncesi
 
-Gizlilik sayfası nihai politika değildir. Sorumlu kişi/kurumun resmi adı,
-saklama ve silme süreçleri, canlı altyapı sağlayıcıları, veri aktarımı ve
+Gizlilik sayfası nihai politika değildir. Sorumlu kurum adı kullanıcı tarafından
+`Türk Ocağı Elit Akademi` olarak belirtilmiştir. Saklama ve silme süreçleri,
+canlı altyapı sağlayıcıları, veri aktarımı ve
 çocuk verileriyle ilgili uygulamalar doğrulanarak metin tamamlanmalıdır.
 Ardından taslak uyarısı ve `noindex` kaldırılmalı, politikaya tarih eklenmelidir.
 Destek e-postası kullanıcı tarafından `asim.tokmak@hotmail.com` olarak verilmiştir.
