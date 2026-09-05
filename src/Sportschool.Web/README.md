@@ -49,9 +49,11 @@ Ana sayfa `/`, destek `/destek.html`, gizlilik `/gizlilik.html` adresindedir.
 Gizlilik sayfası nihai politika değildir. Sorumlu kurum adı kullanıcı tarafından
 `Türk Ocağı Elit Akademi` olarak belirtilmiştir. Saklama ve silme süreçleri,
 canlı altyapı sağlayıcıları, veri aktarımı ve
-çocuk verileriyle ilgili uygulamalar doğrulanarak metin tamamlanmalıdır.
+çocuk verileriyle ilgili diğer ayrıntılar doğrulanarak metin tamamlanmalıdır.
 Ardından taslak uyarısı ve `noindex` kaldırılmalı, politikaya tarih eklenmelidir.
 Destek e-postası kullanıcı tarafından `asim.tokmak@hotmail.com` olarak verilmiştir.
+Kayıt sırasında reşit olmayan sporcuların kişisel bilgileri, profil fotoğrafları
+ve antrenman videoları için veli onayı alındığı kullanıcı tarafından doğrulanmıştır.
 
 Kabul edilen saklama kararı: Sporcu ayrıldıktan sonra, yeniden katılım amacıyla
 kişisel kayıtlar ve medya en fazla 12 ay tutulacak; ayrı bir yasal saklama
