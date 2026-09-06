@@ -20,6 +20,7 @@ using Sportschool.Api.Features.Mobile;
 using Sportschool.Api.Features.Media;
 using Sportschool.Api.Features.Payments;
 using Sportschool.Api.Features.Platform;
+using Sportschool.Api.Features.Privacy;
 using Sportschool.Api.Features.Reports;
 using Sportschool.Api.Features.SchoolManagement;
 using Sportschool.Api.Features.Trainings;
@@ -116,6 +117,11 @@ builder.Services.AddSingleton<MuxWebhookVerifier>();
 builder.Services.AddHttpClient<IMuxVideoClient, MuxVideoClient>(client =>
     client.BaseAddress = new Uri("https://api.mux.com/video/v1/"));
 builder.Services.AddHostedService<DevSeedHostedService>();
+builder.Services.AddScoped<PrivacyCleanupProcessor>();
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<PrivacyCleanupService>();
+}
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? throw new InvalidOperationException("JWT options are not configured.");

@@ -230,9 +230,11 @@ public static class AthleteApplicationEndpoints
 
         db.Users.Add(athlete);
         db.AthleteProfiles.Add(profile);
+        var response = AthleteApplicationDecisionResponse.From(application, athlete.Id);
+        db.AthleteApplications.Remove(application);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(AthleteApplicationDecisionResponse.From(application, athlete.Id));
+        return Results.Ok(response);
     }
 
     private static async Task<IResult> RejectApplicationAsync(

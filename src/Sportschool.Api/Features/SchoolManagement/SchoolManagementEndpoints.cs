@@ -832,6 +832,7 @@ public static class SchoolManagementEndpoints
         }
 
         profile.IsActive = false;
+        profile.DeactivatedAt = DateTimeOffset.UtcNow;
         profile.User.IsActive = false;
 
         var revokedAt = DateTimeOffset.UtcNow;

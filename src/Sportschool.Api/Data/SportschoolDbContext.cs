@@ -168,6 +168,7 @@ public sealed class SportschoolDbContext(DbContextOptions<SportschoolDbContext> 
             athlete.Property(x => x.ProfileImageStorageKey).HasMaxLength(500);
             athlete.Property(x => x.MonthlyFeeOverride).HasPrecision(12, 2);
             athlete.HasIndex(x => new { x.SchoolId, x.UserId }).IsUnique();
+            athlete.HasIndex(x => new { x.IsActive, x.DeactivatedAt, x.PersonalDataDeletedAt });
 
             athlete.HasOne(x => x.School)
                 .WithMany()

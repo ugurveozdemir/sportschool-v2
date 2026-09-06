@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAthleteSelection } from "@/core/athleteSelectionProvider";
 import { useSession } from "@/core/sessionProvider";
@@ -19,6 +19,7 @@ import { colors } from "@/shared/design/colors";
 import { useResponsiveLayout } from "@/shared/design/responsive";
 import { radius, spacing } from "@/shared/design/spacing";
 import { typography } from "@/shared/design/typography";
+import { PRIVACY_POLICY_URL, SUPPORT_URL } from "@/shared/constants/legal";
 import { getMobileNav, getShellTitle } from "@/shared/navigation/mobileNav";
 import { formatDate } from "@/shared/utils/date";
 
@@ -157,11 +158,32 @@ export default function ProfileScreen() {
 
       {!isCoach ? <DevelopmentHistory reports={developmentQuery.data?.reports ?? []} /> : null}
 
+      <SurfaceCard style={[styles.card, isCompact && styles.cardCompact]}>
+        <SectionTitle title="Destek ve Gizlilik" />
+        <ExternalLink label="Gizlilik Politikası" url={PRIVACY_POLICY_URL} />
+        <ExternalLink label="Destek" url={SUPPORT_URL} />
+      </SurfaceCard>
+
       <Pressable disabled={logoutMutation.isPending} onPress={() => logoutMutation.mutate()} style={styles.logoutButton}>
         <MaterialCommunityIcons name="logout" size={20} color={colors.error} />
         <Text style={styles.logoutText}>Çıkış Yap</Text>
       </Pressable>
     </ScreenShell>
+  );
+}
+
+function ExternalLink({ label, url }: { label: string; url: string }) {
+  return (
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => {
+        void Linking.openURL(url).catch(() => Alert.alert("Bağlantı açılamadı", "Lütfen daha sonra tekrar deneyin."));
+      }}
+      style={styles.externalLink}
+    >
+      <Text style={styles.externalLinkText}>{label}</Text>
+      <MaterialCommunityIcons name="open-in-new" size={20} color={colors.primaryContainer} />
+    </Pressable>
   );
 }
 
@@ -240,6 +262,8 @@ const styles = StyleSheet.create({
   developmentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   developmentLink: { ...typography.label, color: colors.primaryContainer },
   developmentTitle: { ...typography.title, color: colors.onSurface },
+  externalLink: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingTop: spacing.md },
+  externalLinkText: { ...typography.bodyLarge, color: colors.primary },
   groupLead: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   groupName: { ...typography.bodyLarge, color: colors.primary, flex: 1 },
   groupRow: { alignItems: "center", borderTopColor: colors.outlineVariant, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, justifyContent: "space-between", paddingTop: spacing.md },

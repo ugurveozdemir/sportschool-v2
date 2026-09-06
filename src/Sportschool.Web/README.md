@@ -46,23 +46,19 @@ Ana sayfa `/`, destek `/destek.html`, gizlilik `/gizlilik.html` adresindedir.
 
 ## Herkese açık yayın ve App Store öncesi
 
-Gizlilik sayfası nihai politika değildir. Sorumlu kurum adı kullanıcı tarafından
-`Türk Ocağı Elit Akademi` olarak belirtilmiştir. Saklama ve silme süreçleri,
-canlı altyapı sağlayıcıları, veri aktarımı ve
-çocuk verileriyle ilgili diğer ayrıntılar doğrulanarak metin tamamlanmalıdır.
-Ardından taslak uyarısı ve `noindex` kaldırılmalı, politikaya tarih eklenmelidir.
+Gizlilik politikasının sorumlu kurumu kullanıcı tarafından
+`Türk Ocağı Elit Akademi` olarak belirtilmiştir. Politika 5 Eylül 2026 tarihinde
+yürürlüğe girmiştir.
 Destek e-postası kullanıcı tarafından `asim.tokmak@hotmail.com` olarak verilmiştir.
 Kayıt sırasında reşit olmayan sporcuların kişisel bilgileri, profil fotoğrafları
 ve antrenman videoları için veli onayı alındığı kullanıcı tarafından doğrulanmıştır.
 
-Kabul edilen saklama kararı: Sporcu ayrıldıktan sonra, yeniden katılım amacıyla
-kişisel kayıtlar ve medya en fazla 12 ay tutulacak; ayrı bir yasal saklama
-yükümlülüğü bulunmayan kayıtlar süre sonunda silinecek. Ödeme kayıtlarının
-yasal saklama süreleri ve yedeklerden silme süreci henüz belirlenmedi.
-Mevcut sporcu çıkarma işlemi yalnızca hesabı pasifleştiriyor; 12 ay sonunda
-silme işlemi henüz uygulanmış değil. Bu nedenle web metni planlanan politika
-olarak işaretlidir. Nihai yayın öncesi ayrılış tarihinin kaydı, silme kapsamı
-(veritabanı, fotoğraf/video sağlayıcıları ve yedekler) ve talep süreci uygulanmalıdır.
+Saklama kararı: Sporcu ayrıldıktan sonra kişisel kayıtlar ve medya en fazla
+12 ay tutulur. Ardından kimlik alanları anonimleştirilir; medya, ölçümler,
+oturumlar ve serbest metinli rapor içerikleri silinir. Onaylanan başvuru formu
+hesap oluşturulunca, reddedilen başvurular 30 gün, bekleyen başvurular 90 gün
+ve güvenlik kayıtları 90 gün sonra silinir. Haftalık R2 veritabanı yedekleri
+Coolify üzerinde en fazla 30 günle sınırlandırılmıştır.
 
 App Store bağlantıları Apple tarafından oturum açmadan erişilebilir olmalıdır.
 Özel Sites önizlemesi bu gerekliliği karşılamaz. Uygulamanın içinden de nihai
