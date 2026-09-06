@@ -56,7 +56,9 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
   const hasUnread = isMember && (unreadQuery.data?.count ?? 0) > 0;
   const hasManagerUnread = isManager && (unreadQuery.data?.count ?? 0) > 0;
 
-  if (isManager) {
+  if (isManager || isAthlete) {
+    const hasTopBarUnread = isManager ? hasManagerUnread : hasUnread;
+
     return (
       <View style={[styles.topBar, isCompact && styles.topBarCompact]}>
         <View style={styles.topBarButton}>
@@ -65,7 +67,7 @@ export function TopBar({ title, avatar }: { title: string; avatar?: ReactNode })
         <Text numberOfLines={1} style={[styles.topTitle, isCompact && styles.topTitleCompact]}>{title}</Text>
         <Pressable accessibilityLabel="Duyurular" onPress={() => router.push("/announcements")} style={styles.topBarButton}>
           <MaterialCommunityIcons name="bell-outline" size={isCompact ? 23 : 26} color={colors.onSurfaceVariant} />
-          {hasManagerUnread ? <View style={styles.notificationDot} /> : null}
+          {hasTopBarUnread ? <View style={styles.notificationDot} /> : null}
         </Pressable>
       </View>
     );
