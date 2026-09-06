@@ -80,6 +80,28 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 builder.Services.AddOptions<R2Options>()
     .Bind(builder.Configuration.GetSection(R2Options.SectionName))
+    .PostConfigure(options =>
+    {
+        if (string.IsNullOrWhiteSpace(options.AccountId))
+        {
+            options.AccountId = builder.Configuration["R2_ACCOUNT_ID"] ?? string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(options.BucketName))
+        {
+            options.BucketName = builder.Configuration["R2_BUCKET_NAME"] ?? string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(options.AccessKeyId))
+        {
+            options.AccessKeyId = builder.Configuration["R2_ACCESS_KEY_ID"] ?? string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(options.SecretAccessKey))
+        {
+            options.SecretAccessKey = builder.Configuration["R2_SECRET_ACCESS_KEY"] ?? string.Empty;
+        }
+    })
     .Validate(
         x => !builder.Environment.IsProduction() || x.IsConfigured,
         "R2 storage must be configured in production.")

@@ -12,9 +12,14 @@ public sealed class R2MediaStorage : IMediaStorage
     private readonly IAmazonS3 _client;
 
     public R2MediaStorage(IOptions<R2Options> options)
+        : this(options, CreateClient(options.Value))
+    {
+    }
+
+    internal R2MediaStorage(IOptions<R2Options> options, IAmazonS3 client)
     {
         _options = options.Value;
-        _client = CreateClient(_options);
+        _client = client;
     }
 
     public async Task<string> SaveAsync(IFormFile file, string directory, string extension, CancellationToken cancellationToken)
@@ -27,7 +32,9 @@ public sealed class R2MediaStorage : IMediaStorage
             BucketName = _options.BucketName,
             Key = storageKey,
             InputStream = content,
-            ContentType = file.ContentType
+            ContentType = file.ContentType,
+            DisablePayloadSigning = true,
+            DisableDefaultChecksumValidation = true
         }, cancellationToken);
 
         return storageKey;
