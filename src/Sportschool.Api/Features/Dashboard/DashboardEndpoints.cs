@@ -121,23 +121,30 @@ public static class DashboardEndpoints
         var unpaidPaymentCount = paymentRows.Count(x =>
             x.Payment is null || PaymentStatusCalculator.GetEffectiveStatus(x.Payment, paymentToday) != PaymentStatus.Paid);
 
-        var recentReportQuery = db.AthleteReports
+        var recentReportBaseQuery = db.AthleteReports
             .AsNoTracking()
-            .Where(x => x.SchoolId == schoolId.Value)
-            .Select(x => new DashboardRecentReport(
-                x.Id,
-                x.AthleteProfileId,
-                x.AthleteProfile.FirstName + " " + x.AthleteProfile.LastName,
-                x.Summary,
-                x.CreatedAt));
+            .Where(x => x.SchoolId == schoolId.Value);
         var recentReports = usesSqlite
-            ? (await recentReportQuery.ToListAsync(cancellationToken))
+            ? (await recentReportBaseQuery
+                .Select(x => new DashboardRecentReport(
+                    x.Id,
+                    x.AthleteProfileId,
+                    x.AthleteProfile.FirstName + " " + x.AthleteProfile.LastName,
+                    x.Summary,
+                    x.CreatedAt))
+                .ToListAsync(cancellationToken))
                 .OrderByDescending(x => x.CreatedAt)
                 .Take(5)
                 .ToList()
-            : await recentReportQuery
+            : await recentReportBaseQuery
                 .OrderByDescending(x => x.CreatedAt)
                 .Take(5)
+                .Select(x => new DashboardRecentReport(
+                    x.Id,
+                    x.AthleteProfileId,
+                    x.AthleteProfile.FirstName + " " + x.AthleteProfile.LastName,
+                    x.Summary,
+                    x.CreatedAt))
                 .ToListAsync(cancellationToken);
 
         return Results.Ok(new DashboardSummaryResponse(
