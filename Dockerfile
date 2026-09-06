@@ -24,7 +24,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=api-build /app/publish ./
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl wget \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/AppData/Media \
     && chown -R app:app /app
